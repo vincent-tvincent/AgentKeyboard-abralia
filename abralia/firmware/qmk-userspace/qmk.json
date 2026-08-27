@@ -1,0 +1,7 @@
+{
+    "userspace_version": "1.1",
+    "build_targets": [
+        ["keychron/v3_8k/ansi_encoder", "abralia"]
+    ]
+}
+
