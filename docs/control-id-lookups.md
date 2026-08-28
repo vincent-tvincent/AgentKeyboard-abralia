@@ -1,16 +1,16 @@
 # Host Interaction ControlId lookup tables
 
-Two generated default-keymap snapshots are available for the Keychron V3 8K
-ANSI encoder:
+Two generated default-keymap views are available for the Keychron V3 8K ANSI
+encoder:
 
-- [Pinned Keychron official default](keychron-v3-8k-official-control-id-lookup.md)
-- [Abralia Host Interaction default](abralia-v3-8k-default-control-id-lookup.md)
+- [Side-by-side Keychron and Abralia defaults](keychron-v3-8k-official-control-id-lookup.md)
+- [Abralia-only Host Interaction default](abralia-v3-8k-default-control-id-lookup.md)
 
-Both tables cover macOS base layer 0, Windows base layer 2, matrix keys, knob
-press, and both encoder directions. They are intentionally separate because
-the Abralia default uses standard F1-F12, Scroll Lock, and Pause positions on
-its macOS base layer, while the pinned Keychron official macOS base uses several
-media/system functions there. Other top-row defaults also differ.
+Both views cover macOS base layer 0, Windows base layer 2, matrix keys, knob
+press, and both encoder directions. The primary table places the pinned
+Keychron mappings and this project's Abralia mappings in adjacent columns so
+their differences are visible without switching documents. The Abralia-only
+view remains available as a compact project-default reference.
 
 These are human-readable defaults, not persistent runtime truth. The desktop
 API's keycode mode always reads the live VIA mapping and fans out to all

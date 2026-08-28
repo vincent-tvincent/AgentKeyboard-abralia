@@ -1,0 +1,12 @@
+{
+  "width": 3,
+  "height": 2,
+  "cells": [
+    {"space": "srgb", "red": 255, "green": 0, "blue": 0},
+    {"space": "srgb", "red": 0, "green": 255, "blue": 0},
+    {"space": "srgb", "red": 0, "green": 0, "blue": 255},
+    {"space": "srgb", "red": 255, "green": 255, "blue": 0},
+    {"space": "srgb", "red": 255, "green": 0, "blue": 255},
+    {"space": "srgb", "red": 0, "green": 255, "blue": 255}
+  ]
+}
