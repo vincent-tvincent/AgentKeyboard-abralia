@@ -1,0 +1,96 @@
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
+"""Public Abralia Host Interaction desktop API."""
+
+from .client import (
+    ActivationUpdate,
+    BindingUpdate,
+    ConfiguredBinding,
+    HostInteractionController,
+    HostInteractionProtocolClient,
+)
+from .errors import (
+    AmbiguousDeviceError,
+    DeviceNotFoundError,
+    FirmwareRejectedError,
+    HostInteractionError,
+    KeycodeLookupError,
+    ProtocolError,
+    SessionError,
+    TransportError,
+)
+from .keymap import (
+    KeycodeMatch,
+    ViaKeymapReader,
+    parse_keycode,
+)
+from .protocol import (
+    BindingEntry,
+    BindingFlags,
+    BindingPolicy,
+    Capabilities,
+    ControlId,
+    ControlKind,
+    DeviceEvent,
+    Edge,
+    EventFlags,
+    EventType,
+    ForceScope,
+    Lifetime,
+    Opcode,
+    ResetReason,
+    Response,
+    Result,
+    Routing,
+    StatusFlags,
+)
+from .transport import (
+    HidApiInteractionTransport,
+    HidDeviceInfo,
+    InteractionTransport,
+    enumerate_hid_devices,
+    find_keychron_v3_8k_interface,
+)
+
+__all__ = [
+    "ActivationUpdate",
+    "AmbiguousDeviceError",
+    "BindingEntry",
+    "BindingFlags",
+    "BindingPolicy",
+    "BindingUpdate",
+    "Capabilities",
+    "ConfiguredBinding",
+    "ControlId",
+    "ControlKind",
+    "DeviceEvent",
+    "DeviceNotFoundError",
+    "Edge",
+    "EventFlags",
+    "EventType",
+    "FirmwareRejectedError",
+    "ForceScope",
+    "HidApiInteractionTransport",
+    "HidDeviceInfo",
+    "HostInteractionController",
+    "HostInteractionError",
+    "HostInteractionProtocolClient",
+    "InteractionTransport",
+    "KeycodeLookupError",
+    "KeycodeMatch",
+    "Lifetime",
+    "Opcode",
+    "ProtocolError",
+    "ResetReason",
+    "Response",
+    "Result",
+    "Routing",
+    "SessionError",
+    "StatusFlags",
+    "TransportError",
+    "ViaKeymapReader",
+    "enumerate_hid_devices",
+    "find_keychron_v3_8k_interface",
+    "parse_keycode",
+]

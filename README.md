@@ -60,8 +60,8 @@ firmware binary.
 ## Repository layout
 
 - `abralia/firmware/` contains the QMK External Userspace firmware.
-- `abralia/desktop/` is reserved for the desktop-side host implementation. Its
-  language and runtime remain undecided.
+- `abralia/desktop/` contains the Python 3.11+ generalized RGB developer API
+  and CLI, with a macOS-first Keychron effect-25 adapter.
 - `experiments/` contains bounded hardware and protocol experiments.
 
 ## License

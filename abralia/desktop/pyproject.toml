@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "abralia-desktop"
+version = "0.1.0"
+description = "Diagram-aligned generalized RGB host library and CLI for Abralia"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+dependencies = [
+  "hidapi>=0.14,<0.16",
+  "jsonschema>=4.20,<5",
+]
+
+[project.scripts]
+abralia-rgb = "abralia.rgb.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"abralia.rgb" = [
+  "resources/profiles/*.json",
+  "resources/schemas/*.json",
+]
+
