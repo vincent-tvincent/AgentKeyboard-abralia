@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Guarded manual harness for Abralia Host Interaction firmware v1.
 
 The harness never flashes firmware, persists settings, or changes RGB. It

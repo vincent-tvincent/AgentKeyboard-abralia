@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Full-frame RGB stress test for stock or explicit custom Keychron firmware."""
 
 from __future__ import annotations

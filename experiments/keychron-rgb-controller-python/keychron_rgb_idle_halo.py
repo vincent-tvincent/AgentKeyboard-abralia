@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Host-driven random-key breathing halo for custom V3 8K effect 25."""
 
 from __future__ import annotations

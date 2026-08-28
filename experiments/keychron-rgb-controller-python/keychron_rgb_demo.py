@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Capability-driven stock-firmware RGB demo for supported Keychron keyboards.
 
 This experiment performs volatile HID operations only. It never flashes

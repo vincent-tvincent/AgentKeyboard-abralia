@@ -72,3 +72,8 @@ Shorter scenes:
 Press Control-C at any point to request cleanup and restoration. If the process
 is forcibly killed or the computer loses power, reopen Launcher/VIA or unplug
 and reconnect the keyboard to reload the persistent normal RGB configuration.
+
+## License
+
+Abralia-authored experiment code is licensed under Apache-2.0. See the
+repository-root [`LICENSE.md`](../../LICENSE.md).

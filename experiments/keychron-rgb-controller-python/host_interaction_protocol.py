@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Packet codec for Abralia Host Interaction firmware protocol v1.
 
 This module contains no agent policy and performs no HID I/O by itself.
@@ -366,4 +369,3 @@ def parse_device_event(report: bytes) -> DeviceEvent:
         )
     except ValueError as error:
         raise ProtocolError("Event contains an unknown enum value.") from error
-

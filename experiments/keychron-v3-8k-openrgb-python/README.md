@@ -32,10 +32,15 @@ cd /tmp/openrgb-keychron-test
 In another terminal:
 
 ```sh
-cd "/Users/vincentpu/Library/CloudStorage/OneDrive-个人/AgentKeyboardAbralia/abralia-implementation/experiments/keychron-v3-8k-openrgb-python"
+cd experiments/keychron-v3-8k-openrgb-python
 source .venv/bin/activate
 python probe_openrgb.py
 ```
 
 The probe only lists SDK devices. It never calls `set_color`, `clear`,
 `set_mode`, or profile-save operations.
+
+## License
+
+Abralia-authored experiment code is licensed under Apache-2.0. See the
+repository-root [`LICENSE.md`](../../LICENSE.md).

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """F1-F12 multi-agent status display demo for custom RGB effect 25.
 
 Each function key represents one agent. The demo uses only volatile lighting

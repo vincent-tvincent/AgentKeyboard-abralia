@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Read-only OpenRGB SDK probe for the Keychron V3 8K experiment."""
 
 from __future__ import annotations

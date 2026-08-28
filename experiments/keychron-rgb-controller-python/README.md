@@ -276,3 +276,26 @@ python keychron_rgb_saturation_fade.py --steps 30 --step-seconds 0.1
 The selected keys, starting saturation, brightness, fade interval, final hold,
 and target device are configurable. As with the other demos, the complete
 original state is restored and verified after the last step or interruption.
+
+## Codex hero frame
+
+`keychron_codex_logo_frame.py` displays the final photographed Codex-style
+`>_` composition on effect 25. The mint-green chevron uses F4, 5, T, F, and C;
+the cool-white underscore uses N, M, Comma, and Dot. Every other LED remains
+exactly black to demonstrate independent per-key brightness.
+
+Run until interrupted, then restore the complete prior lighting snapshot:
+
+```sh
+python keychron_codex_logo_frame.py
+```
+
+Type `LOGO` when prompted. Use `--seconds 30` for a bounded display or
+`--brightness` to adjust the temporary global ceiling. The script keeps the
+guarded-frame watchdog alive while running, restores on a clean exit, and
+returns to the firmware idle halo if the host process disappears.
+
+## License
+
+Abralia-authored experiment code is licensed under Apache-2.0. See the
+repository-root [`LICENSE.md`](../../LICENSE.md).

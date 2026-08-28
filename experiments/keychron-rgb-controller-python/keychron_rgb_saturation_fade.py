@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Fade selected Keychron keys from vivid colors into a white background."""
 
 from __future__ import annotations

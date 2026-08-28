@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 """Full-matrix FPS sweep for the current Abralia effect-25 firmware."""
 
 from __future__ import annotations

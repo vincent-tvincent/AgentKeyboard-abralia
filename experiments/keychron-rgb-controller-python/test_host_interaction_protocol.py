@@ -1,3 +1,6 @@
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import struct
@@ -151,4 +154,3 @@ class HostInteractionProtocolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
