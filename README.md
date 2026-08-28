@@ -1,6 +1,6 @@
 # Abralia
 
-## Give your keyboard an Agent Mode—not a downgrade.
+## Give Your Keyboard an Agent Mode - Without Tradeoff
 
 ***Don't be afraid of flashing our firmware, your keyboard will still able
 to loop through existing RGB modes, configure with VIA and Keychron Launcher,
