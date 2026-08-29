@@ -87,6 +87,10 @@ def _add_device_options(parser: argparse.ArgumentParser) -> None:
         "--profile", default=DEFAULT_PROFILE, help="bundled profile ID or JSON path"
     )
     parser.add_argument(
+        "--compatibility",
+        help="optional user compatibility-layout JSON path",
+    )
+    parser.add_argument(
         "--device-index", type=int, help="index among devices matching the profile"
     )
     parser.add_argument("--brightness-ceiling", type=int, default=255, metavar="0..255")
@@ -199,7 +203,11 @@ def _render_keys(args: argparse.Namespace) -> int:
         owner="abralia-rgb-cli",
     )
     _render(
-        RgbController.open(args.profile, device_index=args.device_index),
+        RgbController.open(
+            args.profile,
+            device_index=args.device_index,
+            compatibility_source=args.compatibility,
+        ),
         [scene],
         args,
     )
@@ -226,7 +234,11 @@ def _render_canvas(args: argparse.Namespace) -> int:
         owner="abralia-rgb-cli",
     )
     _render(
-        RgbController.open(args.profile, device_index=args.device_index),
+        RgbController.open(
+            args.profile,
+            device_index=args.device_index,
+            compatibility_source=args.compatibility,
+        ),
         [scene],
         args,
     )
@@ -236,7 +248,11 @@ def _render_canvas(args: argparse.Namespace) -> int:
 
 def _render_keycode(args: argparse.Namespace) -> int:
     _validate_display_args(args)
-    controller = RgbController.open(args.profile, device_index=args.device_index)
+    controller = RgbController.open(
+        args.profile,
+        device_index=args.device_index,
+        compatibility_source=args.compatibility,
+    )
     with controller:
         _validate_adapter_refresh(controller, args.refresh_interval)
         scene, resolution = controller.build_keycode_scene(

@@ -4,8 +4,18 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
-from abralia.rgb import PhysicalSceneBuilder, RgbController, Srgb8, load_profile
+from abralia.layout import load_compatibility_layout
+from abralia.rgb import (
+    Canvas,
+    MappingStrategy,
+    PhysicalSceneBuilder,
+    RectangularSceneBuilder,
+    RgbController,
+    Srgb8,
+    load_profile,
+)
 from abralia.rgb.adapters.base import AdapterHealth, DeviceSnapshot
 from abralia.rgb.compatibility import AdapterCapabilities
 from abralia.rgb.errors import CapabilityError
@@ -97,6 +107,35 @@ class FakeAdapter:
 
 
 class ControllerTests(unittest.TestCase):
+    def test_compatibility_layout_replaces_runtime_region(self) -> None:
+        adapter = FakeAdapter()
+        profile = load_profile()
+        source = (
+            Path(__file__).parents[1]
+            / "examples"
+            / "compatibility"
+            / "f-row-navigation.json"
+        )
+        compatibility = load_compatibility_layout(profile, source)
+        controller = RgbController(adapter, profile, compatibility=compatibility)
+        scene = RectangularSceneBuilder().build(
+            "f-row",
+            Canvas(3, 2, (Srgb8(255, 0, 0),) * 6),
+            target="navigation_cluster",
+            strategy=MappingStrategy.ROW_KEY_INDEX,
+            owner="test",
+        )
+
+        with controller:
+            controller.display([scene])
+
+        lit = [
+            item.address
+            for item in adapter.submitted[0].leds
+            if item.color == Srgb8(255, 0, 0)
+        ]
+        self.assertEqual(lit, [1, 2, 3, 4, 5, 6])
+
     def test_context_captures_displays_refreshes_and_restores(self) -> None:
         adapter = FakeAdapter()
         controller = RgbController(adapter, load_profile())

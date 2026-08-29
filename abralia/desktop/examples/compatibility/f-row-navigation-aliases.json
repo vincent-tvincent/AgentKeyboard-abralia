@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "profile_id": "keychron-v3-8k-ansi-encoder-effect25",
+  "matrix_aliases": {
+    "NAV_INSERT": [0, 1],
+    "NAV_HOME": [0, 2],
+    "NAV_PAGE_UP": [0, 3],
+    "NAV_DELETE": [0, 4],
+    "NAV_END": [0, 5],
+    "NAV_PAGE_DOWN": [0, 6]
+  }
+}

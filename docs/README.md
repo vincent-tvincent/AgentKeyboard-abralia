@@ -11,6 +11,7 @@ verification, and physical-keyboard validation where that distinction matters.
 | Understand what Abralia does and what is currently supported | [Project overview](../README.md) |
 | Install or use the desktop RGB API and CLI | [Desktop RGB API guide](../abralia/desktop/README.md) |
 | Bind keys or encoder actions through Host Interaction Mode | [Host Interaction desktop API](../abralia/desktop/HOST_INTERACTION_API.md) |
+| Define user-specific regions with matrix aliases | [User compatibility layouts](../abralia/desktop/COMPATIBILITY_LAYOUTS.md) |
 | Build or flash the Keychron V3 8K firmware | [QMK userspace build and flash guide](../abralia/firmware/qmk-userspace/README.md) |
 | Understand the firmware directory and licensing boundary | [Firmware overview](../abralia/firmware/README.md) |
 | Find a physical key's Control ID or compare default mappings | [Control ID lookup guide](control-id-lookups.md) |
@@ -29,6 +30,7 @@ verification, and physical-keyboard validation where that distinction matters.
 - [Project overview and current status](../README.md)
 - [Desktop RGB API and CLI](../abralia/desktop/README.md)
 - [Host Interaction desktop API](../abralia/desktop/HOST_INTERACTION_API.md)
+- [User compatibility layouts](../abralia/desktop/COMPATIBILITY_LAYOUTS.md)
 - [Firmware overview](../abralia/firmware/README.md)
 - [QMK userspace setup, build, effect 25, Host Interaction, and flash guide](../abralia/firmware/qmk-userspace/README.md)
 
@@ -55,4 +57,3 @@ keyboard after flashing.
 
 - [Repository licensing guide](../LICENSE.md)
 - Full license texts are stored in [`LICENSES/`](../LICENSES/).
-

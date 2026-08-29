@@ -117,6 +117,43 @@ with RgbController.open() as controller:
     lease.refresh()
 ```
 
+## User compatibility layouts
+
+A separate compatibility JSON can replace or add logical regions without
+editing the bundled hardware profile. Region rows may use imported matrix
+aliases, direct `{"matrix": [row, column]}` selectors, or explicit physical
+elements. The loader resolves them once to shared Control IDs for RGB and Host
+Interaction.
+
+See [User compatibility layouts](COMPATIBILITY_LAYOUTS.md) for the schema,
+safe alias-import rules, F-row navigation example, CLI validation/export, and
+Python usage.
+
+## Shared Raw HID session
+
+RGB and Host Interaction can retain separate controllers while borrowing two
+protocol-specific views from one physical Raw HID owner:
+
+```python
+from abralia import SharedRawHidSession
+from abralia.interaction import HostInteractionProtocolClient
+from abralia.rgb.adapters.keychron_effect25 import KeychronEffect25Adapter
+
+with SharedRawHidSession.open_keychron_v3_8k(mode="cooperative") as session:
+    rgb_adapter = KeychronEffect25Adapter(
+        session.rgb_transport(), session.device_info
+    )
+    interaction_protocol = HostInteractionProtocolClient(
+        session.interaction_transport()
+    )
+```
+
+`cooperative` is synchronous and creates no worker thread. `threaded` starts
+one bounded reader that routes the single in-flight response and queues
+unsolicited events. Both views are non-owning: closing an adapter or protocol
+client does not close the keyboard; the `SharedRawHidSession` context owns the
+only physical close. Existing standalone factories remain available.
+
 ### Stable physical IDs and optional live keycode lookup
 
 Physical scenes, canvas targets, regions, and future animations use stable

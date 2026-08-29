@@ -27,6 +27,27 @@ addressing visually obvious.
   --seconds 15
 ```
 
+## 6U x 6U geometry square
+
+`display_geometry_square.py` creates a 19U x 7U row-major canvas, draws one
+filled 6U x 6U square, and maps it through the production
+`geometry_resample` path onto the `full_keyboard` target. It prints the source
+canvas, mapped non-black keys, blended keys, large-key selections, and
+uncovered cells before displaying the result.
+
+The default square begins at canvas coordinate `(6U, 0U)` so its upper edge
+includes the function-row band. Use `--x` and `--y` to move it while keeping
+the exact 6U x 6U canvas size. Because the mapping follows physical U-space,
+keyboard row gaps and stagger can make the number of illuminated keys differ
+from the 36 colored source cells.
+
+```sh
+.venv/bin/python \
+  experiments/desktop-rgb-physical-validation/display_geometry_square.py \
+  --seconds 15 \
+  --verbose-map
+```
+
 ## Guarded-frame timeout
 
 `display_without_refresh.py` submits a cyan F-row frame once and deliberately
@@ -74,6 +95,62 @@ exercise exact row-index and anchored-row mappings through the production CLI:
   --strategy anchored_row_grid \
   --seconds 5
 ```
+
+## Shared-HID RGB and camera validation
+
+`shared_hid_rgb_validation.py` uses one physical HID owner and exercises every
+profile region, layered all-region composition, a moving animation, refreshed
+black standby, timeout return to the firmware-local awaiting animation, and
+snapshot restoration. It can test cooperative and threaded modes without
+enabling Host Interaction bindings:
+
+```sh
+.venv/bin/python \
+  experiments/desktop-rgb-physical-validation/shared_hid_rgb_validation.py \
+  --mode both
+```
+
+For a non-mirrored Brio 100 recording, enumerate AVFoundation devices first,
+resolve the exact camera index, and record while the RGB script runs:
+
+```sh
+ffmpeg -f avfoundation \
+  -pixel_format <supported-pixel-format> \
+  -framerate <supported-camera-fps> \
+  -video_size <supported-width>x<supported-height> \
+  -i '<brio100-index>:none' \
+  -an shared-hid-rgb-validation.mov
+```
+
+The Brio footage validates placement, transitions, black/off regions, obvious
+stalls, and relative brightness. Auto-exposure and camera color processing do
+not establish exact hue, white point, luminance, or color-channel accuracy.
+
+## User-assisted shared-HID interaction validation
+
+`shared_hid_region_interaction_validation.py` renders and activates every
+profile region sequentially, then tests their deduplicated union. Before each
+activation it installs inactive CAPTURE bindings and shows a breathing Pause
+key. It waits for the user’s double-Pause gesture and switches to the region
+display only after firmware reports manual mode active. A second double-Pause
+must report manual mode inactive before the phase advances. Reserved Pause is
+excluded, no host force scope is used, and RGB/input state is restored. The
+default run has no host-side activation or phase deadline, so it cannot pull
+the keyboard back to inactive during a phase. The script requires physical key
+presses and is not part of unattended validation:
+
+```sh
+.venv/bin/python \
+  experiments/desktop-rgb-physical-validation/shared_hid_region_interaction_validation.py \
+  --mode cooperative
+```
+
+Use `--mode threaded` or `--mode both` for the other shared-session paths, and
+`--require-all-controls` for exhaustive physical input coverage. Use
+`--routing mirror` when ordinary key behavior should remain enabled during a
+regression pass. Positive `--activation-timeout`, `--seconds-per-region`, and
+`--combined-seconds` values opt into bounded cleanup deadlines; their default
+value of zero waits for the user’s double-Pause gestures.
 
 ## Optional direct camera capture on macOS
 

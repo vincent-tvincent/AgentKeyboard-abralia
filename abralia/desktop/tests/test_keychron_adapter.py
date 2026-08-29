@@ -215,6 +215,25 @@ class KeychronAdapterTests(unittest.TestCase):
 
         self.assertEqual(sum(request == [0xA0] for request in transport.requests), 1)
 
+    def test_black_frame_preserves_nonzero_brightness_for_awaiting_recovery(
+        self,
+    ) -> None:
+        transport = FakeTransport()
+        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        frame = DeviceFrame(
+            tuple(
+                LedColor(index, Srgb8(0, 0, 0)) for index in range(EXPECTED_LED_COUNT)
+            )
+        )
+
+        adapter.submit_frame(frame, brightness_ceiling=160)
+
+        self.assertEqual(transport.brightness, 160)
+        self.assertTrue(all(color.value == 0 for color in transport.colors))
+
+        adapter.clear()
+        self.assertEqual(transport.brightness, 160)
+
     def test_existing_guarded_session_is_not_preempted(self) -> None:
         transport = FakeTransport()
         transport.frame_state = FrameState.GUARDED

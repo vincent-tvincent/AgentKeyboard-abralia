@@ -31,6 +31,7 @@ class MappingReport:
     merged_elements: tuple[str, ...] = ()
     duplicated_cells: tuple[tuple[int, int], ...] = ()
     large_key_selections: tuple[tuple[str, int, int], ...] = ()
+    unrenderable_controls: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +144,15 @@ class RectangularSceneRasterizer:
             raise MappingError(
                 f"Target {target.region_id!r} does not support {request.strategy.value!r}."
             )
+        renderable = [
+            element_id
+            for element_id in target.elements
+            if profile.element_by_id[element_id].rgb_capable
+        ]
+        if not renderable:
+            raise CapabilityError(
+                f"Canvas target {target.region_id!r} has no RGB-renderable controls."
+            )
         if request.strategy is MappingStrategy.GEOMETRY_RESAMPLE:
             return self._geometry(profile, target, request.canvas)
         if request.strategy is MappingStrategy.ROW_KEY_INDEX:
@@ -226,6 +236,7 @@ class RectangularSceneRasterizer:
                 sorted(cell for cell, count in used_by_cell.items() if count > 1)
             ),
             large_key_selections=tuple(large),
+            unrenderable_controls=target.compatibility_issues,
         )
 
     def _rows(
@@ -250,6 +261,8 @@ class RectangularSceneRasterizer:
                     f"Canvas row {row_index} is shorter than the target row."
                 )
             for column, element_id in enumerate(elements):
+                if element_id is None:
+                    continue
                 element = profile.element_by_id[element_id]
                 if anchored and element.geometry.width != 1.0:
                     raise MappingError(
@@ -260,7 +273,10 @@ class RectangularSceneRasterizer:
             uncovered.extend(
                 (row_index, column) for column in range(len(elements), canvas.width)
             )
-        return colors, MappingReport(uncovered_cells=tuple(uncovered))
+        return colors, MappingReport(
+            uncovered_cells=tuple(uncovered),
+            unrenderable_controls=target.compatibility_issues,
+        )
 
 
 class SceneCompiler:

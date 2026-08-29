@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import json
 import struct
+import tempfile
 import unittest
 from collections import deque
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from abralia.interaction.client import (
     HostInteractionController,
@@ -26,6 +29,8 @@ from abralia.interaction.protocol import (
     Result,
     Routing,
 )
+from abralia.layout import load_compatibility_layout
+from abralia.rgb import load_profile
 
 
 class FakeFirmwareTransport:
@@ -101,9 +106,7 @@ class FakeFirmwareTransport:
             self.staging_forced = []
         elif opcode is Opcode.WRITE_FORCE_KEYS:
             count = packet[11]
-            self.staging_forced.extend(
-                struct.unpack_from(f"<{count}H", packet, 12)
-            )
+            self.staging_forced.extend(struct.unpack_from(f"<{count}H", packet, 12))
         elif opcode is Opcode.COMMIT_FORCE_SCOPE:
             self.force_generation = struct.unpack_from("<H", packet, 9)[0]
             self.forced = (
@@ -197,7 +200,9 @@ class InteractionClientTests(unittest.TestCase):
         opcodes = {Opcode(request[4]) for request in self.transport.requests}
         self.assertEqual(opcodes, set(Opcode))
 
-    def test_high_level_keycode_operations_fan_out_to_every_matching_control(self) -> None:
+    def test_high_level_keycode_operations_fan_out_to_every_matching_control(
+        self,
+    ) -> None:
         self.client.get_capabilities()
         self.client.claim_session(0x11223344)
         controller = HostInteractionController(
@@ -209,16 +214,12 @@ class InteractionClientTests(unittest.TestCase):
             lifetime=Lifetime.TTL,
             duration_ms=5000,
         )
-        update = controller.set_keycode_controls(
-            "KC_A", binding_id=77, policy=policy
-        )
+        update = controller.set_keycode_controls("KC_A", binding_id=77, policy=policy)
         self.assertEqual(
             set(update.controls), {ControlId.key(0, 0), ControlId.key(0, 1)}
         )
         self.assertEqual(len(update.keycode_matches), 3)
-        self.assertEqual(
-            set(self.transport.bindings), {(0x0000, 77), (0x0001, 77)}
-        )
+        self.assertEqual(set(self.transport.bindings), {(0x0000, 77), (0x0001, 77)})
 
         activation = controller.activate_keycode_controls("KC_A", lease_ms=2000)
         self.assertEqual(set(activation.controls), set(update.controls))
@@ -228,7 +229,9 @@ class InteractionClientTests(unittest.TestCase):
         self.assertEqual(set(removed.controls), set(update.controls))
         self.assertEqual(self.transport.bindings, [])
 
-    def test_direct_control_id_activation_and_complete_turn_off_are_separate(self) -> None:
+    def test_direct_control_id_activation_and_complete_turn_off_are_separate(
+        self,
+    ) -> None:
         self.client.get_capabilities()
         self.client.claim_session(0x11223344)
         controller = HostInteractionController(
@@ -245,6 +248,42 @@ class InteractionClientTests(unittest.TestCase):
         controller.turn_off_all()
         self.assertEqual(self.client.session_token, 0)
         self.assertEqual(controller.bindings, ())
+
+    def test_compatibility_region_uses_shared_resolved_control_ids(self) -> None:
+        self.client.get_capabilities()
+        self.client.claim_session(0x11223344)
+        profile = load_profile()
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "layout.json"
+            source.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "profile_id": profile.profile_id,
+                        "matrix_aliases": {"FIRST": [0, 0]},
+                        "regions": [
+                            {
+                                "id": "actions",
+                                "rows": [["FIRST", {"matrix": [0, 1]}]],
+                                "strategies": ["row_key_index"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            compatibility = load_compatibility_layout(profile, source)
+
+        controller = HostInteractionController(
+            self.client,
+            keymap_reader=StubKeymapReader(),
+            compatibility=compatibility,
+        )
+        update = controller.set_region_controls("actions", binding_id=91)
+        self.assertEqual(update.controls, (ControlId.key(0, 0), ControlId.key(0, 1)))
+        self.assertEqual(set(self.transport.bindings), {(0x0000, 91), (0x0001, 91)})
+        activation = controller.activate_region("actions", lease_ms=2000)
+        self.assertEqual(activation.controls, update.controls)
 
     def test_event_payload_is_received_and_acknowledged(self) -> None:
         self.client.get_capabilities()

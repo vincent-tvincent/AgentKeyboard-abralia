@@ -1,11 +1,11 @@
 <mxfile host="Electron">
   <diagram name="Current Shared-HID Implementation" id="abralia-shared-hid-current">
-    <mxGraphModel dx="4000" dy="3000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2800" pageHeight="2200" math="0" shadow="0">
+    <mxGraphModel dx="3103" dy="1803" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2800" pageHeight="2200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;fontSize=12;" value="&lt;b&gt;Diagram legend&lt;/b&gt;&lt;br&gt;Sharp rectangle = implemented class/module&lt;br&gt;Rounded rectangle = implemented data/configuration/caller&lt;br&gt;Solid arrow = runtime flow&lt;br&gt;Dotted line = implemented alternate/association" vertex="1">
-          <mxGeometry height="100" width="360" x="20" y="15" as="geometry" />
+          <mxGeometry height="100" width="360" x="150" y="15" as="geometry" />
         </mxCell>
         <mxCell id="title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;fontSize=15;" value="Current Abralia shared-HID implementation&lt;br&gt;Separate RGB and Host Interaction controllers • cooperative/threaded shared owner • standalone paths retained" vertex="1">
           <mxGeometry height="75" width="860" x="970" y="15" as="geometry" />
@@ -53,7 +53,7 @@
           <mxGeometry height="90" width="280" x="980" y="790" as="geometry" />
         </mxCell>
         <mxCell id="compiler" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=25;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;fontStyle=1;" value="SceneCompiler" vertex="1">
-          <mxGeometry height="205" width="830" x="260" y="915" as="geometry" />
+          <mxGeometry height="205" width="830" x="265" y="913" as="geometry" />
         </mxCell>
         <mxCell id="region-resolver" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Region/slot resolver&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;semantic + temporary overlays&lt;/font&gt;" vertex="1">
           <mxGeometry height="85" width="230" x="300" y="980" as="geometry" />
@@ -65,7 +65,7 @@
           <mxGeometry height="85" width="230" x="810" y="980" as="geometry" />
         </mxCell>
         <mxCell id="live-keycode" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="LiveKeycodeResolver&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;optional raw scan + profile join&lt;/font&gt;" vertex="1">
-          <mxGeometry height="90" width="230" x="1070" y="945" as="geometry" />
+          <mxGeometry height="90" width="230" x="1020" y="650" as="geometry" />
         </mxCell>
         <mxCell id="resolved-scene" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="ResolvedScene + MappingReport" vertex="1">
           <mxGeometry height="65" width="460" x="450" y="1150" as="geometry" />
@@ -107,7 +107,7 @@
           <mxGeometry height="85" width="270" x="1500" y="1040" as="geometry" />
         </mxCell>
         <mxCell id="protocol-codec" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="interaction.protocol codec&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;packet types/builders/parsers&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="260" x="2440" y="1040" as="geometry" />
+          <mxGeometry height="85" width="260" x="2440" y="1007.5" as="geometry" />
         </mxCell>
         <mxCell id="protocol-client" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="HostInteractionProtocolClient&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;session/keepalive • binding/force transactions • service/read/ACK events&lt;/font&gt;" vertex="1">
           <mxGeometry height="100" width="500" x="1850" y="1000" as="geometry" />
@@ -119,13 +119,13 @@
           <mxGeometry height="75" width="290" x="100" y="1700" as="geometry" />
         </mxCell>
         <mxCell id="rgb-view" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="SharedRgbTransportView&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;non-owning RGB error view&lt;/font&gt;" vertex="1">
-          <mxGeometry height="75" width="320" x="520" y="1700" as="geometry" />
+          <mxGeometry height="75" width="320" x="520" y="1697.5" as="geometry" />
         </mxCell>
         <mxCell id="shared-session" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontStyle=1;" value="SharedRawHidSession&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;one physical FF60:61 handle • cooperative default or opt-in reader thread • one in-flight matcher • unmatched/event queue • owner-only close&lt;/font&gt;" vertex="1">
-          <mxGeometry height="95" width="720" x="1040" y="1688" as="geometry" />
+          <mxGeometry height="95" width="720" x="1040" y="1687.5" as="geometry" />
         </mxCell>
         <mxCell id="interaction-view" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="SharedInteractionTransportView&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;non-owning interaction error view&lt;/font&gt;" vertex="1">
-          <mxGeometry height="75" width="330" x="1940" y="1700" as="geometry" />
+          <mxGeometry height="75" width="330" x="1935" y="1697.5" as="geometry" />
         </mxCell>
         <mxCell id="standalone-hi" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="HidApiInteractionTransport&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;standalone interaction owner&lt;/font&gt;" vertex="1">
           <mxGeometry height="75" width="330" x="2370" y="1700" as="geometry" />
@@ -154,34 +154,34 @@
         <mxCell id="qmk-path" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Ordinary QMK input path" vertex="1">
           <mxGeometry height="65" width="280" x="2320" y="2080" as="geometry" />
         </mxCell>
-        <mxCell id="e-profile-json" edge="1" parent="1" source="profile-json" target="profile-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-profile-json" edge="1" parent="1" source="profile-json" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="profile-loader" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-profile-layout" edge="1" parent="1" source="profile-loader" target="layout-profile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="validated profile">
+        <mxCell id="e-profile-layout" edge="1" parent="1" source="profile-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="layout-profile" value="validated profile">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-layout-compat" edge="1" parent="1" source="layout-profile" target="compat-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="profile">
+        <mxCell id="e-layout-compat" edge="1" parent="1" source="layout-profile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="compat-loader" value="profile">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-compat-json" edge="1" parent="1" source="compat-json" target="compat-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-compat-json" edge="1" parent="1" source="compat-json" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="compat-loader" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-compat-resolved" edge="1" parent="1" source="compat-loader" target="resolved-layout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="normalized">
+        <mxCell id="e-compat-resolved" edge="1" parent="1" source="compat-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="resolved-layout" value="normalized">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="a-layout-cli" edge="1" parent="1" source="layout-cli" target="compat-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" value="">
+        <mxCell id="a-layout-cli" edge="1" parent="1" source="layout-cli" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="compat-loader" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-layout-effective" edge="1" parent="1" source="layout-profile" target="effective-profile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.35;entryDx=0;entryDy=0;endArrow=block;endFill=1;" value="base profile">
+        <mxCell id="e-layout-effective" edge="1" parent="1" source="layout-profile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.35;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="effective-profile" value="base profile">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="580" y="460" />
-              <mxPoint x="25" y="460" />
-              <mxPoint x="25" y="820" />
+              <mxPoint x="760" y="460.05" />
+              <mxPoint x="25.05" y="460.05" />
+              <mxPoint x="25.05" y="821.48" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-resolved-effective" edge="1" parent="1" source="resolved-layout" target="effective-profile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.7;entryDx=0;entryDy=0;endArrow=block;endFill=1;" value="region overrides">
+        <mxCell id="e-resolved-effective" edge="1" parent="1" source="resolved-layout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.7;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="effective-profile" value="region overrides">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1490" y="475" />
@@ -190,49 +190,53 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-resolved-region" edge="1" parent="1" source="resolved-layout" target="region-input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" value="optional injection">
+        <mxCell id="e-resolved-region" edge="1" parent="1" source="resolved-layout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="region-input" value="optional injection">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="2100" y="470" />
-              <mxPoint x="2775" y="470" />
-              <mxPoint x="2775" y="762" />
+              <mxPoint x="2740" y="372.52" />
+              <mxPoint x="2740" y="762.52" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-rgb-caller-builders" edge="1" parent="1" source="rgb-caller" target="scene-builders" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-rgb-caller-builders" edge="1" parent="1" source="rgb-caller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="scene-builders" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-builders-controller" edge="1" parent="1" source="scene-builders" target="rgb-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="AbstractScene">
+        <mxCell id="e-builders-controller" edge="1" parent="1" source="scene-builders" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="rgb-controller" value="AbstractScene">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-profile-controller" edge="1" parent="1" source="effective-profile" target="rgb-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="profile">
+        <mxCell id="e-profile-controller" edge="1" parent="1" source="effective-profile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="rgb-controller" value="profile">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-controller-compiler" edge="1" parent="1" source="rgb-controller" target="compiler" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="compile">
+        <mxCell id="e-controller-compiler" edge="1" parent="1" source="rgb-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="compiler" value="compile">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-controller-lease" edge="1" parent="1" source="rgb-controller" target="display-lease" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="display()">
+        <mxCell id="e-controller-lease" edge="1" parent="1" source="rgb-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="display-lease" value="display()">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="a-live-keycode" edge="1" parent="1" source="live-keycode" target="rgb-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" value="">
+        <mxCell id="a-live-keycode" edge="1" parent="1" source="live-keycode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="rgb-controller" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1225" y="770" />
+              <mxPoint x="750.04" y="770" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-compiler-resolved" edge="1" parent="1" source="compiler" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="resolved-scene" value="resolved visuals">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-compiler-resolved" edge="1" parent="1" source="compiler" target="resolved-scene" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="resolved visuals">
+        <mxCell id="e-resolved-composer" edge="1" parent="1" source="resolved-scene" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="composer" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-resolved-composer" edge="1" parent="1" source="resolved-scene" target="composer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-composer-mapper" edge="1" parent="1" source="composer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="led-mapper" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-composer-mapper" edge="1" parent="1" source="composer" target="led-mapper" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-mapper-adapter" edge="1" parent="1" source="led-mapper" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="rgb-adapter" value="DeviceFrame">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-mapper-adapter" edge="1" parent="1" source="led-mapper" target="rgb-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="DeviceFrame">
+        <mxCell id="e-recovery-adapter" edge="1" parent="1" source="recovery" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="rgb-adapter" value="snapshot / restore">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-recovery-adapter" edge="1" parent="1" source="recovery" target="rgb-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;" value="snapshot / restore">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e-lease-adapter" edge="1" parent="1" source="display-lease" target="rgb-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" value="refresh">
+        <mxCell id="e-lease-adapter" edge="1" parent="1" source="display-lease" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="rgb-adapter" value="refresh">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1240" y="1430" />
@@ -240,31 +244,31 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-hi-caller-controller" edge="1" parent="1" source="hi-caller" target="hi-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-hi-caller-controller" edge="1" parent="1" source="hi-caller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-controller" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-direct-controller" edge="1" parent="1" source="direct-input" target="hi-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-direct-controller" edge="1" parent="1" source="direct-input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-controller" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-region-controller" edge="1" parent="1" source="region-input" target="hi-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-region-controller" edge="1" parent="1" source="region-input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-controller" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-reader-controller" edge="1" parent="1" source="via-reader" target="hi-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="live matches">
+        <mxCell id="e-reader-controller" edge="1" parent="1" source="via-reader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-controller" value="live matches">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-policy-controller" edge="1" parent="1" source="binding-policy" target="hi-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="policy">
+        <mxCell id="e-policy-controller" edge="1" parent="1" source="binding-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-controller" value="policy">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-controller-client" edge="1" parent="1" source="hi-controller" target="protocol-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="binding / force calls">
+        <mxCell id="e-controller-client" edge="1" parent="1" source="hi-controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="protocol-client" value="binding / force calls">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="a-codec" edge="1" parent="1" source="protocol-codec" target="protocol-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" value="">
+        <mxCell id="a-codec" edge="1" parent="1" source="protocol-codec" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="protocol-client" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-client-events" edge="1" parent="1" source="protocol-client" target="event-output" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="events">
+        <mxCell id="e-client-events" edge="1" parent="1" source="protocol-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="event-output" value="events">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-events-caller" edge="1" parent="1" source="event-output" target="hi-caller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" value="typed events">
+        <mxCell id="e-events-caller" edge="1" parent="1" source="event-output" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-caller" value="typed events">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1475" y="1082" />
@@ -272,38 +276,37 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="a-adapter-standalone-rgb" edge="1" parent="1" source="rgb-adapter" target="standalone-rgb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" value="">
+        <mxCell id="a-adapter-standalone-rgb" edge="1" parent="1" source="rgb-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.417;exitY=0.983;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;exitPerimeter=0;" target="standalone-rgb" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="680" y="1590" />
-              <mxPoint x="245" y="1590" />
-              <mxPoint x="245" y="1680" />
+              <mxPoint x="641.84" y="1525.04" />
+              <mxPoint x="640" y="1525.04" />
+              <mxPoint x="640" y="1570" />
+              <mxPoint x="245.04" y="1570" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-adapter-rgb-view" edge="1" parent="1" source="rgb-adapter" target="rgb-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-adapter-rgb-view" edge="1" parent="1" source="rgb-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="rgb-view" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-rgb-view-session" edge="1" parent="1" source="rgb-view" target="shared-session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-rgb-view-session" edge="1" parent="1" source="rgb-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="shared-session" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-client-interaction-view" edge="1" parent="1" source="protocol-client" target="interaction-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-client-interaction-view" edge="1" parent="1" source="protocol-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="interaction-view" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="a-client-standalone-hi" edge="1" parent="1" source="protocol-client" target="standalone-hi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" value="">
+        <mxCell id="a-client-standalone-hi" edge="1" parent="1" source="protocol-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" target="standalone-hi" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="2300" y="1280" />
-              <mxPoint x="2730" y="1280" />
-              <mxPoint x="2730" y="1670" />
-              <mxPoint x="2535" y="1670" />
+              <mxPoint x="2535" y="1280" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e-interaction-view-session" edge="1" parent="1" source="interaction-view" target="shared-session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="e-interaction-view-session" edge="1" parent="1" source="interaction-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="shared-session" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-session-rgb-firmware" edge="1" parent="1" source="shared-session" target="rgb-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=block;startFill=1;endArrow=block;endFill=1;" value="RGB protocol">
+        <mxCell id="e-session-rgb-firmware" edge="1" parent="1" source="shared-session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="rgb-firmware" value="RGB protocol">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1000" y="1830" />
@@ -311,34 +314,55 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="a-standalone-rgb-firmware" edge="1" parent="1" source="standalone-rgb" target="rgb-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e-session-hi-firmware" edge="1" parent="1" source="shared-session" target="hi-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=block;startFill=1;endArrow=block;endFill=1;" value="Host Interaction protocol">
+        <mxCell id="a-standalone-rgb-firmware" edge="1" parent="1" source="standalone-rgb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" target="rgb-firmware" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
+              <mxPoint x="245.03" y="1820.03" />
+              <mxPoint x="640" y="1820.03" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-session-hi-firmware" edge="1" parent="1" source="shared-session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="hi-firmware" value="Host Interaction protocol">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1420" y="1830" />
               <mxPoint x="1800" y="1830" />
               <mxPoint x="1800" y="2010" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="a-standalone-hi-firmware" edge="1" parent="1" source="standalone-hi" target="hi-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" value="">
+        <mxCell id="a-standalone-hi-firmware" edge="1" parent="1" source="standalone-hi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" target="hi-firmware" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2535" y="1810" />
+              <mxPoint x="2100" y="1810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-rgb-leds" edge="1" parent="1" source="rgb-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="rgb-leds" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-rgb-leds" edge="1" parent="1" source="rgb-firmware" target="rgb-leds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
+        <mxCell id="a-manual" edge="1" parent="1" source="manual-mode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-firmware" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="a-manual" edge="1" parent="1" source="manual-mode" target="hi-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" value="">
+        <mxCell id="a-recovery" edge="1" parent="1" source="recovery-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-firmware" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="a-recovery" edge="1" parent="1" source="recovery-note" target="hi-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" value="">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e-physical-hi" edge="1" parent="1" source="physical-controls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-firmware" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2020" y="2070" />
+              <mxPoint x="2100" y="2070" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e-physical-hi" edge="1" parent="1" source="physical-controls" target="hi-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e-hi-qmk" edge="1" parent="1" source="hi-firmware" target="qmk-path" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" value="unbound / MIRROR">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e-hi-qmk" edge="1" parent="1" source="hi-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="qmk-path" value="unbound / MIRROR">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2120" y="2070" />
+              <mxPoint x="2460" y="2070" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

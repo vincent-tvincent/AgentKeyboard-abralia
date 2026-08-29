@@ -31,6 +31,32 @@ Developers can discover raw IDs interactively with the separate guarded
 which prints a unique volatile binding ID and Control ID for every mirrored
 press without loading a layout profile.
 
+## Compatibility regions
+
+User-authored compatibility layouts can define region rows through imported
+matrix aliases, direct matrix coordinates, or explicit hardware-profile
+elements. They normalize once to Control IDs and can be shared with the RGB
+controller without reading the live VIA keymap.
+
+Pass a resolved layout to `HostInteractionController`, then use
+`region_controls`, `set_region_controls`, `remove_region_controls`, or
+`activate_region`. See [User compatibility layouts](COMPATIBILITY_LAYOUTS.md)
+for the schema and complete example.
+
+## Shared Raw HID ownership
+
+For simultaneous RGB and Host Interaction, construct
+`HostInteractionProtocolClient` from
+`SharedRawHidSession.interaction_transport()` and construct the effect-25 RGB
+adapter from the same session's `rgb_transport()`. The session uniquely owns
+the physical handle; both protocol views preserve their existing APIs and have
+non-owning `close()` methods.
+
+Cooperative mode remains synchronous and should use nonblocking or short event
+polls while an animation is active. Threaded mode is explicitly selected and
+uses one reader, one in-flight response matcher, and a shared unmatched/event
+queue. Standalone Host Interaction construction remains supported.
+
 ## Binding and activation
 
 Configuration and activation are deliberately separate. This preserves the

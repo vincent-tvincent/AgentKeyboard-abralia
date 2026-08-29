@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 from .adapters.base import RgbDeviceAdapter
 from .adapters.keychron_effect25 import KeychronEffect25Adapter
@@ -26,6 +26,9 @@ from .scene import (
     PhysicalOverlaySceneBuilder,
     ResolvedScene,
 )
+
+if TYPE_CHECKING:
+    from abralia.layout import ResolvedCompatibilityLayout
 
 
 @dataclass(slots=True)
@@ -51,9 +54,16 @@ class RgbController:
         compiler: SceneCompiler | None = None,
         composer: PriorityOverlayComposer | None = None,
         mapper: PhysicalElementLedMapper | None = None,
+        compatibility: ResolvedCompatibilityLayout | None = None,
     ):
         self.adapter = adapter
-        self.profile = profile
+        self.hardware_profile = profile
+        self.compatibility = compatibility
+        self.profile = (
+            compatibility.apply_to_profile(profile)
+            if compatibility is not None
+            else profile
+        )
         self.compiler = compiler or SceneCompiler()
         self.composer = composer or PriorityOverlayComposer()
         self.mapper = mapper or PhysicalElementLedMapper()
@@ -78,10 +88,16 @@ class RgbController:
         profile_source: str | Path = DEFAULT_PROFILE,
         *,
         device_index: int | None = None,
+        compatibility_source: str | Path | None = None,
     ) -> RgbController:
         """Select the v1 adapter and an exactly matching Raw HID interface."""
 
         profile = load_profile(profile_source)
+        compatibility = None
+        if compatibility_source is not None:
+            from abralia.layout import load_compatibility_layout
+
+            compatibility = load_compatibility_layout(profile, compatibility_source)
         if profile.adapter_id != KeychronEffect25Adapter.adapter_id:
             raise CapabilityError(
                 f"No installed adapter implements {profile.adapter_id!r}."
@@ -111,7 +127,11 @@ class RgbController:
                     f"Device index {device_index} is outside 0...{len(devices) - 1}."
                 )
             device = devices[device_index]
-        return cls(KeychronEffect25Adapter.open(device), profile)
+        return cls(
+            KeychronEffect25Adapter.open(device),
+            profile,
+            compatibility=compatibility,
+        )
 
     def __enter__(self) -> Self:
         try:

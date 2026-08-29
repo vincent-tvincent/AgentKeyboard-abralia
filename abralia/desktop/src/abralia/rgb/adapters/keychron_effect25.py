@@ -360,7 +360,10 @@ class KeychronEffect25Adapter:
             f"active frame {sequence}",
         )
         maximum = max((color.value for color in hsv), default=0)
-        self._via_set(0x01, min(maximum, brightness_ceiling))
+        global_brightness = (
+            brightness_ceiling if maximum == 0 else min(maximum, brightness_ceiling)
+        )
+        self._via_set(0x01, global_brightness)
         self._sequence = (self._sequence + 1) & 0xFF
         self._last_frame = frame
         self._brightness_ceiling = brightness_ceiling
@@ -387,7 +390,7 @@ class KeychronEffect25Adapter:
             DeviceFrame(
                 tuple(LedColor(index, BLACK) for index in range(EXPECTED_LED_COUNT))
             ),
-            brightness_ceiling=0,
+            brightness_ceiling=self._brightness_ceiling,
         )
 
     def health(self) -> AdapterHealth:

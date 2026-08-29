@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "profile_id": "keychron-v3-8k-ansi-encoder-effect25",
+  "alias_imports": [
+    "./f-row-navigation-aliases.json"
+  ],
+  "regions": [
+    {
+      "id": "navigation_cluster",
+      "rows": [
+        ["NAV_INSERT", "NAV_HOME", "NAV_PAGE_UP"],
+        ["NAV_DELETE", "NAV_END", "NAV_PAGE_DOWN"]
+      ],
+      "strategies": ["row_key_index"]
+    }
+  ]
+}

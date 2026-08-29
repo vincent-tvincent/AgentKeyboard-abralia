@@ -67,10 +67,11 @@ class PhysicalElement:
 class RegionTarget:
     region_id: str
     elements: tuple[str, ...]
-    rows: tuple[tuple[str, ...], ...]
+    rows: tuple[tuple[str | None, ...], ...]
     strategies: frozenset[MappingStrategy]
     large_key_threshold_u: float
     anchored_rows: tuple[str, ...]
+    compatibility_issues: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

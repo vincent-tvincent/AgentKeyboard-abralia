@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://abralia.dev/schemas/matrix-aliases-v1.schema.json",
+  "title": "Abralia matrix aliases v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile_id", "matrix_aliases"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "profile_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "matrix_aliases": {
+      "type": "object",
+      "propertyNames": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_]*$"},
+      "additionalProperties": {
+        "type": "array",
+        "prefixItems": [
+          {"type": "integer", "minimum": 0},
+          {"type": "integer", "minimum": 0}
+        ],
+        "minItems": 2,
+        "maxItems": 2
+      }
+    }
+  }
+}

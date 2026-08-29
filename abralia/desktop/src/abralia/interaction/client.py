@@ -10,7 +10,7 @@ import time
 from collections import defaultdict, deque
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from .errors import (
     FirmwareRejectedError,
@@ -54,6 +54,9 @@ from .protocol import (
     write_force_controls_packet,
 )
 from .transport import HidApiInteractionTransport, InteractionTransport
+
+if TYPE_CHECKING:
+    from abralia.layout import ResolvedCompatibilityLayout, ResolvedRegion
 
 
 @dataclass(frozen=True, slots=True)
@@ -362,15 +365,25 @@ class HostInteractionController:
         client: HostInteractionProtocolClient,
         *,
         keymap_reader: ViaKeymapReader | None = None,
+        compatibility: ResolvedCompatibilityLayout | None = None,
     ):
         self.client = client
         self.capabilities = client.get_capabilities()
         self.keymap_reader = keymap_reader or ViaKeymapReader(client.transport)
+        self.compatibility = compatibility
         self._bindings: dict[ControlId, ConfiguredBinding] = {}
 
     @property
     def bindings(self) -> tuple[ConfiguredBinding, ...]:
         return tuple(self._bindings[key] for key in sorted(self._bindings))
+
+    def resolve_region(self, region_id: str) -> ResolvedRegion:
+        if self.compatibility is None:
+            raise ProtocolError("No compatibility layout is configured.")
+        return self.compatibility.region(region_id)
+
+    def region_controls(self, region_id: str) -> tuple[ControlId, ...]:
+        return self.resolve_region(region_id).controls
 
     def _validate_control(self, control_id: ControlId) -> None:
         if control_id == self.PAUSE_CONTROL:
@@ -442,6 +455,19 @@ class HostInteractionController:
         update = self._replace(desired)
         return BindingUpdate(resolved, update.binding_generation, update.response)
 
+    def set_region_controls(
+        self,
+        region_id: str,
+        *,
+        binding_id: int,
+        policy: BindingPolicy | None = None,
+    ) -> BindingUpdate:
+        return self.set_controls(
+            self.region_controls(region_id),
+            binding_id=binding_id,
+            policy=policy or BindingPolicy(),
+        )
+
     def replace_bindings(
         self, bindings: Iterable[ConfiguredBinding]
     ) -> BindingUpdate:
@@ -497,6 +523,9 @@ class HostInteractionController:
             desired.pop(control, None)
         update = self._replace(desired)
         return BindingUpdate(resolved, update.binding_generation, update.response)
+
+    def remove_region_controls(self, region_id: str) -> BindingUpdate:
+        return self.remove_controls(self.region_controls(region_id))
 
     def remove_keycode_controls(
         self,
@@ -573,6 +602,13 @@ class HostInteractionController:
         for control in resolved:
             self._validate_control(control)
         return self._activate(ForceScope.SELECTED, resolved, lease_ms)
+
+    def activate_region(
+        self, region_id: str, *, lease_ms: int = 30_000
+    ) -> ActivationUpdate:
+        return self.activate_controls(
+            self.region_controls(region_id), lease_ms=lease_ms
+        )
 
     def activate_keycode_controls(
         self,
