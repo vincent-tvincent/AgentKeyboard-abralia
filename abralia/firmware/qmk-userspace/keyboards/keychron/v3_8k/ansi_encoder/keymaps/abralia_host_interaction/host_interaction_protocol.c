@@ -31,6 +31,7 @@
 #define HOST_INTERACTION_STATUS_BINDING_STAGING (1 << 4)
 #define HOST_INTERACTION_STATUS_FORCE_STAGING (1 << 5)
 #define HOST_INTERACTION_STATUS_EVENT_OVERFLOW (1 << 6)
+#define HOST_INTERACTION_STATUS_RGB_EFFECT25_SELECTED (1 << 7)
 
 _Static_assert(RAW_EPSIZE == 32, "Host Interaction requires 32-byte Raw HID");
 _Static_assert(MATRIX_ROWS > 0 && MATRIX_COLS > 16,
@@ -98,6 +99,7 @@ static uint16_t heartbeat_sequence;
 static uint32_t last_heartbeat_at;
 static uint8_t last_reset_reason;
 static bool event_overflowed;
+static bool rgb_effect25_selected;
 
 static host_interaction_event_t event_queue[HOST_INTERACTION_EVENT_QUEUE_SIZE];
 static uint8_t event_head;
@@ -371,6 +373,9 @@ static uint8_t status_flags(void) {
   }
   if (event_overflowed) {
     flags |= HOST_INTERACTION_STATUS_EVENT_OVERFLOW;
+  }
+  if (rgb_effect25_selected) {
+    flags |= HOST_INTERACTION_STATUS_RGB_EFFECT25_SELECTED;
   }
   return flags;
 }
@@ -670,6 +675,9 @@ static uint8_t commit_force_scope(uint32_t token, uint16_t generation) {
       force_staging_binding_generation != active_binding_generation) {
     return HOST_INTERACTION_RESULT_STALE_GENERATION;
   }
+  if (!rgb_effect25_selected) {
+    return HOST_INTERACTION_RESULT_INVALID_STATE;
+  }
 
   if (force_staging_scope == HOST_INTERACTION_FORCE_SELECTED) {
     bool any = false;
@@ -813,6 +821,38 @@ bool host_interaction_protocol_handle_via(uint8_t *data, uint8_t length) {
 
 bool host_interaction_protocol_session_alive(void) { return session_valid; }
 
+bool host_interaction_protocol_rgb_effect25_selected(void) {
+  return rgb_effect25_selected;
+}
+
+void host_interaction_protocol_set_rgb_effect25_selected(bool selected) {
+  if (selected == rgb_effect25_selected) {
+    return;
+  }
+
+  bool was_active = any_activation();
+  rgb_effect25_selected = selected;
+  if (!selected && was_active) {
+    clear_activation_internal();
+  }
+  if (!session_valid) {
+    return;
+  }
+
+  if (!enqueue_event_internal(HOST_INTERACTION_EVENT_RGB_EFFECT_CHANGED,
+                              active_binding_generation, 0, 0, selected ? 1 : 0,
+                              0)) {
+    handle_event_overflow();
+    return;
+  }
+  if (!selected && was_active &&
+      !enqueue_event_internal(HOST_INTERACTION_EVENT_MODE_CHANGED,
+                              active_binding_generation, 0,
+                              HOST_INTERACTION_PAUSE_CONTROL, 0, 0)) {
+    handle_event_overflow();
+  }
+}
+
 bool host_interaction_protocol_resolve_binding(
     uint16_t control_id, host_interaction_resolved_binding_t *binding) {
   uint16_t index;
@@ -888,9 +928,11 @@ void host_interaction_protocol_toggle_manual_mode(void) {
 
   if (any_activation()) {
     clear_activation_internal();
-  } else {
+  } else if (rgb_effect25_selected) {
     manual_global_mode = true;
     recompute_binding_runtime();
+  } else {
+    return;
   }
 
   if (!enqueue_event_internal(

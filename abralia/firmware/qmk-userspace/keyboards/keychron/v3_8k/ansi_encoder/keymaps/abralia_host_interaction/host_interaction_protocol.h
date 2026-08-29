@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #define HOST_INTERACTION_VALUE_ID 0x02
-#define HOST_INTERACTION_PROTOCOL_VERSION 0x01
+#define HOST_INTERACTION_PROTOCOL_VERSION 0x02
 #define HOST_INTERACTION_EVENT_GROUP 0xF0
 
 #define HOST_INTERACTION_DOUBLE_TAP_TERM_MS 300
@@ -93,6 +93,7 @@ enum host_interaction_event_type {
   HOST_INTERACTION_EVENT_CONTROL_EDGE = 0x01,
   HOST_INTERACTION_EVENT_MODE_CHANGED = 0x02,
   HOST_INTERACTION_EVENT_QUEUE_OVERFLOW = 0x03,
+  HOST_INTERACTION_EVENT_RGB_EFFECT_CHANGED = 0x04,
 };
 
 enum host_interaction_event_edge {
@@ -126,6 +127,8 @@ bool host_interaction_protocol_handle_via(uint8_t *data, uint8_t length);
 void host_interaction_protocol_housekeeping(void);
 
 bool host_interaction_protocol_session_alive(void);
+bool host_interaction_protocol_rgb_effect25_selected(void);
+void host_interaction_protocol_set_rgb_effect25_selected(bool selected);
 bool host_interaction_protocol_resolve_binding(
     uint16_t control_id, host_interaction_resolved_binding_t *binding);
 void host_interaction_protocol_consume_binding(uint16_t control_id,

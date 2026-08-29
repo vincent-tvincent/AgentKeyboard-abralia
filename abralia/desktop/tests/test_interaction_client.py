@@ -25,6 +25,7 @@ from abralia.interaction.protocol import (
     ForceScope,
     Lifetime,
     Opcode,
+    ProtocolError,
     ResetReason,
     Result,
     Routing,
@@ -48,10 +49,12 @@ class FakeFirmwareTransport:
         self.unmatched: deque[bytes] = deque()
         self.incoming: deque[bytes] = deque()
         self.closed = False
+        self.protocol_version = 2
 
     def _common_response(self, request: bytes) -> bytearray:
         response = bytearray(32)
         response[:5] = request[:5]
+        response[3] = self.protocol_version
         response[5] = Result.OK
         struct.pack_into("<I", response, 6, self.session_token)
         struct.pack_into("<H", response, 10, self.binding_generation)
@@ -158,7 +161,7 @@ class StubKeymapReader:
 
 def event_packet(token: int) -> bytes:
     report = bytearray(32)
-    report[:5] = bytes([0xF0, 0, 2, 1, EventType.CONTROL_EDGE])
+    report[:5] = bytes([0xF0, 0, 2, 2, EventType.CONTROL_EDGE])
     struct.pack_into("<IHHHH", report, 5, token, 9, 3, 77, 0)
     report[17] = Edge.DOWN
     report[18] = 2
@@ -199,6 +202,11 @@ class InteractionClientTests(unittest.TestCase):
 
         opcodes = {Opcode(request[4]) for request in self.transport.requests}
         self.assertEqual(opcodes, set(Opcode))
+
+    def test_v1_firmware_is_rejected_without_transaction_timeout(self) -> None:
+        self.transport.protocol_version = 1
+        with self.assertRaisesRegex(ProtocolError, "requires.*version 2"):
+            self.client.get_capabilities()
 
     def test_high_level_keycode_operations_fan_out_to_every_matching_control(
         self,

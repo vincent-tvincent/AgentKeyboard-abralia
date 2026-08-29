@@ -45,9 +45,7 @@ class HostInteractionProtocolTests(unittest.TestCase):
         counterclockwise = encoder_control(0, clockwise=False)
 
         self.assertEqual(decode_control_id(key), (ControlKind.KEY, 5, 16))
-        self.assertEqual(
-            decode_control_id(clockwise), (ControlKind.ENCODER_CW, 0, 0)
-        )
+        self.assertEqual(decode_control_id(clockwise), (ControlKind.ENCODER_CW, 0, 0))
         self.assertEqual(
             decode_control_id(counterclockwise),
             (ControlKind.ENCODER_CCW, 0, 0),
@@ -72,7 +70,7 @@ class HostInteractionProtocolTests(unittest.TestCase):
                 BindingEntry(encoder_control(0, clockwise=True), 1002),
             ],
         )
-        self.assertEqual(packet[:5], bytes([0x07, 0x00, 0x02, 0x01, 0x11]))
+        self.assertEqual(packet[:5], bytes([0x07, 0x00, 0x02, 0x02, 0x11]))
         self.assertEqual(packet[11], int(CAPTURE_DOWN_UP))
         self.assertEqual(packet[12], int(Lifetime.ONE_SHOT))
         self.assertEqual(struct.unpack_from("<I", packet, 13)[0], 30_000)
@@ -123,7 +121,7 @@ class HostInteractionProtocolTests(unittest.TestCase):
 
     def test_response_and_event_decoding(self) -> None:
         response = bytearray(32)
-        response[:6] = bytes([0x07, 0x00, 0x02, 0x01, 0x12, Result.OK])
+        response[:6] = bytes([0x07, 0x00, 0x02, 0x02, 0x12, Result.OK])
         struct.pack_into("<I", response, 6, 0x11223344)
         struct.pack_into("<H", response, 10, 17)
         response[12] = int(StatusFlags.SESSION_VALID | StatusFlags.MANUAL_ACTIVE)
@@ -135,9 +133,17 @@ class HostInteractionProtocolTests(unittest.TestCase):
 
         event = bytearray(32)
         event[:5] = bytes(
-            [HOST_INTERACTION_EVENT_GROUP, 0x00, HOST_INTERACTION_VALUE_ID, 0x01, EventType.CONTROL_EDGE]
+            [
+                HOST_INTERACTION_EVENT_GROUP,
+                0x00,
+                HOST_INTERACTION_VALUE_ID,
+                0x02,
+                EventType.CONTROL_EDGE,
+            ]
         )
-        struct.pack_into("<IHHHH", event, 5, 0x11223344, 9, 17, 1001, key_control(1, 15))
+        struct.pack_into(
+            "<IHHHH", event, 5, 0x11223344, 9, 17, 1001, key_control(1, 15)
+        )
         event[17] = Edge.DOWN
         event[18] = int(EventFlags.CAPTURED)
         struct.pack_into("<I", event, 19, 12345)

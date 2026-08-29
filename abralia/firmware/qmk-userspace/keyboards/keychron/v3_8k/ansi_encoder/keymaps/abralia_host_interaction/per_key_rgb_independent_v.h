@@ -38,3 +38,4 @@ enum per_key_rgb_frame_flags {
 bool per_key_rgb_independent_v_handle_via(uint8_t *data, uint8_t length);
 void per_key_rgb_independent_v_housekeeping(void);
 void per_key_rgb_independent_v_host_reset(void);
+void per_key_rgb_independent_v_selection_changed(bool selected);

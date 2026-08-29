@@ -6,7 +6,6 @@ from __future__ import annotations
 import struct
 import unittest
 from collections import deque
-from collections.abc import Sequence
 
 from abralia.interaction import (
     BindingPolicy,
@@ -14,6 +13,7 @@ from abralia.interaction import (
     Edge,
     EventFlags,
     EventType,
+    FirmwareRejectedError,
     ForceScope,
     HidApiInteractionTransport,
     HostInteractionController,
@@ -25,7 +25,6 @@ from abralia.interaction import (
     Routing,
     StatusFlags,
 )
-
 
 VIA_GET_LAYER_COUNT = 0x11
 VIA_GET_KEYMAP_BUFFER = 0x12
@@ -51,6 +50,7 @@ class FakeRawHidFirmware:
         self.acknowledged_sequences: list[int] = []
         self.requests: list[bytes] = []
         self.closed = False
+        self.rgb_effect25_selected = True
 
         # Two layers, a 2x2 matrix, and one encoder. KC_A deliberately appears
         # on two layers of one key, one other key, and encoder clockwise.
@@ -90,6 +90,8 @@ class FakeRawHidFirmware:
         flags = StatusFlags.SESSION_VALID if self.session_token else StatusFlags(0)
         if self.forced_controls:
             flags |= StatusFlags.FORCE_SELECTED
+        if self.rgb_effect25_selected:
+            flags |= StatusFlags.RGB_EFFECT_25_SELECTED
         response[12] = int(flags)
         response[13] = len(self.bindings)
         response[14] = len(self.forced_controls)
@@ -119,6 +121,7 @@ class FakeRawHidFirmware:
 
     def _handle_host_interaction(self, request: bytes) -> bytes:
         opcode = Opcode(request[4])
+        result = Result.OK
         if opcode is Opcode.CLAIM_SESSION:
             self.session_token = struct.unpack_from("<I", request, 5)[0]
         elif opcode is Opcode.KEEPALIVE:
@@ -151,16 +154,17 @@ class FakeRawHidFirmware:
             self._staging_forced = set()
         elif opcode is Opcode.WRITE_FORCE_KEYS:
             count = request[11]
-            self._staging_forced.update(
-                struct.unpack_from(f"<{count}H", request, 12)
-            )
+            self._staging_forced.update(struct.unpack_from(f"<{count}H", request, 12))
         elif opcode is Opcode.COMMIT_FORCE_SCOPE:
-            self.force_generation = struct.unpack_from("<H", request, 9)[0]
-            self.forced_controls = (
-                set(self.bindings)
-                if self._force_scope is ForceScope.ALL_CONFIGURED
-                else set(self._staging_forced)
-            )
+            if not self.rgb_effect25_selected:
+                result = Result.INVALID_STATE
+            else:
+                self.force_generation = struct.unpack_from("<H", request, 9)[0]
+                self.forced_controls = (
+                    set(self.bindings)
+                    if self._force_scope is ForceScope.ALL_CONFIGURED
+                    else set(self._staging_forced)
+                )
         elif opcode is Opcode.CLEAR_FORCE_SCOPE:
             self.forced_controls.clear()
         elif opcode is Opcode.ACK_EVENT:
@@ -169,6 +173,7 @@ class FakeRawHidFirmware:
             self._pending_event = None
 
         response = self._common_response(request)
+        response[5] = result
         if opcode is Opcode.GET_CAPABILITIES:
             response[12:16] = bytes([2, 2, 1, 32])
             struct.pack_into("<HHHH", response, 16, 6, 300, 4000, 30000)
@@ -180,9 +185,8 @@ class FakeRawHidFirmware:
             raise AssertionError("Expected a report ID followed by 32 payload bytes.")
         request = report[1:]
         self.requests.append(request)
-        is_host_interaction = (
-            request[0] in (0x07, 0x08)
-            and request[1:4] == bytes([0x00, 0x02, 0x01])
+        is_host_interaction = request[0] in (0x07, 0x08) and request[1:4] == bytes(
+            [0x00, 0x02, 0x02]
         )
         response = (
             self._handle_host_interaction(request)
@@ -210,7 +214,7 @@ class FakeRawHidFirmware:
         self, *, sequence: int, binding_id: int, control_id: ControlId
     ) -> None:
         report = bytearray(32)
-        report[:5] = bytes([0xF0, 0x00, 0x02, 0x01, EventType.CONTROL_EDGE])
+        report[:5] = bytes([0xF0, 0x00, 0x02, 0x02, EventType.CONTROL_EDGE])
         struct.pack_into(
             "<IHHHH",
             report,
@@ -247,9 +251,7 @@ class HostInteractionEndToEndTests(unittest.TestCase):
             lifetime=Lifetime.TTL,
             duration_ms=5000,
         )
-        binding = controller.set_keycode_controls(
-            "KC_A", binding_id=77, policy=policy
-        )
+        binding = controller.set_keycode_controls("KC_A", binding_id=77, policy=policy)
         expected_controls = {
             ControlId.key(0, 0),
             ControlId.key(0, 1),
@@ -257,11 +259,15 @@ class HostInteractionEndToEndTests(unittest.TestCase):
         }
         self.assertEqual(set(binding.controls), expected_controls)
         self.assertEqual(len(binding.keycode_matches), 4)
-        self.assertEqual(firmware.bindings, {int(control): 77 for control in expected_controls})
+        self.assertEqual(
+            firmware.bindings, {int(control): 77 for control in expected_controls}
+        )
 
         activation = controller.activate_keycode_controls("KC_A", lease_ms=2000)
         self.assertEqual(activation.scope, ForceScope.SELECTED)
-        self.assertEqual(firmware.forced_controls, {int(control) for control in expected_controls})
+        self.assertEqual(
+            firmware.forced_controls, {int(control) for control in expected_controls}
+        )
 
         firmware.queue_control_event(
             sequence=9,
@@ -289,6 +295,22 @@ class HostInteractionEndToEndTests(unittest.TestCase):
         self.assertEqual(firmware.forced_controls, set())
         client.close()
         self.assertTrue(firmware.closed)
+
+    def test_force_activation_is_rejected_when_effect25_is_unavailable(self) -> None:
+        firmware = FakeRawHidFirmware()
+        transport = HidApiInteractionTransport(firmware)
+        client = HostInteractionProtocolClient(transport)
+        client.get_capabilities()
+        client.claim_session(0x11223344)
+        controller = HostInteractionController(client)
+        controller.set_controls([ControlId.key(0, 0)], binding_id=1)
+        firmware.rgb_effect25_selected = False
+
+        with self.assertRaises(FirmwareRejectedError):
+            controller.activate_all(lease_ms=2000)
+
+        self.assertEqual(firmware.forced_controls, set())
+        client.close()
 
 
 if __name__ == "__main__":

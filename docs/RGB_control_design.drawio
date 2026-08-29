@@ -7,8 +7,8 @@
         <mxCell id="legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;fontSize=12;" value="&lt;b&gt;Diagram legend&lt;/b&gt;&lt;br&gt;Sharp rectangle = implemented class/module&lt;br&gt;Rounded rectangle = implemented data/configuration/caller&lt;br&gt;Solid arrow = runtime flow&lt;br&gt;Dotted line = implemented alternate/association" vertex="1">
           <mxGeometry height="100" width="360" x="150" y="15" as="geometry" />
         </mxCell>
-        <mxCell id="title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;fontSize=15;" value="Current Abralia shared-HID implementation&lt;br&gt;Separate RGB and Host Interaction controllers • cooperative/threaded shared owner • standalone paths retained" vertex="1">
-          <mxGeometry height="75" width="860" x="970" y="15" as="geometry" />
+        <mxCell id="title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;fontSize=15;" value="Current Abralia shared-HID implementation&lt;br&gt;SharedKeyboardCoordinator • separate RGB and Host Interaction controllers&lt;br&gt;cooperative/threaded shared owner • standalone paths retained" vertex="1">
+          <mxGeometry height="85" width="860" x="970" y="10" as="geometry" />
         </mxCell>
         <mxCell id="config-band" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=12;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=18;" value="Profile utility functions" vertex="1">
           <mxGeometry height="370" width="2640" x="80" y="120" as="geometry" />
@@ -46,7 +46,7 @@
         <mxCell id="effective-profile" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Effective RGB profile&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;base + optional region overrides&lt;/font&gt;" vertex="1">
           <mxGeometry height="90" width="280" x="100" y="790" as="geometry" />
         </mxCell>
-        <mxCell id="rgb-controller" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="RgbController&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;open • compile • display • live-keycode scene • restore/close&lt;/font&gt;" vertex="1">
+        <mxCell id="rgb-controller" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="RgbController&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;compile/display • revocable leases • suspend/resume • restore/close&lt;/font&gt;" vertex="1">
           <mxGeometry height="90" width="460" x="450" y="790" as="geometry" />
         </mxCell>
         <mxCell id="display-lease" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="DisplayLease&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;explicit guarded refresh&lt;/font&gt;" vertex="1">
@@ -79,7 +79,7 @@
         <mxCell id="recovery" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="StateRecoveryManager&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;snapshot • restore • health&lt;/font&gt;" vertex="1">
           <mxGeometry height="80" width="280" x="100" y="1450" as="geometry" />
         </mxCell>
-        <mxCell id="rgb-adapter" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="KeychronEffect25Adapter&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;HSV writes • guarded commit/status • refresh • restore&lt;/font&gt;" vertex="1">
+        <mxCell id="rgb-adapter" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="KeychronEffect25Adapter&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;selection policy • guarded frames • effect-preserving handoff/rebase&lt;/font&gt;" vertex="1">
           <mxGeometry height="80" width="460" x="450" y="1445" as="geometry" />
         </mxCell>
         <mxCell id="hi-runtime" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=12;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=20;" value="Host Interaction runtime" vertex="1">
@@ -103,13 +103,13 @@
         <mxCell id="hi-controller" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="HostInteractionController&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;validate • atomic bindings • force scopes • region methods&lt;/font&gt;" vertex="1">
           <mxGeometry height="100" width="500" x="1850" y="750" as="geometry" />
         </mxCell>
-        <mxCell id="event-output" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Typed DeviceEvent output&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CONTROL_EDGE • MODE_CHANGED • QUEUE_OVERFLOW&lt;/font&gt;" vertex="1">
+        <mxCell id="event-output" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Typed DeviceEvent output&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CONTROL_EDGE • MODE_CHANGED • RGB_EFFECT_CHANGED • QUEUE_OVERFLOW&lt;/font&gt;" vertex="1">
           <mxGeometry height="85" width="270" x="1500" y="1040" as="geometry" />
         </mxCell>
         <mxCell id="protocol-codec" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="interaction.protocol codec&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;packet types/builders/parsers&lt;/font&gt;" vertex="1">
           <mxGeometry height="85" width="260" x="2440" y="1007.5" as="geometry" />
         </mxCell>
-        <mxCell id="protocol-client" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="HostInteractionProtocolClient&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;session/keepalive • binding/force transactions • service/read/ACK events&lt;/font&gt;" vertex="1">
+        <mxCell id="protocol-client" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="HostInteractionProtocolClient v2&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;session/keepalive • binding/force transactions • effect-aware ACKed events&lt;/font&gt;" vertex="1">
           <mxGeometry height="100" width="500" x="1850" y="1032.5" as="geometry" />
         </mxCell>
         <mxCell id="transport-band" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;fillOpacity=12;strokeColor=#b85450;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=19;" value="Raw HID transport ownership" vertex="1">

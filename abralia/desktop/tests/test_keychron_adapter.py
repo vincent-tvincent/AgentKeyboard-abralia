@@ -9,6 +9,7 @@ from collections.abc import Callable, Sequence
 from abralia.rgb.adapters.keychron_effect25 import (
     EFFECT_25,
     EXPECTED_LED_COUNT,
+    EffectSelectionPolicy,
     FrameFlags,
     FrameOperation,
     FrameResult,
@@ -16,7 +17,7 @@ from abralia.rgb.adapters.keychron_effect25 import (
     KeychronEffect25Adapter,
 )
 from abralia.rgb.colors import Hsv8, Srgb8
-from abralia.rgb.errors import CapabilityError
+from abralia.rgb.errors import CapabilityError, EffectUnavailableError
 from abralia.rgb.led_mapper import DeviceFrame, LedColor
 from abralia.rgb.profiles import EncoderDirection, EncoderPosition
 from abralia.rgb.transport import HidDeviceInfo
@@ -55,7 +56,7 @@ class FakeTransport:
             flags |= FrameFlags.BACK_BUFFER_FREE
         return flags
 
-    def _status(self, command: int) -> bytes:
+    def _status(self, command: int, result: FrameResult = FrameResult.OK) -> bytes:
         return self._report(
             [
                 command,
@@ -65,7 +66,7 @@ class FakeTransport:
                 self.active_sequence,
                 self.pending_sequence,
                 int(self._flags()),
-                int(FrameResult.OK),
+                int(result),
             ]
         )
 
@@ -109,7 +110,9 @@ class FakeTransport:
                     self.pending = False
         elif values[:3] == [0x07, 0x00, 0x01]:
             operation = FrameOperation(values[3])
-            if operation is FrameOperation.AWAIT:
+            if self.effect != EFFECT_25:
+                response = self._status(0x07, FrameResult.INVALID_STATE)
+            elif operation is FrameOperation.AWAIT:
                 self.frame_state = FrameState.AWAITING
                 self.pending = False
                 self.active_valid = False
@@ -121,13 +124,17 @@ class FakeTransport:
                 self.pending_sequence = values[4]
                 self.pending = True
                 self.defer_commit_once = True
-            response = self._status(0x07)
+            if self.effect == EFFECT_25:
+                response = self._status(0x07)
         elif values[:3] == [0x08, 0x03, 0x02]:
             response = self._report([0x08, 0x03, 0x02, self.effect])
         elif values[:3] == [0x08, 0x03, 0x01]:
             response = self._report([0x08, 0x03, 0x01, self.brightness])
         elif values[:3] == [0x07, 0x03, 0x02]:
             self.effect = values[3]
+            self.frame_state = FrameState.AWAITING
+            self.pending = False
+            self.active_valid = False
             response = self._report(values)
         elif values[:3] == [0x07, 0x03, 0x01]:
             self.brightness = values[3]
@@ -182,6 +189,15 @@ DEVICE = HidDeviceInfo(
 
 
 class KeychronAdapterTests(unittest.TestCase):
+    @staticmethod
+    def _frame() -> DeviceFrame:
+        return DeviceFrame(
+            tuple(
+                LedColor(index, Srgb8(255, 0, 0) if index == 0 else Srgb8(0, 0, 0))
+                for index in range(EXPECTED_LED_COUNT)
+            )
+        )
+
     def test_guarded_submit_waits_for_active_valid_even_for_sequence_zero(self) -> None:
         transport = FakeTransport()
         adapter = KeychronEffect25Adapter(transport, DEVICE)
@@ -214,6 +230,70 @@ class KeychronAdapterTests(unittest.TestCase):
         adapter.capabilities()
 
         self.assertEqual(sum(request == [0xA0] for request in transport.requests), 1)
+
+    def test_effect_selection_policies_preserve_standalone_auto_select(self) -> None:
+        strict_transport = FakeTransport()
+        strict_transport.effect = 23
+        strict_transport.frame_state = FrameState.AWAITING
+        strict = KeychronEffect25Adapter(
+            strict_transport,
+            DEVICE,
+            effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
+        )
+        with self.assertRaises(EffectUnavailableError):
+            strict.submit_frame(self._frame(), brightness_ceiling=128)
+        self.assertEqual(strict_transport.effect, 23)
+        self.assertNotIn([0x07, 0x03, 0x02, EFFECT_25], strict_transport.requests)
+
+        automatic_transport = FakeTransport()
+        automatic_transport.effect = 23
+        automatic_transport.frame_state = FrameState.AWAITING
+        automatic = KeychronEffect25Adapter(automatic_transport, DEVICE)
+        automatic.submit_frame(self._frame(), brightness_ceiling=128)
+        self.assertEqual(automatic_transport.effect, EFFECT_25)
+
+    def test_strict_refresh_translates_effect_change_to_standby_signal(self) -> None:
+        transport = FakeTransport()
+        adapter = KeychronEffect25Adapter(
+            transport,
+            DEVICE,
+            effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
+        )
+        adapter.submit_frame(self._frame(), brightness_ceiling=128)
+        transport.effect = 1
+        transport.frame_state = FrameState.AWAITING
+
+        with self.assertRaises(EffectUnavailableError):
+            adapter.refresh()
+
+    def test_effect_preserving_restore_rebases_snapshot_without_mode_change(
+        self,
+    ) -> None:
+        transport = FakeTransport()
+        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        before = adapter.snapshot()
+        adapter.submit_frame(self._frame(), brightness_ceiling=128)
+        transport.effect = 23
+        transport.frame_state = FrameState.AWAITING
+
+        rebased = adapter.restore_preserving_effect(before)
+
+        self.assertEqual(transport.effect, 23)
+        self.assertEqual(transport.brightness, 77)
+        self.assertEqual(transport.per_key_type, 3)
+        self.assertEqual(rebased.payload.effect, 23)
+        self.assertEqual(rebased.payload.colors, before.payload.colors)
+        brightness_writes = [
+            request[3]
+            for request in transport.requests
+            if request[:3] == [0x07, 0x03, 0x01]
+        ]
+        self.assertEqual(brightness_writes[-2:], [0, 77])
+
+        transport.effect = EFFECT_25
+        resumed = adapter.rebase_current_effect(rebased)
+        self.assertEqual(resumed.payload.effect, EFFECT_25)
+        self.assertEqual(resumed.payload.colors, before.payload.colors)
 
     def test_black_frame_preserves_nonzero_brightness_for_awaiting_recovery(
         self,

@@ -1,22 +1,21 @@
 # Copyright 2026 blue_lobster
 # SPDX-License-Identifier: Apache-2.0
 
-"""Typed codec for every Abralia Host Interaction firmware v1 payload."""
+"""Typed codec for every Abralia Host Interaction firmware v2 payload."""
 
 from __future__ import annotations
 
 import struct
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag
-from typing import Sequence
 
 from .errors import ProtocolError
-
 
 REPORT_LENGTH = 32
 CUSTOM_CHANNEL = 0x00
 HOST_INTERACTION_VALUE_ID = 0x02
-PROTOCOL_VERSION = 0x01
+PROTOCOL_VERSION = 0x02
 EVENT_GROUP = 0xF0
 MAX_TTL_MS = 3_600_000
 MAX_FORCE_LEASE_MS = 30_000
@@ -140,6 +139,7 @@ class EventType(IntEnum):
     CONTROL_EDGE = 0x01
     MODE_CHANGED = 0x02
     QUEUE_OVERFLOW = 0x03
+    RGB_EFFECT_CHANGED = 0x04
 
 
 class Edge(IntEnum):
@@ -162,6 +162,7 @@ class StatusFlags(IntFlag):
     BINDING_STAGING = 1 << 4
     FORCE_STAGING = 1 << 5
     EVENT_OVERFLOW = 1 << 6
+    RGB_EFFECT_25_SELECTED = 1 << 7
 
 
 class ResetReason(IntEnum):
@@ -187,9 +188,7 @@ class BindingPolicy:
             if self.duration_ms != 0:
                 raise ProtocolError("SESSION bindings require duration_ms=0.")
         elif not 1 <= self.duration_ms <= MAX_TTL_MS:
-            raise ProtocolError(
-                f"TTL/ONE_SHOT duration must be 1...{MAX_TTL_MS} ms."
-            )
+            raise ProtocolError(f"TTL/ONE_SHOT duration must be 1...{MAX_TTL_MS} ms.")
 
     @property
     def flags(self) -> BindingFlags:
@@ -271,10 +270,22 @@ class DeviceEvent:
             raise ProtocolError("Only MODE_CHANGED events contain mode state.")
         return bool(self.edge_or_state)
 
+    @property
+    def rgb_effect25_selected(self) -> bool:
+        if self.event_type is not EventType.RGB_EFFECT_CHANGED:
+            raise ProtocolError(
+                "Only RGB_EFFECT_CHANGED events contain effect availability."
+            )
+        return bool(self.edge_or_state)
+
 
 def _uint16(name: str, value: int, *, nonzero: bool = False) -> int:
     lower = 1 if nonzero else 0
-    if isinstance(value, bool) or not isinstance(value, int) or not lower <= value <= 0xFFFF:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not lower <= value <= 0xFFFF
+    ):
         qualifier = "nonzero " if nonzero else ""
         raise ProtocolError(f"{name} must fit {qualifier}uint16.")
     return value
@@ -282,7 +293,11 @@ def _uint16(name: str, value: int, *, nonzero: bool = False) -> int:
 
 def _uint32(name: str, value: int, *, nonzero: bool = False) -> int:
     lower = 1 if nonzero else 0
-    if isinstance(value, bool) or not isinstance(value, int) or not lower <= value <= 0xFFFFFFFF:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not lower <= value <= 0xFFFFFFFF
+    ):
         qualifier = "nonzero " if nonzero else ""
         raise ProtocolError(f"{name} must fit {qualifier}uint32.")
     return value
@@ -321,9 +336,7 @@ def release_session_packet(session_token: int) -> bytes:
     return bytes(_base_packet(0x07, Opcode.RELEASE_SESSION, session_token))
 
 
-def begin_binding_replace_packet(
-    session_token: int, binding_generation: int
-) -> bytes:
+def begin_binding_replace_packet(session_token: int, binding_generation: int) -> bytes:
     packet = _base_packet(0x07, Opcode.BEGIN_BINDING_REPLACE, session_token)
     struct.pack_into(
         "<H", packet, 9, _uint16("Binding generation", binding_generation, nonzero=True)
@@ -436,15 +449,18 @@ def ack_event_packet(session_token: int, event_sequence: int) -> bytes:
     return bytes(packet)
 
 
-def response_matches(report: bytes, opcode: Opcode) -> bool:
+def response_envelope_matches(report: bytes, opcode: Opcode) -> bool:
     return (
         len(report) == REPORT_LENGTH
         and report[0] in (0x07, 0x08)
         and report[1] == CUSTOM_CHANNEL
         and report[2] == HOST_INTERACTION_VALUE_ID
-        and report[3] == PROTOCOL_VERSION
         and report[4] == int(opcode)
     )
+
+
+def response_matches(report: bytes, opcode: Opcode) -> bool:
+    return response_envelope_matches(report, opcode) and report[3] == PROTOCOL_VERSION
 
 
 def parse_response(report: bytes, expected_opcode: Opcode | None = None) -> Response:
@@ -454,12 +470,15 @@ def parse_response(report: bytes, expected_opcode: Opcode | None = None) -> Resp
         opcode = Opcode(report[4])
     except ValueError as error:
         raise ProtocolError("Response contains an unknown opcode.") from error
-    if not response_matches(report, opcode):
+    if not response_envelope_matches(report, opcode):
         raise ProtocolError("Not a Host Interaction response packet.")
-    if expected_opcode is not None and opcode is not expected_opcode:
+    if report[3] != PROTOCOL_VERSION:
         raise ProtocolError(
-            f"Expected {expected_opcode.name}, received {opcode.name}."
+            f"Desktop requires Host Interaction protocol version {PROTOCOL_VERSION}; "
+            f"firmware reported version {report[3]}."
         )
+    if expected_opcode is not None and opcode is not expected_opcode:
+        raise ProtocolError(f"Expected {expected_opcode.name}, received {opcode.name}.")
     try:
         return Response(
             verb=report[0],
@@ -480,12 +499,19 @@ def parse_response(report: bytes, expected_opcode: Opcode | None = None) -> Resp
 
 
 def parse_capabilities(report: bytes) -> Capabilities:
-    if not response_matches(report, Opcode.GET_CAPABILITIES):
+    if not response_envelope_matches(report, Opcode.GET_CAPABILITIES):
         raise ProtocolError("Not a Host Interaction capabilities response.")
+    if report[3] != PROTOCOL_VERSION:
+        raise ProtocolError(
+            f"Desktop requires Host Interaction protocol version {PROTOCOL_VERSION}; "
+            f"firmware reported version {report[3]}."
+        )
     try:
         result = Result(report[5])
     except ValueError as error:
-        raise ProtocolError("Capabilities response contains an unknown result.") from error
+        raise ProtocolError(
+            "Capabilities response contains an unknown result."
+        ) from error
     # GET_CAPABILITIES deliberately replaces common response bytes 12 onward.
     response = Response(
         verb=report[0],

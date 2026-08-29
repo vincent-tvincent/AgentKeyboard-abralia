@@ -18,7 +18,7 @@ from abralia.rgb import (
 )
 from abralia.rgb.adapters.base import AdapterHealth, DeviceSnapshot
 from abralia.rgb.compatibility import AdapterCapabilities
-from abralia.rgb.errors import CapabilityError
+from abralia.rgb.errors import CapabilityError, OutputSuspendedError
 from abralia.rgb.key_lookup import LiveKeymapAddressSpace
 from abralia.rgb.led_mapper import DeviceFrame
 from abralia.rgb.profiles import EncoderDirection, EncoderPosition
@@ -33,6 +33,7 @@ class FakeAdapter:
         self.submitted: list[DeviceFrame] = []
         self.refresh_count = 0
         self.restored: DeviceSnapshot | None = None
+        self.handoff_count = 0
         self.closed = False
 
     def capabilities(self) -> AdapterCapabilities:
@@ -102,6 +103,13 @@ class FakeAdapter:
     def restore(self, snapshot: DeviceSnapshot) -> None:
         self.restored = snapshot
 
+    def restore_preserving_effect(self, snapshot: DeviceSnapshot) -> DeviceSnapshot:
+        self.handoff_count += 1
+        return DeviceSnapshot(self.adapter_id, {"rebased": snapshot.payload})
+
+    def rebase_current_effect(self, snapshot: DeviceSnapshot) -> DeviceSnapshot:
+        return DeviceSnapshot(self.adapter_id, {"resumed": snapshot.payload})
+
     def close(self) -> None:
         self.closed = True
 
@@ -165,6 +173,30 @@ class ControllerTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "context manager"):
             controller.display([scene])
         controller.close()
+
+    def test_suspend_revokes_leases_and_rebases_final_recovery(self) -> None:
+        adapter = FakeAdapter()
+        controller = RgbController(adapter, load_profile())
+        scene = PhysicalSceneBuilder().build(
+            "test", {"W": Srgb8(255, 0, 0)}, owner="test"
+        )
+
+        with controller:
+            lease = controller.display([scene])
+            controller.suspend_output()
+            self.assertTrue(controller.output_suspended)
+            self.assertEqual(adapter.handoff_count, 1)
+            with self.assertRaises(OutputSuspendedError):
+                lease.refresh()
+            with self.assertRaises(OutputSuspendedError):
+                controller.display([scene])
+            controller.resume_output()
+            controller.display([scene]).close()
+
+        self.assertEqual(
+            adapter.restored.payload,
+            {"resumed": {"rebased": adapter.original.payload}},
+        )
 
     def test_keycode_scene_targets_every_deduplicated_physical_match(self) -> None:
         adapter = FakeAdapter()

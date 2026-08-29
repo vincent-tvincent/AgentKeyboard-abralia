@@ -66,12 +66,19 @@ when completely black lighting is required.
 ## Host Interaction variant
 
 `abralia_host_interaction` is a separate keymap copied from the RGB-only
-variant. It retains effect 25 and adds volatile physical-control bindings on
-VIA custom channel 0, value 2. Double Pause enters or exits Host Interaction
-Mode while an unmatched single Pause remains an ordinary QMK action after the
-300 ms gesture window. Keys, knob press, and both knob directions support
+variant. It retains effect 25 and adds protocol-v2 volatile physical-control
+bindings on VIA custom channel 0, value 2. Double Pause enters or exits Host
+Interaction Mode only while RGB is enabled on effect 25. Outside that state,
+Pause is immediate ordinary input without the 300 ms gesture window. Keys,
+knob press, and both knob directions support
 CAPTURE or MIRROR routing, SESSION/TTL/ONE_SHOT lifetime, atomic force scopes,
 ACKed events, and a four-second heartbeat fallback.
+
+Changing away from effect 25 resets its host frame state to AWAITING, reports
+`RGB_EFFECT_CHANGED(false)`, and clears manual/forced activation while
+retaining the session and bindings. Returning to effect 25 reports availability
+but never reactivates input. Host-force commit is rejected with `INVALID_STATE`
+while effect 25 is unavailable. No effect-aware path writes EEPROM.
 
 The input protocol never writes EEPROM and does not interpret agent actions.
 See the project-root `docs/host-interaction-firmware-protocol.md` for the wire
@@ -80,17 +87,17 @@ in the future application; the firmware cannot attest to a computer UI click.
 
 ### Current validation status
 
-Both `abralia` and `abralia_host_interaction` compile with 10 jobs, and the
-current Python suite has 29 passing tests. A physical Host Interaction harness
+Both `abralia` and `abralia_host_interaction` compile with 10 jobs. The current
+desktop suite covers protocol-v2 parsing, standby coordination, effect-aware
+restoration, and both shared-session modes. A historical protocol-v1 physical
 run confirmed double-Pause entry, Home CAPTURE + ONE_SHOT, End MIRROR +
 SESSION, clockwise knob CAPTURE + ONE_SHOT, repeated counterclockwise knob
 MIRROR + SESSION, and consecutive acknowledged events 1–101.
 
-That run did not identify the live firmware by binary hash and did not test
-forced activation, double-Pause exit, TTL/heartbeat recovery, injected retry or
-overflow, post-flash VIA/Launcher/8K compatibility, or the newest idle-halo
-power-1.5/cutoff-4 appearance. See the dated project-root Host Interaction
-experiment record for the exact evidence boundary.
+Protocol v2 has not been flashed. Effect-change disarm, immediate Pause outside
+effect 25, effects 23/24 handoff, standby resumption, forced-activation gate,
+and post-flash VIA/Launcher/8K compatibility remain user-assisted physical
+validation tasks.
 
 ## Flash
 

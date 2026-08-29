@@ -17,6 +17,7 @@ from abralia.interaction.protocol import (
     ForceScope,
     Lifetime,
     Opcode,
+    ProtocolError,
     ResetReason,
     Result,
     Routing,
@@ -54,10 +55,8 @@ class InteractionProtocolTests(unittest.TestCase):
             policy,
             [BindingEntry(ControlId.key(1, 15), 1001)],
         )
-        self.assertEqual(packet[:5], bytes([0x07, 0x00, 0x02, 0x01, 0x11]))
-        self.assertEqual(
-            packet[11], int(BindingFlags.MIRROR | BindingFlags.EVENT_DOWN)
-        )
+        self.assertEqual(packet[:5], bytes([0x07, 0x00, 0x02, 0x02, 0x11]))
+        self.assertEqual(packet[11], int(BindingFlags.MIRROR | BindingFlags.EVENT_DOWN))
         self.assertEqual(packet[12], Lifetime.ONE_SHOT)
         self.assertEqual(struct.unpack_from("<I", packet, 13)[0], 30_000)
         self.assertEqual(struct.unpack_from("<HH", packet, 18), (0x010F, 1001))
@@ -83,13 +82,14 @@ class InteractionProtocolTests(unittest.TestCase):
 
     def test_common_status_response_preserves_all_implemented_payload(self) -> None:
         report = bytearray(32)
-        report[:6] = bytes([0x07, 0x00, 0x02, 0x01, Opcode.GET_STATUS, Result.OK])
+        report[:6] = bytes([0x07, 0x00, 0x02, 0x02, Opcode.GET_STATUS, Result.OK])
         struct.pack_into("<I", report, 6, 0x11223344)
         struct.pack_into("<H", report, 10, 17)
         report[12] = int(
             StatusFlags.SESSION_VALID
             | StatusFlags.MANUAL_ACTIVE
             | StatusFlags.FORCE_SELECTED
+            | StatusFlags.RGB_EFFECT_25_SELECTED
         )
         report[13:17] = bytes([4, 2, 3, ResetReason.EVENT_OVERFLOW])
         struct.pack_into("<HH", report, 17, 9, 81)
@@ -106,16 +106,14 @@ class InteractionProtocolTests(unittest.TestCase):
 
     def test_capabilities_response_uses_its_special_payload_layout(self) -> None:
         report = bytearray(32)
-        report[:6] = bytes(
-            [0x08, 0x00, 0x02, 0x01, Opcode.GET_CAPABILITIES, Result.OK]
-        )
+        report[:6] = bytes([0x08, 0x00, 0x02, 0x02, Opcode.GET_CAPABILITIES, Result.OK])
         report[12:16] = bytes([6, 17, 1, 32])
         struct.pack_into("<HHHH", report, 16, 104, 300, 4000, 30000)
         report[24] = int(
             BindingFlags.MIRROR | BindingFlags.EVENT_DOWN | BindingFlags.EVENT_UP
         )
-        report[25] = (1 << Lifetime.SESSION) | (1 << Lifetime.TTL) | (
-            1 << Lifetime.ONE_SHOT
+        report[25] = (
+            (1 << Lifetime.SESSION) | (1 << Lifetime.TTL) | (1 << Lifetime.ONE_SHOT)
         )
 
         capabilities = parse_capabilities(bytes(report))
@@ -133,12 +131,11 @@ class InteractionProtocolTests(unittest.TestCase):
             (EventType.CONTROL_EDGE, Edge.DOWN),
             (EventType.MODE_CHANGED, 1),
             (EventType.QUEUE_OVERFLOW, 0),
+            (EventType.RGB_EFFECT_CHANGED, 1),
         ):
             report = bytearray(32)
-            report[:5] = bytes([0xF0, 0, 2, 1, event_type])
-            struct.pack_into(
-                "<IHHHH", report, 5, 0x11223344, 9, 17, 1001, 0x010F
-            )
+            report[:5] = bytes([0xF0, 0, 2, 2, event_type])
+            struct.pack_into("<IHHHH", report, 5, 0x11223344, 9, 17, 1001, 0x010F)
             report[17] = edge_or_state
             report[18] = int(EventFlags.CAPTURED | EventFlags.RETRANSMISSION)
             struct.pack_into("<I", report, 19, 12345)
@@ -151,6 +148,14 @@ class InteractionProtocolTests(unittest.TestCase):
                 ack_event_packet(event.session_token, event.sequence)[9:11],
                 b"\x09\x00",
             )
+            if event_type is EventType.RGB_EFFECT_CHANGED:
+                self.assertTrue(event.rgb_effect25_selected)
+
+    def test_protocol_v1_reports_are_rejected_explicitly(self) -> None:
+        report = bytearray(32)
+        report[:6] = bytes([0x07, 0, 2, 1, Opcode.GET_STATUS, Result.OK])
+        with self.assertRaisesRegex(ProtocolError, "requires.*version 2"):
+            parse_response(bytes(report))
 
 
 if __name__ == "__main__":

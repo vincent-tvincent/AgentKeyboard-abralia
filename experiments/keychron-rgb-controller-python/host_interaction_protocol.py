@@ -2,7 +2,7 @@
 # Copyright 2026 blue_lobster
 # SPDX-License-Identifier: Apache-2.0
 
-"""Packet codec for Abralia Host Interaction firmware protocol v1.
+"""Packet codec for Abralia Host Interaction firmware protocol v2.
 
 This module contains no agent policy and performs no HID I/O by itself.
 """
@@ -18,7 +18,7 @@ from typing import Sequence
 REPORT_LENGTH = 32
 CUSTOM_CHANNEL = 0x00
 HOST_INTERACTION_VALUE_ID = 0x02
-HOST_INTERACTION_PROTOCOL_VERSION = 0x01
+HOST_INTERACTION_PROTOCOL_VERSION = 0x02
 HOST_INTERACTION_EVENT_GROUP = 0xF0
 
 
@@ -88,6 +88,7 @@ class EventType(IntEnum):
     CONTROL_EDGE = 0x01
     MODE_CHANGED = 0x02
     QUEUE_OVERFLOW = 0x03
+    RGB_EFFECT_CHANGED = 0x04
 
 
 class Edge(IntEnum):
@@ -110,6 +111,7 @@ class StatusFlags(IntFlag):
     BINDING_STAGING = 1 << 4
     FORCE_STAGING = 1 << 5
     EVENT_OVERFLOW = 1 << 6
+    RGB_EFFECT_25_SELECTED = 1 << 7
 
 
 @dataclass(frozen=True)
@@ -238,11 +240,22 @@ def write_bindings_packet(
         raise ProtocolError("TTL/ONE_SHOT duration must be 1...3,600,000 ms.")
 
     packet = _base_packet(0x07, Opcode.WRITE_BINDINGS, session_token)
-    struct.pack_into("<HBBIB", packet, 9, generation, int(flags), int(lifetime), duration_ms, len(entries))
+    struct.pack_into(
+        "<HBBIB",
+        packet,
+        9,
+        generation,
+        int(flags),
+        int(lifetime),
+        duration_ms,
+        len(entries),
+    )
     for index, entry in enumerate(entries):
         if not 1 <= entry.binding_id <= 0xFFFF:
             raise ProtocolError("Binding IDs must be in 1...65535.")
-        struct.pack_into("<HH", packet, 18 + index * 4, entry.control_id, entry.binding_id)
+        struct.pack_into(
+            "<HH", packet, 18 + index * 4, entry.control_id, entry.binding_id
+        )
     return bytes(packet)
 
 

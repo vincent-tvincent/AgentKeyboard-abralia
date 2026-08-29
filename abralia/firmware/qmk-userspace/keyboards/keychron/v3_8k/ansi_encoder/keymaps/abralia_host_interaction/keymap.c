@@ -99,3 +99,7 @@ void host_interaction_protocol_reset_hook(void) {
     host_interaction_on_session_reset();
     per_key_rgb_independent_v_host_reset();
 }
+
+void per_key_rgb_independent_v_selection_changed(bool selected) {
+    host_interaction_on_rgb_effect_changed(selected);
+}

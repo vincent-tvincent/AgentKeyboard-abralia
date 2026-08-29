@@ -152,6 +152,36 @@ regression pass. Positive `--activation-timeout`, `--seconds-per-region`, and
 `--combined-seconds` values opt into bounded cleanup deadlines; their default
 value of zero waits for the user’s double-Pause gestures.
 
+With protocol-v2 firmware, changing to another RGB effect suspends device
+writes without destroying the producer, restores the captured per-key payload,
+and keeps the current phase waiting. Returning to effect 25 restarts the
+breathing-Pause standby scene, but a new double-Pause is required before the
+active region display returns. Outside effect 25, Pause is immediate ordinary
+input. The script logs `RGB_EFFECT ... effect25=false/true` for this handoff.
+
+## Inactive/active interaction animation
+
+`effect25_inactive_active_animation.py` installs volatile bindings on the
+navigation cluster and continuously animates the rest of the keyboard. While
+bindings are configured but interaction is inactive, Pause breathes slowly in
+mint green. Double-Pause activates the bindings and changes Pause to an amber
+breathing animation. The moving background must continue in both states,
+proving that inactive input routing does not block desktop RGB output.
+
+```sh
+.venv/bin/python \
+  experiments/desktop-rgb-physical-validation/effect25_inactive_active_animation.py \
+  --mode cooperative \
+  --seconds 45
+```
+
+Type `ANIMATE`, observe several mint standby frames, double-Pause, press the
+navigation keys, and observe several amber active frames. The script passes
+only after rendering frames in both states. `MIRROR` is the default so tested
+navigation keys retain their ordinary behavior. The single-Pause static flash
+idea is intentionally omitted because this test uses only existing Raw HID
+mode/effect events.
+
 ## Optional direct camera capture on macOS
 
 List AVFoundation inputs and select the intended camera explicitly:

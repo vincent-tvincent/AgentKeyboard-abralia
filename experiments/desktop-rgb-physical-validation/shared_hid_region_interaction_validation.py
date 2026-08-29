@@ -21,12 +21,27 @@ from abralia.interaction import (
     Lifetime,
     Routing,
 )
-from abralia.rgb import BLACK, PhysicalSceneBuilder, RgbController, Srgb8, load_profile
-from abralia.rgb.adapters.keychron_effect25 import KeychronEffect25Adapter
+from abralia.rgb import (
+    BLACK,
+    EffectUnavailableError,
+    PhysicalSceneBuilder,
+    RgbController,
+    Srgb8,
+    load_profile,
+)
+from abralia.rgb.adapters.keychron_effect25 import (
+    EffectSelectionPolicy,
+    KeychronEffect25Adapter,
+)
 from abralia.rgb.profiles import EncoderDirection
 from shared_hid_rgb_validation import PALETTE, combined_scenes, static_region_scene
 
-from abralia import SharedHidMode, SharedRawHidSession
+from abralia import (
+    SharedHidMode,
+    SharedKeyboardCoordinator,
+    SharedKeyboardState,
+    SharedRawHidSession,
+)
 
 PAUSE_CONTROL = ControlId.key(0, 16)
 INTERACTION_POLL_MS = 10
@@ -133,102 +148,156 @@ def pause_breathing_scene(elapsed: float):
     )
 
 
-def wait_for_manual_activation(
-    *,
-    rgb: RgbController,
-    protocol: HostInteractionProtocolClient,
-    timeout: float,
-    fps: float,
-    brightness: int,
-    phase_name: str,
-) -> bool:
-    print(
-        f"WAITING_ACTIVATION phase={phase_name} scene=pause_breathing "
-        "gesture=double_pause",
-        flush=True,
-    )
-    started = time.monotonic()
-    next_frame = started
-    last_lease = None
-    while timeout == 0 or time.monotonic() - started < timeout:
-        elapsed = time.monotonic() - started
-        last_lease = rgb.display(
-            [pause_breathing_scene(elapsed)],
-            brightness_ceiling=brightness,
+class ValidationProducer:
+    def __init__(self, rgb: RgbController, *, brightness: int, pause_fps: float):
+        self.rgb = rgb
+        self.brightness = brightness
+        self.pause_fps = pause_fps
+        self.phase_name = ""
+        self.active_scenes: list = []
+        self.active_description = ""
+        self.state = SharedKeyboardState.RGB_SUSPENDED
+        self.started_at = time.monotonic()
+        self.next_frame_at = self.started_at
+        self.refresh_at = self.started_at
+        self.lease = None
+
+    def configure_phase(
+        self, phase_name: str, scenes: list, active_description: str
+    ) -> None:
+        self.close_lease()
+        self.phase_name = phase_name
+        self.active_scenes = scenes
+        self.active_description = active_description
+
+    def close_lease(self) -> None:
+        if self.lease is not None:
+            self.lease.close()
+            self.lease = None
+
+    def suspend(self) -> None:
+        self.close_lease()
+        if self.state is SharedKeyboardState.RGB_SUSPENDED:
+            return
+        self.state = SharedKeyboardState.RGB_SUSPENDED
+        print(f"RGB_STANDBY phase={self.phase_name} effect25=false", flush=True)
+
+    def resume_standby(self, *, restart: bool) -> None:
+        self.close_lease()
+        self.state = SharedKeyboardState.STANDBY
+        if restart:
+            self.started_at = time.monotonic()
+        self.next_frame_at = time.monotonic()
+        print(
+            f"WAITING_ACTIVATION phase={self.phase_name} "
+            "scene=pause_breathing gesture=double_pause",
+            flush=True,
         )
-        for event in protocol.service(timeout_ms=INTERACTION_POLL_MS):
-            if event.event_type is EventType.MODE_CHANGED and event.mode_active:
-                if last_lease is not None:
-                    last_lease.close()
-                print(f"MANUAL_MODE phase={phase_name} active=true", flush=True)
-                return True
-        next_frame += 1.0 / fps
-        delay = next_frame - time.monotonic()
-        if delay > 0:
-            time.sleep(delay)
-    if last_lease is not None:
-        last_lease.close()
-    print(f"ACTIVATION_TIMEOUT phase={phase_name}", flush=True)
-    return False
+
+    def resume_active(self, *, restart: bool) -> None:
+        self.close_lease()
+        self.state = SharedKeyboardState.ACTIVE
+        if restart:
+            self.started_at = time.monotonic()
+        self.refresh_at = time.monotonic()
+        print(self.active_description, flush=True)
+
+    def tick(self) -> None:
+        now = time.monotonic()
+        try:
+            if self.state is SharedKeyboardState.STANDBY and now >= self.next_frame_at:
+                self.close_lease()
+                self.lease = self.rgb.display(
+                    [pause_breathing_scene(now - self.started_at)],
+                    brightness_ceiling=self.brightness,
+                )
+                self.next_frame_at = now + 1.0 / self.pause_fps
+            elif self.state is SharedKeyboardState.ACTIVE:
+                if self.lease is None:
+                    self.lease = self.rgb.display(
+                        self.active_scenes,
+                        brightness_ceiling=self.brightness,
+                    )
+                    self.refresh_at = now + 1.0
+                elif now >= self.refresh_at:
+                    self.lease.refresh()
+                    self.refresh_at = now + 1.0
+        except EffectUnavailableError:
+            self.suspend()
+
+    def close(self) -> None:
+        self.close_lease()
 
 
 def run_phase(
     *,
-    rgb: RgbController,
     interaction: HostInteractionController,
     protocol: HostInteractionProtocolClient,
+    coordinator: SharedKeyboardCoordinator,
+    producer: ValidationProducer,
+    initialize_coordinator: bool,
     profile,
     phase_name: str,
     controls: tuple[ControlId, ...],
     scenes: list,
     seconds: float,
-    brightness: int,
     require_all: bool,
     routing: Routing,
     activation_timeout: float,
-    pause_fps: float,
 ) -> bool:
     bindings, labels = bindings_for_controls(profile, controls, routing)
-    lease = None
     seen: set[ControlId] = set()
     configured = False
     manual_active = False
     deactivated = False
+    wait_started = time.monotonic()
+    active_deadline = None
+    producer.configure_phase(
+        phase_name,
+        scenes,
+        f"CAPTURE_DISPLAY phase={phase_name} scene=region controls={len(controls)} "
+        f"routing={routing.name}",
+    )
     try:
         interaction.replace_bindings(bindings)
         configured = True
-        manual_active = wait_for_manual_activation(
-            rgb=rgb,
-            protocol=protocol,
-            timeout=activation_timeout,
-            fps=pause_fps,
-            brightness=brightness,
-            phase_name=phase_name,
-        )
-        if not manual_active:
-            return False
-        lease = rgb.display(scenes, brightness_ceiling=brightness)
-        print(
-            f"CAPTURE_DISPLAY phase={phase_name} scene=region controls={len(controls)} "
-            f"routing={routing.name}",
-            flush=True,
-        )
-        deadline = time.monotonic() + seconds if seconds else None
-        rgb_refresh_at = time.monotonic() + 1.0
-        while deadline is None or time.monotonic() < deadline:
+        if initialize_coordinator:
+            coordinator.initialize()
+        elif coordinator.state is SharedKeyboardState.STANDBY:
+            producer.resume_standby(restart=True)
+        while True:
             now = time.monotonic()
-            if now >= rgb_refresh_at:
-                lease.refresh()
-                rgb_refresh_at = now + 1.0
             for event in protocol.service(timeout_ms=INTERACTION_POLL_MS):
+                effect_available_before = coordinator.rgb_effect25_selected
+                coordinator.handle_event(event)
+                if event.event_type is EventType.RGB_EFFECT_CHANGED:
+                    print(
+                        f"RGB_EFFECT phase={phase_name} "
+                        f"effect25={str(event.rgb_effect25_selected).lower()}",
+                        flush=True,
+                    )
+                    if event.rgb_effect25_selected:
+                        wait_started = time.monotonic()
+                    else:
+                        manual_active = False
+                        active_deadline = None
+                    continue
                 if event.event_type is EventType.MODE_CHANGED:
-                    if not event.mode_active:
+                    manual_active = event.mode_active
+                    print(
+                        f"MANUAL_MODE phase={phase_name} "
+                        f"active={str(event.mode_active).lower()}",
+                        flush=True,
+                    )
+                    if event.mode_active:
+                        active_deadline = (
+                            time.monotonic() + seconds if seconds else None
+                        )
+                    elif effect_available_before:
                         manual_active = False
                         deactivated = True
-                        print(
-                            f"MANUAL_MODE phase={phase_name} active=false",
-                            flush=True,
-                        )
+                    continue
+                if event.event_type is not EventType.CONTROL_EDGE:
                     continue
                 control, label = labels.get(
                     event.binding_id, (event.control_id, str(event.control_id))
@@ -239,15 +308,23 @@ def run_phase(
                     f"control_id={event.control_id} element={label}",
                     flush=True,
                 )
+            producer.tick()
             if deactivated:
                 break
-            time.sleep(0.02)
-        if not deactivated:
-            print(
-                f"DEACTIVATION_TIMEOUT phase={phase_name} gesture=double_pause",
-                flush=True,
-            )
-            return False
+            if (
+                coordinator.state is not SharedKeyboardState.ACTIVE
+                and activation_timeout
+                and now - wait_started >= activation_timeout
+            ):
+                print(f"ACTIVATION_TIMEOUT phase={phase_name}", flush=True)
+                return False
+            if active_deadline is not None and now >= active_deadline:
+                print(
+                    f"DEACTIVATION_TIMEOUT phase={phase_name} gesture=double_pause",
+                    flush=True,
+                )
+                return False
+            time.sleep(0.01)
         interaction.clear_bindings()
         configured = False
     finally:
@@ -268,8 +345,7 @@ def run_phase(
                     f"CLEANUP_ERROR phase={phase_name} action=clear_bindings "
                     f"error={error}"
                 )
-        if lease is not None:
-            lease.close()
+        producer.close()
     passed = deactivated and (seen == set(controls) if require_all else bool(seen))
     print(
         f"PHASE_END name={phase_name} seen={len(seen)} required="
@@ -287,10 +363,21 @@ def run_mode(args: argparse.Namespace, mode: SharedHidMode) -> bool:
         device_index=args.device_index,
         mode=mode,
     ) as session:
-        adapter = KeychronEffect25Adapter(session.rgb_transport(), session.device_info)
+        adapter = KeychronEffect25Adapter(
+            session.rgb_transport(),
+            session.device_info,
+            effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
+        )
         protocol = HostInteractionProtocolClient(session.interaction_transport())
         with RgbController(adapter, profile) as rgb, protocol:
             interaction = HostInteractionController(protocol)
+            producer = ValidationProducer(
+                rgb,
+                brightness=args.brightness,
+                pause_fps=args.pause_fps,
+            )
+            coordinator = SharedKeyboardCoordinator(rgb, protocol, producer)
+            initialize_coordinator = True
             for index, region_id in enumerate(profile.regions):
                 controls = region_controls(profile, region_id)
                 excluded_pause = PAUSE_CONTROL in {
@@ -302,10 +389,12 @@ def run_mode(args: argparse.Namespace, mode: SharedHidMode) -> bool:
                     f"bindable={len(controls)} reserved_pause_excluded={excluded_pause}",
                     flush=True,
                 )
-                passed &= run_phase(
-                    rgb=rgb,
+                phase_passed = run_phase(
                     interaction=interaction,
                     protocol=protocol,
+                    coordinator=coordinator,
+                    producer=producer,
+                    initialize_coordinator=initialize_coordinator,
                     profile=profile,
                     phase_name=region_id,
                     controls=controls,
@@ -315,12 +404,14 @@ def run_mode(args: argparse.Namespace, mode: SharedHidMode) -> bool:
                         )
                     ],
                     seconds=args.seconds_per_region,
-                    brightness=args.brightness,
                     require_all=args.require_all_controls,
                     routing=routing,
                     activation_timeout=args.activation_timeout,
-                    pause_fps=args.pause_fps,
                 )
+                passed &= phase_passed
+                initialize_coordinator = False
+                if not phase_passed:
+                    return False
 
             all_controls = tuple(
                 dict.fromkeys(
@@ -330,19 +421,19 @@ def run_mode(args: argparse.Namespace, mode: SharedHidMode) -> bool:
                 )
             )
             passed &= run_phase(
-                rgb=rgb,
                 interaction=interaction,
                 protocol=protocol,
+                coordinator=coordinator,
+                producer=producer,
+                initialize_coordinator=initialize_coordinator,
                 profile=profile,
                 phase_name="all_regions_combined",
                 controls=all_controls,
                 scenes=combined_scenes(profile),
                 seconds=args.combined_seconds,
-                brightness=args.brightness,
                 require_all=args.require_all_controls,
                 routing=routing,
                 activation_timeout=args.activation_timeout,
-                pause_fps=args.pause_fps,
             )
     return passed
 

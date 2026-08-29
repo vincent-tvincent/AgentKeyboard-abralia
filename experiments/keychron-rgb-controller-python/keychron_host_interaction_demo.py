@@ -2,7 +2,7 @@
 # Copyright 2026 blue_lobster
 # SPDX-License-Identifier: Apache-2.0
 
-"""Guarded manual harness for Abralia Host Interaction firmware v1.
+"""Guarded manual harness for Abralia Host Interaction firmware v2.
 
 The harness never flashes firmware, persists settings, or changes RGB. It
 claims a volatile session, stages example bindings, keeps the watchdog alive,
@@ -127,9 +127,7 @@ def find_v3_path() -> bytes | str:
         and candidate.usage == 0x61
     ]
     if len(matches) != 1:
-        raise DemoError(
-            f"Expected one V3 8K Raw HID interface, found {len(matches)}."
-        )
+        raise DemoError(f"Expected one V3 8K Raw HID interface, found {len(matches)}.")
     assert matches[0].path is not None
     return matches[0].path
 
@@ -211,6 +209,12 @@ def handle_event(
             "ACTIVE" if event.edge_or_state else "NORMAL",
             f"seq={event.sequence}",
         )
+    elif event.event_type is EventType.RGB_EFFECT_CHANGED:
+        print(
+            "effect25",
+            "SELECTED" if event.edge_or_state else "UNAVAILABLE",
+            f"seq={event.sequence}",
+        )
     else:
         print("firmware event", event.event_type.name, f"seq={event.sequence}")
 
@@ -222,9 +226,7 @@ def handle_event(
 
 
 def run_probe(connection: HostInteractionConnection) -> None:
-    report = connection.transact(
-        get_capabilities_packet(), Opcode.GET_CAPABILITIES
-    )
+    report = connection.transact(get_capabilities_packet(), Opcode.GET_CAPABILITIES)
     print("Host Interaction firmware detected")
     print(f"  matrix: {report[12]} rows × {report[13]} columns")
     print(f"  encoders: {report[14]}")
@@ -270,9 +272,7 @@ def run_demo(
             )
             transact(
                 connection,
-                write_force_keys_packet(
-                    token, force_generation, selected_controls
-                ),
+                write_force_keys_packet(token, force_generation, selected_controls),
                 Opcode.WRITE_FORCE_KEYS,
             )
             transact(

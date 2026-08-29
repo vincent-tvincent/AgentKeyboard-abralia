@@ -3,6 +3,12 @@
 
 """Abralia desktop-side APIs."""
 
+from .coordinator import (
+    CoordinatorTransition,
+    RgbProducerLifecycle,
+    SharedKeyboardCoordinator,
+    SharedKeyboardState,
+)
 from .shared_hid import (
     SharedHidError,
     SharedHidMode,
@@ -12,9 +18,13 @@ from .shared_hid import (
 )
 
 __all__ = [
+    "CoordinatorTransition",
+    "RgbProducerLifecycle",
     "SharedHidError",
     "SharedHidMode",
     "SharedInteractionTransportView",
+    "SharedKeyboardCoordinator",
+    "SharedKeyboardState",
     "SharedRawHidSession",
     "SharedRgbTransportView",
 ]

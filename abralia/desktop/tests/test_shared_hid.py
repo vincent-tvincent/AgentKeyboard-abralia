@@ -48,9 +48,17 @@ def host_response(request: bytes, token: int) -> bytes:
 
 def control_event(token: int, sequence: int = 9) -> bytes:
     report = bytearray(32)
-    report[:5] = bytes([0xF0, 0, 2, 1, EventType.CONTROL_EDGE])
+    report[:5] = bytes([0xF0, 0, 2, 2, EventType.CONTROL_EDGE])
     struct.pack_into("<IHHHH", report, 5, token, sequence, 1, 77, 0x0001)
     report[17] = Edge.DOWN
+    return bytes(report)
+
+
+def rgb_effect_event(token: int, selected: bool, sequence: int = 10) -> bytes:
+    report = bytearray(32)
+    report[:5] = bytes([0xF0, 0, 2, 2, EventType.RGB_EFFECT_CHANGED])
+    struct.pack_into("<IHHHH", report, 5, token, sequence, 1, 0, 0)
+    report[17] = int(selected)
     return bytes(report)
 
 
@@ -131,6 +139,35 @@ class SharedHidTests(unittest.TestCase):
                     self.assertEqual(acknowledged[-1], 9)
 
                 self.assertEqual(device.close_count, 1)
+
+    def test_rgb_effect_event_is_preserved_during_rgb_transaction(self) -> None:
+        token = 0x11223344
+
+        def handler(request: bytes) -> bytes:
+            if request[:2] == bytes([0xA8, 0x05]):
+                return padded([0xA8, 0x05, 0, 87])
+            if request[4] == Opcode.ACK_EVENT:
+                return host_response(request, token)
+            raise AssertionError(f"Unexpected request {request!r}")
+
+        for mode in SharedHidMode:
+            with self.subTest(mode=mode):
+                device = FakeSharedHidDevice(handler)
+                device.before_response.append(rgb_effect_event(token, False))
+                with SharedRawHidSession(device, DEVICE, mode=mode) as session:
+                    protocol = HostInteractionProtocolClient(
+                        session.interaction_transport()
+                    )
+                    protocol.session_token = token
+                    session.rgb_transport().transact(
+                        [0xA8, 0x05],
+                        lambda report: report[:2] == bytes([0xA8, 0x05]),
+                    )
+                    event = protocol.read_event(50)
+                    self.assertIsNotNone(event)
+                    assert event is not None
+                    self.assertIs(event.event_type, EventType.RGB_EFFECT_CHANGED)
+                    self.assertFalse(event.rgb_effect25_selected)
 
     def test_borrowed_view_close_does_not_close_physical_handle(self) -> None:
         device = FakeSharedHidDevice(lambda request: padded([request[0]]))
@@ -228,7 +265,7 @@ class SharedHidTests(unittest.TestCase):
         def handler(request: bytes) -> bytes:
             if request[:3] == bytes([0x07, 0x00, 0x01]):
                 return padded([0x07, 0x00, 0x01, 2, request[4], 0, 5, 0])
-            if request[1:4] == bytes([0x00, 0x02, 0x01]):
+            if request[1:4] == bytes([0x00, 0x02, 0x02]):
                 if request[4] == Opcode.ACK_EVENT:
                     acknowledged.append(struct.unpack_from("<H", request, 9)[0])
                 return host_response(request, token)

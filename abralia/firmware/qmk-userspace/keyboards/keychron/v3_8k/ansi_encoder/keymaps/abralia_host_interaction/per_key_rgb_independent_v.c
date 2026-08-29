@@ -111,13 +111,20 @@ static void reset_to_awaiting(void) {
   queued_transition = TRANSITION_NONE;
 }
 
+__attribute__((weak)) void
+per_key_rgb_independent_v_selection_changed(bool selected) {
+  (void)selected;
+}
+
 static void synchronize_effect_selection(void) {
   bool selected =
+      rgb_matrix_is_enabled() &&
       rgb_matrix_get_mode() == RGB_MATRIX_CUSTOM_PER_KEY_RGB_INDEPENDENT_V;
 
   if (selected != effect_selected) {
     effect_selected = selected;
     reset_to_awaiting();
+    per_key_rgb_independent_v_selection_changed(selected);
   }
 }
 

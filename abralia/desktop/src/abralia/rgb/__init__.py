@@ -3,8 +3,10 @@
 
 """Generalized, diagram-aligned RGB API for Abralia desktop clients."""
 
+from .adapters import EffectSelectionPolicy
 from .colors import BLACK, Color, Hsv8, Srgb8
 from .controller import DisplayLease, RgbController
+from .errors import EffectUnavailableError, OutputSuspendedError
 from .key_lookup import (
     KeycodeMatch,
     KeycodeResolution,
@@ -40,6 +42,8 @@ __all__ = [
     "Canvas",
     "Color",
     "DisplayLease",
+    "EffectSelectionPolicy",
+    "EffectUnavailableError",
     "EncoderDirection",
     "EncoderPosition",
     "Hsv8",
@@ -49,6 +53,7 @@ __all__ = [
     "LiveKeycodeResolver",
     "LiveKeymapAddressSpace",
     "MappingStrategy",
+    "OutputSuspendedError",
     "PhysicalElement",
     "PhysicalFrame",
     "PhysicalOverlaySceneBuilder",

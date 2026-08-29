@@ -49,7 +49,7 @@ from .protocol import (
     parse_device_event,
     parse_response,
     release_session_packet,
-    response_matches,
+    response_envelope_matches,
     write_bindings_packet,
     write_force_controls_packet,
 )
@@ -96,7 +96,7 @@ def _chunks(values: Sequence[T], size: int) -> Iterable[Sequence[T]]:
 
 
 class HostInteractionProtocolClient:
-    """Exact synchronous representation of every firmware protocol v1 command."""
+    """Exact synchronous representation of every firmware protocol v2 command."""
 
     def __init__(self, transport: InteractionTransport):
         self.transport = transport
@@ -128,7 +128,7 @@ class HostInteractionProtocolClient:
 
     def _transact(self, packet: bytes, opcode: Opcode) -> Response:
         report = self.transport.transact(
-            packet, lambda value: response_matches(value, opcode)
+            packet, lambda value: response_envelope_matches(value, opcode)
         )
         self._capture_unmatched()
         response = parse_response(report, opcode)
@@ -143,7 +143,7 @@ class HostInteractionProtocolClient:
             return self.capabilities
         report = self.transport.transact(
             get_capabilities_packet(),
-            lambda value: response_matches(value, Opcode.GET_CAPABILITIES),
+            lambda value: response_envelope_matches(value, Opcode.GET_CAPABILITIES),
         )
         self._capture_unmatched()
         capabilities = parse_capabilities(report)
@@ -418,7 +418,7 @@ class HostInteractionController:
                     self.client.write_bindings(generation, policy, chunk)
             response = self.client.commit_bindings(generation)
         except Exception:
-            # Protocol v1 has no binding-staging abort. A session reset is the
+            # Protocol v2 has no binding-staging abort. A session reset is the
             # only safe way to discard an uncertain partial transaction.
             self._bindings.clear()
             try:

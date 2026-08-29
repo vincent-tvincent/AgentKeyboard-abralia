@@ -12,7 +12,7 @@ from enum import IntEnum, IntFlag
 
 from ..colors import BLACK, Hsv8, to_hsv8
 from ..compatibility import AdapterCapabilities
-from ..errors import CapabilityError, TransportError
+from ..errors import CapabilityError, EffectUnavailableError, TransportError
 from ..key_lookup import LiveKeymapAddressSpace
 from ..led_mapper import DeviceFrame, LedColor
 from ..profiles import EncoderDirection, EncoderPosition
@@ -35,6 +35,11 @@ MAX_KEYMAP_BYTES_PER_PACKET = 28
 MATRIX_ROWS = 6
 MATRIX_COLUMNS = 17
 ENCODER_COUNT = 1
+
+
+class EffectSelectionPolicy(IntEnum):
+    AUTO_SELECT = 0
+    REQUIRE_SELECTED = 1
 
 
 class FrameOperation(IntEnum):
@@ -76,9 +81,16 @@ class KeychronEffect25Adapter:
     adapter_id = "keychron-effect25-rawhid"
     adapter_version = 1
 
-    def __init__(self, transport: RawHidTransport, device: HidDeviceInfo):
+    def __init__(
+        self,
+        transport: RawHidTransport,
+        device: HidDeviceInfo,
+        *,
+        effect_selection_policy: EffectSelectionPolicy = EffectSelectionPolicy.AUTO_SELECT,
+    ):
         self.transport = transport
         self.device = device
+        self.effect_selection_policy = effect_selection_policy
         self._sequence = 0
         self._last_frame: DeviceFrame | None = None
         self._brightness_ceiling = 255
@@ -300,10 +312,19 @@ class KeychronEffect25Adapter:
 
     def _ensure_guarded(self) -> None:
         self.capabilities()
+        effect = self._effect()
+        if (
+            self.effect_selection_policy is EffectSelectionPolicy.REQUIRE_SELECTED
+            and effect != EFFECT_25
+        ):
+            raise EffectUnavailableError(
+                "Effect 25 must be selected before submitting an RGB frame."
+            )
         status = self._frame_status()
         if status[0] is FrameState.GUARDED:
             return
-        self._via_set(0x02, EFFECT_25)
+        if effect != EFFECT_25:
+            self._via_set(0x02, EFFECT_25)
         status = self._frame_status()
         if status[0] is not FrameState.AWAITING:
             self._frame_control(FrameOperation.AWAIT)
@@ -316,6 +337,16 @@ class KeychronEffect25Adapter:
             ),
             "GUARDED back buffer",
         )
+
+    def _raise_effect_aware(self, error: TransportError) -> None:
+        if (
+            self.effect_selection_policy is EffectSelectionPolicy.REQUIRE_SELECTED
+            and self._effect() != EFFECT_25
+        ):
+            raise EffectUnavailableError(
+                "Effect 25 became unavailable during an RGB operation."
+            ) from error
+        raise error
 
     def snapshot(self) -> DeviceSnapshot:
         frame_state = self._frame_status()[0]
@@ -347,23 +378,26 @@ class KeychronEffect25Adapter:
         if [item.address for item in frame.leds] != list(range(EXPECTED_LED_COUNT)):
             raise CapabilityError("Keychron frames must contain all 87 ordered LEDs.")
         self._ensure_guarded()
-        hsv = tuple(to_hsv8(item.color) for item in frame.leds)
-        self._write_colors(hsv)
-        sequence = self._sequence
-        self._frame_control(FrameOperation.COMMIT, sequence)
-        self._wait_for(
-            lambda item: (
-                item[1] == sequence
-                and bool(item[2] & FrameFlags.ACTIVE_VALID)
-                and not bool(item[2] & FrameFlags.PENDING_VALID)
-            ),
-            f"active frame {sequence}",
-        )
-        maximum = max((color.value for color in hsv), default=0)
-        global_brightness = (
-            brightness_ceiling if maximum == 0 else min(maximum, brightness_ceiling)
-        )
-        self._via_set(0x01, global_brightness)
+        try:
+            hsv = tuple(to_hsv8(item.color) for item in frame.leds)
+            self._write_colors(hsv)
+            sequence = self._sequence
+            self._frame_control(FrameOperation.COMMIT, sequence)
+            self._wait_for(
+                lambda item: (
+                    item[1] == sequence
+                    and bool(item[2] & FrameFlags.ACTIVE_VALID)
+                    and not bool(item[2] & FrameFlags.PENDING_VALID)
+                ),
+                f"active frame {sequence}",
+            )
+            maximum = max((color.value for color in hsv), default=0)
+            global_brightness = (
+                brightness_ceiling if maximum == 0 else min(maximum, brightness_ceiling)
+            )
+            self._via_set(0x01, global_brightness)
+        except TransportError as error:
+            self._raise_effect_aware(error)
         self._sequence = (self._sequence + 1) & 0xFF
         self._last_frame = frame
         self._brightness_ceiling = brightness_ceiling
@@ -373,15 +407,18 @@ class KeychronEffect25Adapter:
         if self._last_frame is None:
             raise TransportError("No frame is available to refresh.")
         sequence = self._sequence
-        self._frame_control(FrameOperation.COMMIT, sequence)
-        self._wait_for(
-            lambda item: (
-                item[1] == sequence
-                and bool(item[2] & FrameFlags.ACTIVE_VALID)
-                and not bool(item[2] & FrameFlags.PENDING_VALID)
-            ),
-            f"refreshed frame {sequence}",
-        )
+        try:
+            self._frame_control(FrameOperation.COMMIT, sequence)
+            self._wait_for(
+                lambda item: (
+                    item[1] == sequence
+                    and bool(item[2] & FrameFlags.ACTIVE_VALID)
+                    and not bool(item[2] & FrameFlags.PENDING_VALID)
+                ),
+                f"refreshed frame {sequence}",
+            )
+        except TransportError as error:
+            self._raise_effect_aware(error)
         self._sequence = (self._sequence + 1) & 0xFF
         return sequence
 
@@ -426,6 +463,67 @@ class KeychronEffect25Adapter:
         if restored != snapshot:
             raise TransportError("Restoration readback differs from the snapshot.")
         self._last_frame = None
+
+    def restore_preserving_effect(self, snapshot: DeviceSnapshot) -> DeviceSnapshot:
+        """Restore RGB payload state without undoing the user's selected effect."""
+
+        if snapshot.adapter_id != self.adapter_id or not isinstance(
+            snapshot.payload, KeychronEffect25Snapshot
+        ):
+            raise TransportError("Snapshot belongs to a different adapter.")
+        state = snapshot.payload
+        selected_effect = self._effect()
+        self._via_set(0x01, 0)
+        current_frame_state = self._frame_status()[0]
+        if current_frame_state is not FrameState.AWAITING:
+            if selected_effect != EFFECT_25:
+                raise TransportError(
+                    "Effect-25 frame state did not reset after effect deselection."
+                )
+            self._frame_control(FrameOperation.AWAIT)
+            self._wait_for(
+                lambda item: item[0] is FrameState.AWAITING,
+                "AWAITING handoff state",
+            )
+        self._write_colors(state.colors)
+        self._set_per_key_type(state.per_key_type)
+        self._via_set(0x01, state.brightness)
+        expected = DeviceSnapshot(
+            self.adapter_id,
+            KeychronEffect25Snapshot(
+                selected_effect,
+                state.brightness,
+                state.per_key_type,
+                state.colors,
+                FrameState.AWAITING,
+            ),
+        )
+        restored = self.snapshot()
+        if restored != expected:
+            raise TransportError(
+                "Effect-preserving restoration readback differs from the snapshot."
+            )
+        self._last_frame = None
+        return restored
+
+    def rebase_current_effect(self, snapshot: DeviceSnapshot) -> DeviceSnapshot:
+        """Record a user-selected effect without changing RGB payload state."""
+
+        if snapshot.adapter_id != self.adapter_id or not isinstance(
+            snapshot.payload, KeychronEffect25Snapshot
+        ):
+            raise TransportError("Snapshot belongs to a different adapter.")
+        state = snapshot.payload
+        return DeviceSnapshot(
+            self.adapter_id,
+            KeychronEffect25Snapshot(
+                self._effect(),
+                state.brightness,
+                state.per_key_type,
+                state.colors,
+                FrameState.AWAITING,
+            ),
+        )
 
     def close(self) -> None:
         if not self._closed:

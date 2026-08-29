@@ -36,5 +36,13 @@ class TransportError(RgbError):
     """Raw HID transport failed or returned malformed data."""
 
 
+class EffectUnavailableError(TransportError):
+    """Effect 25 is unavailable under a user-respecting selection policy."""
+
+
+class OutputSuspendedError(RgbError):
+    """RGB output is suspended while another device effect is selected."""
+
+
 class RestoreError(RgbError):
     """A device snapshot could not be restored exactly."""

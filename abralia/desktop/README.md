@@ -137,11 +137,16 @@ protocol-specific views from one physical Raw HID owner:
 ```python
 from abralia import SharedRawHidSession
 from abralia.interaction import HostInteractionProtocolClient
-from abralia.rgb.adapters.keychron_effect25 import KeychronEffect25Adapter
+from abralia.rgb.adapters.keychron_effect25 import (
+    EffectSelectionPolicy,
+    KeychronEffect25Adapter,
+)
 
 with SharedRawHidSession.open_keychron_v3_8k(mode="cooperative") as session:
     rgb_adapter = KeychronEffect25Adapter(
-        session.rgb_transport(), session.device_info
+        session.rgb_transport(),
+        session.device_info,
+        effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
     )
     interaction_protocol = HostInteractionProtocolClient(
         session.interaction_transport()
@@ -153,6 +158,13 @@ one bounded reader that routes the single in-flight response and queues
 unsolicited events. Both views are non-owning: closing an adapter or protocol
 client does not close the keyboard; the `SharedRawHidSession` context owns the
 only physical close. Existing standalone factories remain available.
+
+Protocol v2 reports enabled effect-25 availability. A synchronous
+`SharedKeyboardCoordinator` can keep a producer alive while suspending device
+writes, restore the user's ordinary per-key payload without changing their
+selected effect, and resume a desktop-defined standby scene when effect 25
+returns. The coordinator owns no HID handle or worker thread and never
+reactivates interaction automatically.
 
 ### Stable physical IDs and optional live keycode lookup
 

@@ -137,6 +137,9 @@ static bool handle_pause_gesture(const keyrecord_t *record) {
   if (!host_interaction_protocol_session_alive()) {
     return true;
   }
+  if (!host_interaction_protocol_rgb_effect25_selected()) {
+    return true;
+  }
 
   uint32_t now = timer_read32();
   switch (pause_gesture_state) {
@@ -254,7 +257,7 @@ bool host_interaction_pre_process_record(uint16_t keycode,
   return route_bound_control(control_id, record);
 }
 
-void host_interaction_on_session_reset(void) {
+static void replay_pending_pause_gesture(void) {
   switch (pause_gesture_state) {
   case PAUSE_GESTURE_FIRST_DOWN:
     replay_pause_event(true);
@@ -276,6 +279,15 @@ void host_interaction_on_session_reset(void) {
   case PAUSE_GESTURE_PASSTHROUGH_HELD:
     break;
   }
+}
+
+void host_interaction_on_session_reset(void) { replay_pending_pause_gesture(); }
+
+void host_interaction_on_rgb_effect_changed(bool selected) {
+  if (!selected) {
+    replay_pending_pause_gesture();
+  }
+  host_interaction_protocol_set_rgb_effect25_selected(selected);
 }
 
 void host_interaction_housekeeping(void) {

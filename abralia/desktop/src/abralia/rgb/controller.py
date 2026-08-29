@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
@@ -15,7 +15,12 @@ from .adapters.keychron_effect25 import KeychronEffect25Adapter
 from .colors import Color
 from .compatibility import MappingReport, SceneCompiler
 from .composer import PriorityOverlayComposer
-from .errors import AmbiguousDeviceError, CapabilityError, DeviceNotFoundError
+from .errors import (
+    AmbiguousDeviceError,
+    CapabilityError,
+    DeviceNotFoundError,
+    OutputSuspendedError,
+)
 from .key_lookup import KeycodeResolution, LiveKeycodeResolver, LiveKeymapReader
 from .led_mapper import DeviceFrame, PhysicalElementLedMapper
 from .profiles import DEFAULT_PROFILE, LayoutProfile, load_profile
@@ -34,11 +39,15 @@ if TYPE_CHECKING:
 @dataclass(slots=True)
 class DisplayLease:
     adapter: RgbDeviceAdapter
+    generation: int
+    current_generation: Callable[[], int]
     active: bool = True
 
     def refresh(self) -> int:
         if not self.active:
             raise RuntimeError("Display lease is closed.")
+        if self.generation != self.current_generation():
+            raise OutputSuspendedError("Display lease was revoked by an RGB handoff.")
         return self.adapter.refresh()
 
     def close(self) -> None:
@@ -81,6 +90,9 @@ class RgbController:
             cleanup_callbacks=(self.compiler.resolver.overlay.clear,),
         )
         self._open = False
+        self._output_suspended = False
+        self._lease_generation = 0
+        self._has_submitted_frame = False
 
     @classmethod
     def open(
@@ -138,6 +150,8 @@ class RgbController:
             self.adapter.capabilities()
             self.recovery.capture()
             self._open = True
+            self._output_suspended = False
+            self._has_submitted_frame = False
             return self
         except Exception:
             self.adapter.close()
@@ -162,9 +176,40 @@ class RgbController:
     ) -> DisplayLease:
         if not self._open:
             raise RuntimeError("RgbController must be used as a context manager.")
+        if self._output_suspended:
+            raise OutputSuspendedError(
+                "RGB output is suspended until effect 25 becomes available."
+            )
         _physical, device, _reports = self.compile(scenes)
         self.adapter.submit_frame(device, brightness_ceiling=brightness_ceiling)
-        return DisplayLease(self.adapter)
+        self._has_submitted_frame = True
+        return DisplayLease(
+            self.adapter,
+            self._lease_generation,
+            lambda: self._lease_generation,
+        )
+
+    @property
+    def output_suspended(self) -> bool:
+        return self._output_suspended
+
+    def suspend_output(self) -> None:
+        if not self._open:
+            raise RuntimeError("RgbController must be used as a context manager.")
+        if self._output_suspended:
+            return
+        self._lease_generation += 1
+        self._output_suspended = True
+        if self._has_submitted_frame:
+            self.recovery.handoff_preserving_effect()
+            self._has_submitted_frame = False
+
+    def resume_output(self) -> None:
+        if not self._open:
+            raise RuntimeError("RgbController must be used as a context manager.")
+        if self._output_suspended:
+            self.recovery.rebase_current_effect()
+        self._output_suspended = False
 
     def resolve_keycode(
         self, keycode: int, *, layers: Sequence[int]
@@ -209,8 +254,11 @@ class RgbController:
         return scene, resolution
 
     def restore(self) -> None:
+        self._lease_generation += 1
         self.recovery.restore()
         self._open = False
+        self._output_suspended = False
+        self._has_submitted_frame = False
 
     def close(self) -> None:
         try:

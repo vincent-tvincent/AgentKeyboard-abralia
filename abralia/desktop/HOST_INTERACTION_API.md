@@ -1,7 +1,7 @@
 # Host Interaction desktop API
 
 The `abralia.interaction` Python package implements the complete Abralia Host
-Interaction firmware protocol v1. It is synchronous, volatile, and intended to
+Interaction firmware protocol v2. It is synchronous, volatile, and intended to
 be owned by one trusted desktop broker. It never flashes firmware, remaps VIA,
 or writes keyboard configuration.
 
@@ -108,7 +108,11 @@ new lease renews it. `deactivate_forced()` clears host-forced activation without
 removing bindings.
 
 Manual mode is entered or exited only by the firmware's physical double-Pause
-gesture; protocol v1 has no host command that synthesizes that gesture.
+gesture; protocol v2 has no host command that synthesizes that gesture.
+Enabled effect 25 is required for both manual and forced activation. Leaving
+effect 25 emits `RGB_EFFECT_CHANGED(false)`, disarms interaction while retaining
+the session and bindings, and is followed by `MODE_CHANGED(false)` when needed.
+Returning to effect 25 emits availability only and never reactivates input.
 `turn_off_all()` uses `RELEASE_SESSION`, the firmware-supported complete reset,
 to clear manual and forced activation, bindings, queued events, and the related
 effect-25 host state. Pass `reclaim_session=True` to start a fresh empty session
@@ -129,13 +133,32 @@ read_event / ack_event / service
 
 Typed results include all capability fields, common status fields, reset
 reasons, binding and force generations, queue/heartbeat state, and every field
-of `CONTROL_EDGE`, `MODE_CHANGED`, and `QUEUE_OVERFLOW` events. Non-OK firmware
+of `CONTROL_EDGE`, `MODE_CHANGED`, `QUEUE_OVERFLOW`, and
+`RGB_EFFECT_CHANGED` events. `StatusFlags.RGB_EFFECT_25_SELECTED` supplies the
+initial state and `DeviceEvent.rgb_effect25_selected` decodes transitions.
+Non-OK firmware
 responses raise `FirmwareRejectedError` and remain available as
 `error.response`.
 
 The broker must call `service()` regularly. It sends the required one-second
 keepalive, receives and acknowledges firmware events, and preserves the
 firmware's four-second fail-safe behavior if the broker stops.
+
+## Effect-aware producer coordination
+
+`SharedKeyboardCoordinator` keeps RGB and Host Interaction controllers
+separate while mapping v2 availability/mode events to a caller-supplied
+`RgbProducerLifecycle`. The producer remains alive in `RGB_SUSPENDED`, sends no
+device frames while another effect is selected, resumes desktop-controlled
+`STANDBY` when effect 25 returns, and enters `ACTIVE` only after a new
+activation. No standby scene is built into the API.
+
+Use `EffectSelectionPolicy.REQUIRE_SELECTED` for the shared RGB adapter. It
+prevents accidental effect changes; the standalone default remains
+`AUTO_SELECT`. On suspension, `RgbController` revokes existing leases and
+restores the captured per-key payload while preserving the user's selected
+effect. Returning to effect 25 rebases final recovery so context exit does not
+undo that choice.
 
 Abralia-authored desktop code and this documentation are licensed under
 Apache-2.0. See the repository-root `LICENSE.md`.
