@@ -64,7 +64,7 @@ own build target, profile review, and hardware testing rather than a V3 8K
 firmware binary.
 
 <details open>
-<summary>What the Abralia firmware adds to a Keychron keyboard</summary>
+<summary><strong>What the Abralia firmware adds to a Keychron keyboard</summary>
 
 ![Host-driven fog-orb animation moving across the Keychron V3 8K](./docs/fog-orb-animation-demo.gif)
 
