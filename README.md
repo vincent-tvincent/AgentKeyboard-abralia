@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./docs/Abralia_logo_with_text.png" alt="Abralia logo" width="900">
+</p>
+
 # Abralia
 
 ## Give Your Keyboard an Agent Mode - Without Tradeoff
