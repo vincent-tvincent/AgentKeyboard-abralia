@@ -22,7 +22,38 @@ bindings. Unbound controls continue to behave normally, Host Interaction
 bindings are volatile, and stale or disconnected host sessions are designed
 to restore ordinary input behavior.
 
-This repository is currently a pre-alpha implementation checkpoint.
+This repository is currently a pre-alpha implementation checkpoint. The
+device foundation is substantially implemented: Abralia provides buildable
+Keychron V3 8K firmware, effect-25 guarded RGB rendering, Host Interaction
+protocol v2, volatile per-control input routing, shared Raw HID ownership,
+profile and compatibility-layout APIs, effect-aware RGB standby coordination,
+and reusable desktop RGB and interaction controllers.
+
+The project is now transitioning from keyboard infrastructure to the complete
+agent workflow. The remaining major work is the long-running desktop broker,
+canonical agent/session and request state, the first coding-agent integration,
+trusted mapping from physical events to exact agent actions, and the
+agent-callable semantic lighting and choice API. Abralia can already render
+scenes and receive structured physical-control events, but it does not yet
+connect those capabilities into the final end-to-end loop of agent state →
+keyboard display → user action → verified agent response.
+
+The next functional milestone is one real coding-agent integration that
+displays live task states, accepts at least one trusted physical action, and
+exposes a bounded agent-callable lighting operation. Completing that loop will
+turn the current reusable firmware and device-control foundation into the first
+fully functional Abralia agent keyboard application.
+
+```text
+Firmware and device protocol          Implemented
+Desktop RGB and interaction APIs      Implemented
+Shared HID and standby coordination   Implemented
+Agent/session broker                  Next milestone
+First coding-agent integration        Not yet implemented
+Trusted physical action loop          Not yet implemented
+Agent-callable semantic skill/API      Not yet implemented
+Polished end-to-end application        Final milestone
+```
 
 ## Find the right documentation
 
