@@ -1,14 +1,14 @@
 <mxfile host="Electron">
   <diagram name="Current Shared-HID Implementation" id="abralia-shared-hid-current">
-    <mxGraphModel dx="1034" dy="601" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2800" pageHeight="2200" math="0" shadow="0">
+    <mxGraphModel dx="2920" dy="1696" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2800" pageHeight="2320" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;fontSize=12;" value="&lt;b&gt;Diagram legend&lt;/b&gt;&lt;br&gt;Sharp rectangle = implemented class/module&lt;br&gt;Rounded rectangle = implemented data/configuration/caller&lt;br&gt;Solid arrow = runtime flow&lt;br&gt;Dotted line = implemented alternate/association" vertex="1">
           <mxGeometry height="100" width="360" x="150" y="15" as="geometry" />
         </mxCell>
-        <mxCell id="title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;fontSize=15;" value="Current Abralia shared-HID implementation&lt;br&gt;Separate RGB and Host Interaction controllers • cooperative/threaded shared owner • standalone paths retained" vertex="1">
-          <mxGeometry height="75" width="860" x="970" y="15" as="geometry" />
+        <mxCell id="title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;fontSize=15;" value="Current Abralia shared-HID implementation&lt;br&gt;SharedKeyboardCoordinator • separate RGB and Host Interaction controllers&lt;br&gt;cooperative/threaded shared owner • standalone paths retained" vertex="1">
+          <mxGeometry height="85" width="860" x="970" y="10" as="geometry" />
         </mxCell>
         <mxCell id="config-band" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=12;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=18;" value="Profile utility functions" vertex="1">
           <mxGeometry height="370" width="2640" x="80" y="120" as="geometry" />
@@ -34,125 +34,159 @@
         <mxCell id="layout-cli" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="abralia-layout CLI&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;validate • resolve/export&lt;/font&gt;" vertex="1">
           <mxGeometry height="75" width="310" x="2050" y="210" as="geometry" />
         </mxCell>
-        <mxCell id="rgb-runtime" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;fillOpacity=12;strokeColor=#6c8ebf;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=20;" value="RGB runtime" vertex="1">
-          <mxGeometry height="1060" width="1300" x="50" y="525" as="geometry" />
+        <mxCell id="coordination-band" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;fillOpacity=12;strokeColor=#d6b656;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=18;" value="Runtime coordination" vertex="1">
+          <mxGeometry height="110" width="2640" x="80" y="510" as="geometry" />
         </mxCell>
-        <mxCell id="rgb-caller" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;" value="RGB caller&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CLI • experiment • Python application&lt;/font&gt;" vertex="1">
-          <mxGeometry height="70" width="460" x="450" y="585" as="geometry" />
+        <mxCell id="shared-coordinator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontStyle=1;" value="SharedKeyboardCoordinator&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;RGB_SUSPENDED ↔ STANDBY ↔ ACTIVE • consumes v2 effect/mode events • producer lifecycle + RGB handoff • no HID/thread/broker ownership&lt;/font&gt;" vertex="1">
+          <mxGeometry height="70" width="1200" x="800" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="rgb-runtime" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;fillOpacity=12;strokeColor=#6c8ebf;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=20;" value="RGB runtime" vertex="1">
+          <mxGeometry height="1060" width="1300" x="50" y="645" as="geometry" />
+        </mxCell>
+        <mxCell id="rgb-caller" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;" value="RGB producer / caller&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;suspend • resume_standby • resume_active • CLI/experiment/application&lt;/font&gt;" vertex="1">
+          <mxGeometry height="70" width="460" x="450" y="705" as="geometry" />
         </mxCell>
         <mxCell id="scene-builders" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Scene builders&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;physical • overlay • rectangular • semantic&lt;/font&gt;" vertex="1">
-          <mxGeometry height="75" width="460" x="450" y="680" as="geometry" />
+          <mxGeometry height="75" width="460" x="450" y="800" as="geometry" />
         </mxCell>
         <mxCell id="effective-profile" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Effective RGB profile&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;base + optional region overrides&lt;/font&gt;" vertex="1">
-          <mxGeometry height="90" width="280" x="100" y="790" as="geometry" />
+          <mxGeometry height="90" width="280" x="100" y="910" as="geometry" />
         </mxCell>
-        <mxCell id="rgb-controller" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="RgbController&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;open • compile • display • live-keycode scene • restore/close&lt;/font&gt;" vertex="1">
-          <mxGeometry height="90" width="460" x="450" y="790" as="geometry" />
+        <mxCell id="rgb-controller" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="RgbController&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;compile/display • revocable leases • suspend/resume • restore/close&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="460" x="450" y="910" as="geometry" />
         </mxCell>
         <mxCell id="display-lease" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="DisplayLease&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;explicit guarded refresh&lt;/font&gt;" vertex="1">
-          <mxGeometry height="90" width="280" x="980" y="790" as="geometry" />
+          <mxGeometry height="90" width="280" x="980" y="910" as="geometry" />
         </mxCell>
         <mxCell id="compiler" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=25;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;fontStyle=1;" value="SceneCompiler" vertex="1">
-          <mxGeometry height="205" width="830" x="265" y="913" as="geometry" />
+          <mxGeometry height="205" width="830" x="265" y="1033" as="geometry" />
         </mxCell>
         <mxCell id="region-resolver" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Region/slot resolver&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;semantic + temporary overlays&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="230" x="300" y="980" as="geometry" />
+          <mxGeometry height="85" width="230" x="300" y="1100" as="geometry" />
         </mxCell>
         <mxCell id="rasterizer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Rectangular rasterizer&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;geometry • row index • anchored grid&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="230" x="555" y="980" as="geometry" />
+          <mxGeometry height="85" width="230" x="555" y="1100" as="geometry" />
         </mxCell>
         <mxCell id="cap-validator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Capability validator&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;profile ∩ adapter&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="230" x="810" y="980" as="geometry" />
+          <mxGeometry height="85" width="230" x="810" y="1100" as="geometry" />
         </mxCell>
         <mxCell id="live-keycode" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="LiveKeycodeResolver&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;optional raw scan + profile join&lt;/font&gt;" vertex="1">
-          <mxGeometry height="90" width="230" x="1020" y="650" as="geometry" />
+          <mxGeometry height="90" width="230" x="1020" y="770" as="geometry" />
         </mxCell>
         <mxCell id="resolved-scene" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="ResolvedScene + MappingReport" vertex="1">
-          <mxGeometry height="65" width="460" x="450" y="1150" as="geometry" />
+          <mxGeometry height="65" width="460" x="450" y="1270" as="geometry" />
         </mxCell>
         <mxCell id="composer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="PriorityOverlayComposer" vertex="1">
-          <mxGeometry height="65" width="460" x="450" y="1240" as="geometry" />
+          <mxGeometry height="65" width="460" x="450" y="1360" as="geometry" />
         </mxCell>
         <mxCell id="led-mapper" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="PhysicalElementLedMapper&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;complete 87-LED DeviceFrame&lt;/font&gt;" vertex="1">
-          <mxGeometry height="70" width="460" x="450" y="1330" as="geometry" />
+          <mxGeometry height="70" width="460" x="450" y="1450" as="geometry" />
         </mxCell>
         <mxCell id="recovery" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="StateRecoveryManager&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;snapshot • restore • health&lt;/font&gt;" vertex="1">
-          <mxGeometry height="80" width="280" x="100" y="1450" as="geometry" />
+          <mxGeometry height="80" width="280" x="100" y="1570" as="geometry" />
         </mxCell>
-        <mxCell id="rgb-adapter" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="KeychronEffect25Adapter&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;HSV writes • guarded commit/status • refresh • restore&lt;/font&gt;" vertex="1">
-          <mxGeometry height="80" width="460" x="450" y="1445" as="geometry" />
+        <mxCell id="rgb-adapter" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="KeychronEffect25Adapter&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;selection policy • guarded frames • effect-preserving handoff/rebase&lt;/font&gt;" vertex="1">
+          <mxGeometry height="80" width="460" x="450" y="1565" as="geometry" />
         </mxCell>
         <mxCell id="hi-runtime" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=12;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=20;" value="Host Interaction runtime" vertex="1">
-          <mxGeometry height="1060" width="1300" x="1450" y="525" as="geometry" />
+          <mxGeometry height="1060" width="1300" x="1450" y="645" as="geometry" />
         </mxCell>
         <mxCell id="hi-caller" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;" value="Host Interaction caller&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;control inspector • Python application&lt;/font&gt;" vertex="1">
-          <mxGeometry height="70" width="460" x="1870" y="585" as="geometry" />
+          <mxGeometry height="70" width="460" x="1870" y="705" as="geometry" />
         </mxCell>
         <mxCell id="direct-input" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Direct ControlId API" vertex="1">
-          <mxGeometry height="65" width="260" x="1500" y="730" as="geometry" />
+          <mxGeometry height="65" width="260" x="1500" y="850" as="geometry" />
         </mxCell>
         <mxCell id="region-input" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Compatibility region API" vertex="1">
-          <mxGeometry height="65" width="260" x="2440" y="730" as="geometry" />
+          <mxGeometry height="65" width="260" x="2440" y="850" as="geometry" />
         </mxCell>
         <mxCell id="via-reader" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="ViaKeymapReader&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;live matrix/encoder → ControlIds&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="260" x="1500" y="835" as="geometry" />
+          <mxGeometry height="85" width="260" x="1500" y="955" as="geometry" />
         </mxCell>
         <mxCell id="binding-policy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="BindingPolicy&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CAPTURE/MIRROR • edges • lifetime • binding ID&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="260" x="2440" y="835" as="geometry" />
+          <mxGeometry height="85" width="260" x="2440" y="955" as="geometry" />
         </mxCell>
         <mxCell id="hi-controller" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="HostInteractionController&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;validate • atomic bindings • force scopes • region methods&lt;/font&gt;" vertex="1">
-          <mxGeometry height="100" width="500" x="1850" y="750" as="geometry" />
+          <mxGeometry height="100" width="500" x="1850" y="870" as="geometry" />
         </mxCell>
-        <mxCell id="event-output" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Typed DeviceEvent output&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CONTROL_EDGE • MODE_CHANGED • QUEUE_OVERFLOW&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="270" x="1500" y="1040" as="geometry" />
+        <mxCell id="event-output" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Typed DeviceEvent output&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CONTROL_EDGE • MODE_CHANGED • RGB_EFFECT_CHANGED • QUEUE_OVERFLOW&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="270" x="1500" y="1160" as="geometry" />
         </mxCell>
         <mxCell id="protocol-codec" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="interaction.protocol codec&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;packet types/builders/parsers&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="260" x="2440" y="1007.5" as="geometry" />
+          <mxGeometry height="85" width="260" x="2440" y="1127.5" as="geometry" />
         </mxCell>
-        <mxCell id="protocol-client" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="HostInteractionProtocolClient&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;session/keepalive • binding/force transactions • service/read/ACK events&lt;/font&gt;" vertex="1">
-          <mxGeometry height="100" width="500" x="1850" y="1000" as="geometry" />
+        <mxCell id="protocol-client" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="HostInteractionProtocolClient v2&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;session/keepalive • binding/force transactions • effect-aware ACKed events&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="500" x="1850" y="1152.5" as="geometry" />
         </mxCell>
         <mxCell id="transport-band" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;fillOpacity=12;strokeColor=#b85450;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=19;" value="Raw HID transport ownership" vertex="1">
-          <mxGeometry height="250" width="2700" x="50" y="1610" as="geometry" />
+          <mxGeometry height="250" width="2700" x="50" y="1730" as="geometry" />
         </mxCell>
         <mxCell id="standalone-rgb" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="HidApiTransport&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;standalone RGB owner&lt;/font&gt;" vertex="1">
-          <mxGeometry height="75" width="290" x="100" y="1700" as="geometry" />
+          <mxGeometry height="75" width="290" x="100" y="1820" as="geometry" />
         </mxCell>
         <mxCell id="rgb-view" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="SharedRgbTransportView&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;non-owning RGB error view&lt;/font&gt;" vertex="1">
-          <mxGeometry height="75" width="320" x="520" y="1697.5" as="geometry" />
+          <mxGeometry height="75" width="320" x="520" y="1817.5" as="geometry" />
         </mxCell>
         <mxCell id="shared-session" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontStyle=1;" value="SharedRawHidSession&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;one physical FF60:61 handle • cooperative default or opt-in reader thread • one in-flight matcher • unmatched/event queue • owner-only close&lt;/font&gt;" vertex="1">
-          <mxGeometry height="95" width="720" x="1040" y="1687.5" as="geometry" />
+          <mxGeometry height="95" width="720" x="1040" y="1807.5" as="geometry" />
         </mxCell>
         <mxCell id="interaction-view" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="SharedInteractionTransportView&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;non-owning interaction error view&lt;/font&gt;" vertex="1">
-          <mxGeometry height="75" width="330" x="1935" y="1697.5" as="geometry" />
+          <mxGeometry height="75" width="330" x="1935" y="1817.5" as="geometry" />
         </mxCell>
         <mxCell id="standalone-hi" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" value="HidApiInteractionTransport&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;standalone interaction owner&lt;/font&gt;" vertex="1">
-          <mxGeometry height="75" width="330" x="2370" y="1700" as="geometry" />
+          <mxGeometry height="75" width="330" x="2370" y="1820" as="geometry" />
         </mxCell>
         <mxCell id="firmware-band" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;fillOpacity=12;strokeColor=#82b366;strokeWidth=2;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;fontStyle=1;fontSize=19;" value="Keyboard firmware and hardware" vertex="1">
-          <mxGeometry height="280" width="2700" x="50" y="1890" as="geometry" />
+          <mxGeometry height="280" width="2700" x="50" y="2010" as="geometry" />
         </mxCell>
-        <mxCell id="rgb-firmware" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Effect-25 RGB endpoint&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;AWAITING • DIRECT • GUARDED • 2-second timeout&lt;/font&gt;" vertex="1">
-          <mxGeometry height="85" width="460" x="410" y="1970" as="geometry" />
+        <mxCell id="rgb-firmware" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Effect-25 RGB endpoint&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;AWAITING • DIRECT • GUARDED • selection availability hook • 2-second timeout&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="460" x="410" y="2090" as="geometry" />
         </mxCell>
         <mxCell id="rgb-leds" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" value="87 physical RGB LEDs" vertex="1">
-          <mxGeometry height="65" width="280" x="500" y="2080" as="geometry" />
+          <mxGeometry height="65" width="280" x="500" y="2200" as="geometry" />
         </mxCell>
         <mxCell id="manual-mode" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" value="Double-Pause manual mode" vertex="1">
-          <mxGeometry height="65" width="250" x="1500" y="1980" as="geometry" />
+          <mxGeometry height="65" width="250" x="1500" y="2100" as="geometry" />
         </mxCell>
-        <mxCell id="hi-firmware" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Host Interaction endpoint&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;volatile bindings • CAPTURE/MIRROR • force leases • events/retry • 4-second watchdog&lt;/font&gt;" vertex="1">
-          <mxGeometry height="90" width="500" x="1850" y="1965" as="geometry" />
+        <mxCell id="hi-firmware" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Host Interaction endpoint&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;effect-25 activation gate • RGB_EFFECT_CHANGED • disarm • volatile routing • 4-second watchdog&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="500" x="1850" y="2085" as="geometry" />
         </mxCell>
         <mxCell id="recovery-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" value="Session loss / RELEASE_SESSION&lt;br&gt;clear interaction + RGB host state" vertex="1">
-          <mxGeometry height="70" width="280" x="2420" y="1975" as="geometry" />
+          <mxGeometry height="70" width="280" x="2420" y="2095" as="geometry" />
         </mxCell>
         <mxCell id="physical-controls" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Physical keys + encoder" vertex="1">
-          <mxGeometry height="65" width="280" x="1880" y="2080" as="geometry" />
+          <mxGeometry height="65" width="280" x="1880" y="2200" as="geometry" />
         </mxCell>
         <mxCell id="qmk-path" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Ordinary QMK input path" vertex="1">
-          <mxGeometry height="65" width="280" x="2320" y="2080" as="geometry" />
+          <mxGeometry height="65" width="280" x="2320" y="2200" as="geometry" />
+        </mxCell>
+        <mxCell id="e-client-coordinator" edge="1" parent="1" source="protocol-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="shared-coordinator" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1900" y="1300" />
+              <mxPoint x="1420" y="1300" />
+              <mxPoint x="1420" y="625" />
+              <mxPoint x="1700" y="625" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-coordinator-producer" edge="1" parent="1" source="shared-coordinator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="rgb-caller" value="producer lifecycle">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1100" y="630" />
+              <mxPoint x="970" y="630" />
+              <mxPoint x="970" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-coordinator-rgb" edge="1" parent="1" source="shared-coordinator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.117;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="rgb-controller" value="suspend / resume">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="940" y="630" />
+              <mxPoint x="940" y="895" />
+              <mxPoint x="864" y="895" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="e-profile-json" edge="1" parent="1" source="profile-json" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="profile-loader" value="">
           <mxGeometry relative="1" as="geometry" />
@@ -177,7 +211,7 @@
             <Array as="points">
               <mxPoint x="760" y="460.05" />
               <mxPoint x="25.05" y="460.05" />
-              <mxPoint x="25.05" y="821.48" />
+              <mxPoint x="25.05" y="941.48" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -186,7 +220,7 @@
             <Array as="points">
               <mxPoint x="1490" y="475" />
               <mxPoint x="40" y="475" />
-              <mxPoint x="40" y="855" />
+              <mxPoint x="40" y="975" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -194,7 +228,7 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="2740" y="372.52" />
-              <mxPoint x="2740" y="762.52" />
+              <mxPoint x="2740" y="882.52" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -216,8 +250,8 @@
         <mxCell id="a-live-keycode" edge="1" parent="1" source="live-keycode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="rgb-controller" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1225" y="770" />
-              <mxPoint x="750.04" y="770" />
+              <mxPoint x="1225" y="890" />
+              <mxPoint x="750.04" y="890" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -239,8 +273,8 @@
         <mxCell id="e-lease-adapter" edge="1" parent="1" source="display-lease" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="rgb-adapter" value="refresh">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1240" y="1430" />
-              <mxPoint x="1240" y="1485" />
+              <mxPoint x="1240" y="1550" />
+              <mxPoint x="1240" y="1605" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -271,18 +305,18 @@
         <mxCell id="e-events-caller" edge="1" parent="1" source="event-output" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-caller" value="typed events">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1475" y="1082" />
-              <mxPoint x="1475" y="620" />
+              <mxPoint x="1475" y="1202" />
+              <mxPoint x="1475" y="740" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="a-adapter-standalone-rgb" edge="1" parent="1" source="rgb-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.417;exitY=0.983;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;exitPerimeter=0;" target="standalone-rgb" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="641.84" y="1525.04" />
-              <mxPoint x="640" y="1525.04" />
-              <mxPoint x="640" y="1570" />
-              <mxPoint x="245.04" y="1570" />
+              <mxPoint x="641.84" y="1645.04" />
+              <mxPoint x="640" y="1645.04" />
+              <mxPoint x="640" y="1690" />
+              <mxPoint x="245.04" y="1690" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -298,8 +332,8 @@
         <mxCell id="a-client-standalone-hi" edge="1" parent="1" source="protocol-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" target="standalone-hi" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="2300" y="1280" />
-              <mxPoint x="2535" y="1280" />
+              <mxPoint x="2300" y="1400" />
+              <mxPoint x="2535" y="1400" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -309,33 +343,33 @@
         <mxCell id="e-session-rgb-firmware" edge="1" parent="1" source="shared-session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="rgb-firmware" value="RGB protocol">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1000" y="1830" />
-              <mxPoint x="1000" y="2012" />
+              <mxPoint x="1000" y="1950" />
+              <mxPoint x="1000" y="2132" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="a-standalone-rgb-firmware" edge="1" parent="1" source="standalone-rgb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" target="rgb-firmware" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="245.03" y="1820.03" />
-              <mxPoint x="640" y="1820.03" />
+              <mxPoint x="245.03" y="1940.03" />
+              <mxPoint x="640" y="1940.03" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="e-session-hi-firmware" edge="1" parent="1" source="shared-session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="hi-firmware" value="Host Interaction protocol">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1420" y="1830" />
-              <mxPoint x="1800" y="1830" />
-              <mxPoint x="1800" y="2010" />
+              <mxPoint x="1420" y="1950" />
+              <mxPoint x="1800" y="1950" />
+              <mxPoint x="1800" y="2130" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="a-standalone-hi-firmware" edge="1" parent="1" source="standalone-hi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=4 4;endArrow=block;endFill=1;" target="hi-firmware" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="2535" y="1810" />
-              <mxPoint x="2100" y="1810" />
+              <mxPoint x="2535" y="1930" />
+              <mxPoint x="2100" y="1930" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -351,16 +385,16 @@
         <mxCell id="e-physical-hi" edge="1" parent="1" source="physical-controls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-firmware" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="2020" y="2070" />
-              <mxPoint x="2100" y="2070" />
+              <mxPoint x="2020" y="2190" />
+              <mxPoint x="2100" y="2190" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="e-hi-qmk" edge="1" parent="1" source="hi-firmware" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="qmk-path" value="unbound / MIRROR">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="2120" y="2070" />
-              <mxPoint x="2460" y="2070" />
+              <mxPoint x="2120" y="2190" />
+              <mxPoint x="2460" y="2190" />
             </Array>
           </mxGeometry>
         </mxCell>
