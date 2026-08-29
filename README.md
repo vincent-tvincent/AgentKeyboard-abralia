@@ -111,6 +111,15 @@ desktop RGB API, not a permanently stored keyboard effect.*
   and CLI, with a macOS-first Keychron effect-25 adapter.
 - `experiments/` contains bounded hardware and protocol experiments.
 
+<details>
+<summary><strong>RGB and Host Interaction controller architecture</strong></summary>
+
+![Abralia RGB and Host Interaction controller architecture](./docs/RGB_control_design.drawio.png)
+
+Editable source: [RGB_control_design.drawio](./docs/RGB_control_design.drawio)
+
+</details>
+
 ## License
 
 Abralia uses separate licenses for firmware and host-side software:

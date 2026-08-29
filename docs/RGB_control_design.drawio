@@ -1,0 +1,516 @@
+<mxfile host="Electron">
+  <diagram name="RGB + Host Interaction Controller Architecture" id="abralia-rgb-controller-v3">
+    <mxGraphModel dx="4137" dy="2403" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3380" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="legend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;fontSize=12;" value="&lt;b&gt;Diagram legend&lt;/b&gt;&lt;br&gt;Sharp rectangle = real program module/layer&lt;br&gt;Rounded rectangle = configuration/explanation&lt;br&gt;Solid arrow = data flow&lt;br&gt;Dotted line = explanatory association (not data flow)" vertex="1">
+          <mxGeometry height="100" width="360" x="20" y="10.5" as="geometry" />
+        </mxCell>
+        <mxCell id="semantic-input" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;" value="Agent / harness state&lt;br&gt;+ semantic lighting / temporary-binding requests" vertex="1">
+          <mxGeometry height="65" width="430" x="585" y="10.5" as="geometry" />
+        </mxCell>
+        <mxCell id="canvas-request" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Rectangular canvas request&lt;br&gt;n × m colors + target (main/full) + mapping mode" vertex="1">
+          <mxGeometry height="75" width="330" x="60" y="133" as="geometry" />
+        </mxCell>
+        <mxCell id="rect-builder" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Rectangular Scene API / Builder" vertex="1">
+          <mxGeometry height="80" width="330" x="80" y="253" as="geometry" />
+        </mxCell>
+        <mxCell id="generic-spec" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Generic region / slot specification&lt;br&gt;Provisional examples: agent, main, operation; approve, reject, interrupt" vertex="1">
+          <mxGeometry height="90" width="360" x="1180" y="123" as="geometry" />
+        </mxCell>
+        <mxCell id="region-builder" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Semantic Region API / Scene Builder" vertex="1">
+          <mxGeometry height="80" width="330" x="1190" y="253" as="geometry" />
+        </mxCell>
+        <mxCell id="api-example" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" value="Example only&lt;br&gt;region(&amp;quot;operation&amp;quot;, &amp;quot;nav6&amp;quot;).slot(&amp;quot;approve&amp;quot;).show()" vertex="1">
+          <mxGeometry height="70" width="360" x="1180" y="363" as="geometry" />
+        </mxCell>
+        <mxCell id="abstract-scene" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Abstract Scene Model&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;generic region/slot addresses or logical canvas; color, brightness, animation intent, owner, priority, expiry&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="500" x="550" y="403" as="geometry" />
+        </mxCell>
+        <mxCell id="frontend-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" value="Two independent frontends emit one hardware-neutral abstract scene representation." vertex="1">
+          <mxGeometry height="65" width="360" x="1175" y="453" as="geometry" />
+        </mxCell>
+        <mxCell id="compat-layer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=25;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=12;spacingLeft=14;fontStyle=1;fontSize=14;" value="Layout Compatibility &amp;amp; Scene Compilation Layer" vertex="1">
+          <mxGeometry height="320" width="1040" x="280" y="553" as="geometry" />
+        </mxCell>
+        <mxCell id="region-resolver" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Generic Region / Slot Resolver&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;region instances, optional slots, duplicate roles, BOUND / UNBOUND&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="330" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="canvas-rasterizer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Rectangular Scene Rasterizer&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;geometry resample, row/key index, anchored row grid&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="660" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="profile-loader" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Profile Loader &amp;amp; Validator&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;identity, geometry, regions, bindings, capabilities, adapter ID&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="970" y="613" as="geometry" />
+        </mxCell>
+        <mxCell id="temp-overlay" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Temporary Binding Overlay&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;physical key ↔ slot instance; owner, priority, TTL; RGB only&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="280" x="330" y="763" as="geometry" />
+        </mxCell>
+        <mxCell id="cap-validator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Capability Validator&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;profile ∩ adapter capabilities; UNSUPPORTED reporting&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="280" x="880" y="758" as="geometry" />
+        </mxCell>
+        <mxCell id="profile-json" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;" value="Versioned keyboard profile (recommended JSON)&lt;br&gt;device match • physical elements • U geometry • LED points/addresses • regions • slot bindings • canvas targets/modes • capabilities • adapter ID" vertex="1">
+          <mxGeometry height="155" width="250" x="1340" y="563" as="geometry" />
+        </mxCell>
+        <mxCell id="profile-tools-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" value="Proposed contributor tools&lt;br&gt;schema validation • preview • read-only probe • offline mapping fixtures" vertex="1">
+          <mxGeometry height="90" width="250" x="1340" y="758" as="geometry" />
+        </mxCell>
+        <mxCell id="resolved-scene" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Resolved Physical-Key Scene&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;physical element IDs, visuals, owner/priority/expiry, resolution provenance&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="500" x="550" y="923" as="geometry" />
+        </mxCell>
+        <mxCell id="composer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Priority &amp;amp; Overlay Composer&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;resolve physical-key collisions after layout compilation&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="500" x="550" y="1053" as="geometry" />
+        </mxCell>
+        <mxCell id="animation-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Animation guidance&lt;br&gt;Prefer firmware-local intent; stream full frames when required." vertex="1">
+          <mxGeometry height="80" width="330" x="70" y="1055.5" as="geometry" />
+        </mxCell>
+        <mxCell id="priority-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Priority example only&lt;br&gt;safety/recovery &amp;gt; approval &amp;gt; user interaction &amp;gt; agent status &amp;gt; agent-requested scene" vertex="1">
+          <mxGeometry height="85" width="340" x="1215" y="1053" as="geometry" />
+        </mxCell>
+        <mxCell id="led-mapper" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Physical Element → Device LED Mapper&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;physical key/knob/indicator IDs → selected adapter addresses&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="500" x="550" y="1173" as="geometry" />
+        </mxCell>
+        <mxCell id="recovery-manager" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="State &amp;amp; Recovery Manager" vertex="1">
+          <mxGeometry height="80" width="330" x="70" y="1293" as="geometry" />
+        </mxCell>
+        <mxCell id="recovery-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;dashed=1;" value="Snapshot / restore&lt;br&gt;heartbeat / timeout&lt;br&gt;reconnect / stale-scene and temporary-binding cleanup&lt;br&gt;capability and health checks" vertex="1">
+          <mxGeometry height="115" width="330" x="70" y="1403" as="geometry" />
+        </mxCell>
+        <mxCell id="adapter-interface" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Device Adapter Interface&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;discover, open, capabilities, read state, brightness, submit frame, animation, health, restore&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="500" x="550" y="1293" as="geometry" />
+        </mxCell>
+        <mxCell id="adapter-impl-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" value="Implementation families&lt;br&gt;Abralia/Keychron effect-25 Raw HID • HID LampArray • OpenRGB • other vendor protocols&lt;br&gt;One coded adapter per protocol family; profile per keyboard/layout where possible." vertex="1">
+          <mxGeometry height="110" width="390" x="1190" y="1285.5" as="geometry" />
+        </mxCell>
+        <mxCell id="selected-adapter" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Selected Protocol Adapter Implementation&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;packet encoding, guarded commits, acknowledgements, retries, protocol-specific recovery&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="500" x="550" y="1433" as="geometry" />
+        </mxCell>
+        <mxCell id="usb-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;fontStyle=1;" value="Device/USB boundary&lt;br&gt;Current V3 path: Keychron Raw HID + Abralia effect-25 frame control" vertex="1">
+          <mxGeometry height="80" width="340" x="1215" y="1440.5" as="geometry" />
+        </mxCell>
+        <mxCell id="firmware-endpoint" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Keyboard / Firmware RGB Endpoint&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;current V3: effect 25 AWAITING / DIRECT / GUARDED, local animation, frame swap, timeout&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="500" x="550" y="1563" as="geometry" />
+        </mxCell>
+        <mxCell id="d005-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" value="D-005 current firmware choice&lt;br&gt;Dedicated custom effect preserves effects 0–24 and Launcher/VIA behavior." vertex="1">
+          <mxGeometry height="85" width="350" x="50" y="1570.5" as="geometry" />
+        </mxCell>
+        <mxCell id="physical-rgb" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Physical RGB Elements&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;key LEDs plus optional independently addressable knob, indicator, lightbar, or zone&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="500" x="550" y="1698" as="geometry" />
+        </mxCell>
+        <mxCell id="rgb-section-title" parent="1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=24;fontStyle=1;" value="RGB Controller" vertex="1">
+          <mxGeometry height="40" width="500" x="550" y="133" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-section-title" parent="1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=24;fontStyle=1;" value="Host Interaction Controller" vertex="1">
+          <mxGeometry height="40" width="520" x="2180" y="133" as="geometry" />
+        </mxCell>
+        <mxCell id="controller-divider" edge="1" parent="1" style="edgeStyle=none;html=1;dashed=1;dashPattern=4 4;strokeColor=#b3b3b3;endArrow=none;startArrow=none;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1640" y="10" as="sourcePoint" />
+            <mxPoint x="1640" y="1785" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-broker-input" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;" value="Trusted desktop broker / integration state&lt;br&gt;+ binding, activation, session, and action-correlation requests" vertex="1">
+          <mxGeometry height="65" width="520" x="2180" y="10.5" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-direct-request" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Direct ControlId request&lt;br&gt;matrix row/column or encoder kind/index; caller knows the firmware address" vertex="1">
+          <mxGeometry height="75" width="350" x="1690" y="133" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-keycode-request" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Live keycode request&lt;br&gt;KC_HOME, numeric keycode, optional layers, optional encoders" vertex="1">
+          <mxGeometry height="75" width="350" x="2910" y="133" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-direct-api" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Direct-ControlId Binding API" vertex="1">
+          <mxGeometry height="80" width="330" x="1710" y="253" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-keycode-api" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Live-Keycode Binding API" vertex="1">
+          <mxGeometry height="80" width="330" x="2910" y="253" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-keycode-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" value="No static lookup/profile dependency&lt;br&gt;Live VIA mapping remains authoritative after remapping." vertex="1">
+          <mxGeometry height="70" width="360" x="2900" y="363" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-request-model" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Host Interaction Binding Request Model&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;ControlId or keycode address; opaque binding ID; CAPTURE/MIRROR policy; lifetime; event edges; activation intent&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="520" x="2180" y="403" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-compile-layer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;fillOpacity=25;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;align=left;spacingTop=12;spacingLeft=14;fontStyle=1;fontSize=14;" value="Control Resolution &amp;amp; Binding Compilation Layer" vertex="1">
+          <mxGeometry height="360" width="1070" x="1910" y="553" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-direct-validator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Direct ControlId Validator&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;firmware-reported matrix/encoder bounds; reserved Pause; no layout inference&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="1960" y="613" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-via-reader" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Live VIA Keymap &amp;amp; Encoder Reader&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;all firmware-reported layers, matrix cells, and encoder directions&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="2290" y="613" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-keycode-resolver" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Keycode → ControlId Resolver&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;enumerate raw matches; deduplicate physical controls; retain layer provenance&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="2620" y="613" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-cap-validator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Host Interaction Capability Validator&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;control bounds; flags/lifetimes; binding limits; force scopes and leases&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="1960" y="763" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-policy-compiler" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Binding Policy Compiler&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CAPTURE/MIRROR; DOWN/UP; SESSION/TTL/ONE_SHOT; opaque action IDs&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="2290" y="763" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-transaction-planner" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Atomic Transaction Planner&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;generation ordering; begin/write/commit; chunking; uncertain-state reset&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="2620" y="763" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-resolved-bindings" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Resolved Binding &amp;amp; Activation Plan&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;Control IDs + binding IDs + policy; optional ALL_CONFIGURED/SELECTED bounded lease&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="520" x="2180" y="933" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-coordinator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Binding &amp;amp; Activation Coordinator&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;replace/remove/clear; force all/selected; renew/deactivate; avoid partial state&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="520" x="2180" y="1053" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-session-manager" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Session &amp;amp; Recovery Manager" vertex="1">
+          <mxGeometry height="80" width="350" x="1690" y="1200.5" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-session-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;dashed=1;" value="claim / release / reset&lt;br&gt;one-second keepalive • four-second fail-safe&lt;br&gt;clean close / reconnect" vertex="1">
+          <mxGeometry height="105" width="350" x="1690" y="1313" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-activation-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Activation remains separate from configuration&lt;br&gt;manual double-Pause or explicit bounded host force" vertex="1">
+          <mxGeometry height="85" width="350" x="2910" y="1055.5" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-device-interface" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Host Interaction Device Interface&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;capabilities/status, bindings, force, session lifecycle, event service&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="520" x="2180" y="1193" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-event-dispatcher" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Event Poller &amp;amp; Action Dispatcher&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;CONTROL_EDGE / MODE_CHANGED / QUEUE_OVERFLOW; sequence dedupe + ACK&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="350" x="2910" y="1193" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-protocol-adapter" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Abralia Host Interaction Protocol Adapter&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;32-byte Raw HID; channel 0 value 0x02; token/generation checks; typed errors&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="520" x="2180" y="1363" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-usb-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;fontStyle=1;" value="Device/USB boundary&lt;br&gt;Current V3 path: shared Keychron/VIA Raw HID interface + Host Interaction value 0x02" vertex="1">
+          <mxGeometry height="85" width="350" x="2910" y="1368" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-firmware-endpoint" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Keyboard / Firmware Host Interaction Endpoint&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;volatile binding tables, CAPTURE/MIRROR routing, force scopes, event queue/retry, watchdog&lt;/font&gt;" vertex="1">
+          <mxGeometry height="110" width="520" x="2180" y="1510" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-safety-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" value="Fail-safe recovery&lt;br&gt;heartbeat/session loss clears activation, bindings, queue, and stale RGB host state" vertex="1">
+          <mxGeometry height="105" width="350" x="1693" y="1512.5" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-local-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" value="Firmware-local controls&lt;br&gt;double Pause toggles manual activation; Pause is reserved; no Host Interaction EEPROM writes" vertex="1">
+          <mxGeometry height="105" width="350" x="2910" y="1515" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-physical-controls" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Physical Controls&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;matrix keys • knob press • encoder CW/CCW&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="520" x="2180" y="1690" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-broker-semantics" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="Trusted broker owns semantics&lt;br&gt;opaque binding ID → live request/action; firmware never approves or interprets agent commands" vertex="1">
+          <mxGeometry height="95" width="350" x="1690" y="1685" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-normal-qmk" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Ordinary QMK Input Path&lt;br&gt;&lt;font style=&quot;font-weight: normal;&quot;&gt;unbound controls always normal; MIRROR also emits ordinary key/encoder behavior&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="350" x="2910" y="1690" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-broker-direct" edge="1" parent="1" source="hi-broker-input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.25;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-direct-api" value="direct binding calls">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2110" y="83" />
+              <mxPoint x="2110" y="273" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-e-broker-keycode" edge="1" parent="1" source="hi-broker-input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-keycode-api" value="live-keycode calls">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2800" y="83" />
+              <mxPoint x="2800" y="273" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-e-direct-config" edge="1" parent="1" source="hi-direct-request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-direct-api" value="ControlId + policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-keycode-config" edge="1" parent="1" source="hi-keycode-request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-keycode-api" value="keycode + policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-a-keycode-note" edge="1" parent="1" source="hi-keycode-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-keycode-api" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-direct-request-model" edge="1" parent="1" source="hi-direct-api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-request-model" value="direct request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-keycode-request-model" edge="1" parent="1" source="hi-keycode-api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-request-model" value="keycode request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-request-direct-validator" edge="1" parent="1" source="hi-request-model" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-direct-validator" value="direct path">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2440" y="535" />
+              <mxPoint x="2250" y="535" />
+              <mxPoint x="2250" y="658" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-e-request-via-reader" edge="1" parent="1" source="hi-request-model" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-via-reader" value="live-keycode path">
+          <mxGeometry relative="1" x="0.472" y="20" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="2440" y="600" />
+              <mxPoint x="2440" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-e-reader-resolver" edge="1" parent="1" source="hi-via-reader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-keycode-resolver" value="raw matches">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-direct-cap" edge="1" parent="1" source="hi-direct-validator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-cap-validator" value="validated ID">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-resolver-cap" edge="1" parent="1" source="hi-keycode-resolver" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-cap-validator" value="deduplicated ControlIds">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2760" y="733" />
+              <mxPoint x="2170" y="733" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-e-cap-policy" edge="1" parent="1" source="hi-cap-validator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-policy-compiler" value="supported bindings">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-policy-transaction" edge="1" parent="1" source="hi-policy-compiler" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-transaction-planner" value="grouped policy entries">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-transaction-resolved" edge="1" parent="1" source="hi-transaction-planner" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-resolved-bindings" value="atomic binding plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-resolved-coordinator" edge="1" parent="1" source="hi-resolved-bindings" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-coordinator" value="resolved controls + policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-a-activation" edge="1" parent="1" source="hi-activation-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-coordinator" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-coordinator-interface" edge="1" parent="1" source="hi-coordinator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-device-interface" value="binding / force operations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-session-interface" edge="1" parent="1" source="hi-session-manager" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="hi-device-interface" value="session / heartbeat / reset">
+          <mxGeometry relative="1" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-a-session-note" edge="1" parent="1" source="hi-session-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-session-manager" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-interface-events" edge="1" parent="1" source="hi-device-interface" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="hi-event-dispatcher" value="events / ACK / typed results">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-interface-adapter" edge="1" parent="1" source="hi-device-interface" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-protocol-adapter" value="protocol calls">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-adapter-interface" edge="1" parent="1" source="hi-protocol-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-device-interface" value="responses / events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-a-usb" edge="1" parent="1" source="hi-usb-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-protocol-adapter" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-adapter-firmware" edge="1" parent="1" source="hi-protocol-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-firmware-endpoint" value="commands / keepalive / ACK">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-firmware-adapter" edge="1" parent="1" source="hi-firmware-endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-protocol-adapter" value="status / results / events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-a-safety" edge="1" parent="1" source="hi-safety-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-firmware-endpoint" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-a-local" edge="1" parent="1" source="hi-local-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-firmware-endpoint" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-physical-firmware" edge="1" parent="1" source="hi-physical-controls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="hi-firmware-endpoint" value="press / release / rotation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hi-e-firmware-normal" edge="1" parent="1" source="hi-firmware-endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-normal-qmk" value="unbound / MIRROR behavior">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2570" y="1650" />
+              <mxPoint x="3085" y="1650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-a-broker-semantics" edge="1" parent="1" source="hi-broker-semantics" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="hi-event-dispatcher" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1660" y="1732" />
+              <mxPoint x="1660" y="1163" />
+              <mxPoint x="3085" y="1163" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hi-e-events-broker" edge="1" parent="1" source="hi-event-dispatcher" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.75;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="hi-broker-input" value="typed events / action handles">
+          <mxGeometry relative="1" x="-0.1099" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="3300" y="1240.5" />
+              <mxPoint x="3300" y="60" />
+              <mxPoint x="2700" y="60" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-request-rect" edge="1" parent="1" source="semantic-input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.25;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="rect-builder" value="canvas request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="83" />
+              <mxPoint x="500" y="273" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-request-region" edge="1" parent="1" source="semantic-input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="region-builder" value="semantic request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1100" y="83" />
+              <mxPoint x="1100" y="273" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-canvas-config" edge="1" parent="1" source="canvas-request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="rect-builder" value="canvas data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-generic-config" edge="1" parent="1" source="generic-spec" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="region-builder" value="generic specs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-api-example" edge="1" parent="1" source="api-example" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="region-builder" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-rect-abstract" edge="1" parent="1" source="rect-builder" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="abstract-scene" value="abstract canvas scene">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-region-abstract" edge="1" parent="1" source="region-builder" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="abstract-scene" value="abstract region scene">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-frontend-note" edge="1" parent="1" source="frontend-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="abstract-scene" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-abstract-region" edge="1" parent="1" source="abstract-scene" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="region-resolver" value="region/slot scenes">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="540" />
+              <mxPoint x="470" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-abstract-canvas" edge="1" parent="1" source="abstract-scene" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="canvas-rasterizer" value="canvas scenes">
+          <mxGeometry relative="1" x="0.5448" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-abstract-temp" edge="1" parent="1" source="abstract-scene" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="temp-overlay" value="temporary binding requests">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="523" />
+              <mxPoint x="260" y="806" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-temp-resolver" edge="1" parent="1" source="temp-overlay" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="region-resolver" value="binding overlays">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-region-cap" edge="1" parent="1" source="region-resolver" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="cap-validator" value="resolved elements">
+          <mxGeometry relative="1" x="0.2708" y="-1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="470" y="750" />
+              <mxPoint x="625.02" y="750" />
+              <mxPoint x="625.02" y="779.3" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-canvas-cap" edge="1" parent="1" source="canvas-rasterizer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.06;entryY=-0.013;entryDx=0;entryDy=0;endArrow=block;endFill=1;entryPerimeter=0;" target="cap-validator" value="rasterized keys">
+          <mxGeometry relative="1" x="-0.1272" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="950.02" y="678.02" />
+              <mxPoint x="950.02" y="743" />
+              <mxPoint x="896.81" y="743" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-profile-json" edge="1" parent="1" source="profile-json" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="profile-loader" value="profile data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-profile-cap" edge="1" parent="1" source="profile-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="cap-validator" value="normalized profile/capabilities">
+          <mxGeometry relative="1" x="-0.3448" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1110" y="730.5" />
+              <mxPoint x="1010" y="730.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a-profile-tools" edge="1" parent="1" source="profile-tools-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="profile-json" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-cap-resolved" edge="1" parent="1" source="cap-validator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="resolved-scene" value="validated physical-key scene">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-resolved-composer" edge="1" parent="1" source="resolved-scene" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="composer" value="resolved scene layers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-animation" edge="1" parent="1" source="animation-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="composer" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-priority" edge="1" parent="1" source="priority-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="composer" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-composer-mapper" edge="1" parent="1" source="composer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="led-mapper" value="composed physical-element scene">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-profile-mapper" edge="1" parent="1" source="profile-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="led-mapper" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1170" y="1215.53" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-mapper-interface" edge="1" parent="1" source="led-mapper" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="adapter-interface" value="adapter-addressed scene/frame">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-recovery-composer" edge="1" parent="1" source="recovery-manager" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.05;entryY=1;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="composer" value="fallback / restore scene">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="1320" />
+              <mxPoint x="430" y="1153" />
+              <mxPoint x="575" y="1153" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a-recovery-note" edge="1" parent="1" source="recovery-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="recovery-manager" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-interface-recovery" edge="1" parent="1" source="adapter-interface" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;" target="recovery-manager" value="health / reconnect / restore">
+          <mxGeometry relative="1" x="-0.0667" y="-1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="470" y="1340" />
+              <mxPoint x="470" y="1340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a-adapter-family" edge="1" parent="1" source="adapter-impl-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="adapter-interface" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-interface-selected" edge="1" parent="1" source="adapter-interface" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="selected-adapter" value="adapter calls / transport-neutral addresses">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-profile-interface" edge="1" parent="1" source="profile-loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;exitX=0.744;exitY=0.999;exitDx=0;exitDy=0;exitPerimeter=0;" target="adapter-interface" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1179.7" y="702.91" />
+              <mxPoint x="1179.7" y="704" />
+              <mxPoint x="1180.01" y="704" />
+              <mxPoint x="1180.01" y="1340.5" />
+            </Array>
+            <mxPoint x="1180" y="704" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a-usb-note" edge="1" parent="1" source="usb-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="selected-adapter" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-adapter-device" edge="1" parent="1" source="selected-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="firmware-endpoint" value="frames / brightness / control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-device-adapter" edge="1" parent="1" source="firmware-endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;endArrow=block;endFill=1;" target="selected-adapter" value="capabilities / ACK / status / input events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-d005" edge="1" parent="1" source="d005-note" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=1 4;endArrow=none;" target="firmware-endpoint" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-endpoint-physical" edge="1" parent="1" source="firmware-endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="physical-rgb" value="physical RGB/PWM output">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
