@@ -5,6 +5,21 @@ Interaction firmware protocol v2. It is synchronous, volatile, and intended to
 be owned by one trusted desktop broker. It never flashes firmware, remaps VIA,
 or writes keyboard configuration.
 
+## Explicit device metadata
+
+Every client requires a supplied `DeviceProfile`, loaded with
+`load_device_profile(source)` or obtained from `LayoutProfile.device_profile`.
+The metadata reader does not require RGB elements or regions. Profile-based
+opening matches only its USB identity; it never chooses a keyboard model or
+profile. Protocol v2 and reported matrix/encoder counts are validated before
+claiming a session. The selected `interaction.toggle_matrix` is reserved and
+exposed as `HostInteractionController.toggle_control`.
+
+The original V3 toggle is its stock top-right lighting key at `[3,14]`; V3 8K
+uses `[0,16]`. Neither the desktop nor compatibility overlays infer or relocate
+this control from a keycode. See the
+[shared profile catalog](src/abralia/resources/profiles/README.md).
+
 ## Control lookup
 
 Two explicit lookup paths produce the same `ControlId` type:
@@ -29,7 +44,7 @@ lookup remains authoritative after any remap.
 Developers can discover raw IDs interactively with the separate guarded
 [`host-interaction-control-inspector`](../../experiments/host-interaction-control-inspector/README.md),
 which prints a unique volatile binding ID and Control ID for every mirrored
-press without loading a layout profile.
+press using device metadata without requiring RGB geometry.
 
 ## Compatibility regions
 
@@ -60,10 +75,11 @@ queue. Standalone Host Interaction construction remains supported.
 ## Binding and activation
 
 Configuration and activation are deliberately separate. This preserves the
-firmware's manual double-Pause workflow and makes host-forced behavior
+firmware's manual double-tap toggle workflow and makes host-forced behavior
 explicit.
 
 ```python
+from abralia import load_device_profile
 from abralia.interaction import (
     BindingPolicy,
     HostInteractionController,
@@ -72,7 +88,8 @@ from abralia.interaction import (
     Routing,
 )
 
-with HostInteractionProtocolClient.open_keychron_v3_8k() as protocol:
+profile = load_device_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+with HostInteractionProtocolClient.open_profile(profile) as protocol:
     controller = HostInteractionController(protocol)
 
     update = controller.set_keycode_controls(
@@ -107,7 +124,7 @@ activation methods select firmware `SELECTED`. Repeating an activation with a
 new lease renews it. `deactivate_forced()` clears host-forced activation without
 removing bindings.
 
-Manual mode is entered or exited only by the firmware's physical double-Pause
+Manual mode is entered or exited only by the firmware's physical double-tap toggle
 gesture; protocol v2 has no host command that synthesizes that gesture.
 Enabled effect 25 is required for both manual and forced activation. Leaving
 effect 25 emits `RGB_EFFECT_CHANGED(false)`, disarms interaction while retaining

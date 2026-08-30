@@ -32,10 +32,13 @@ from abralia.interaction.protocol import (
 )
 from abralia.layout import load_compatibility_layout
 from abralia.rgb import load_profile
+from profile_fixtures import TINY
 
 
 class FakeFirmwareTransport:
-    def __init__(self) -> None:
+    def __init__(self, *, profile=TINY) -> None:
+        self.profile = profile
+        self.extra_status_flags = 0
         self.session_token = 0
         self.binding_generation = 0
         self.force_generation = 0
@@ -58,7 +61,7 @@ class FakeFirmwareTransport:
         response[5] = Result.OK
         struct.pack_into("<I", response, 6, self.session_token)
         struct.pack_into("<H", response, 10, self.binding_generation)
-        response[12] = 1 if self.session_token else 0
+        response[12] = (1 if self.session_token else 0) | self.extra_status_flags
         response[13] = len(self.bindings)
         response[14] = len(self.forced)
         response[15] = len(self.incoming)
@@ -122,8 +125,19 @@ class FakeFirmwareTransport:
 
         response = self._common_response(packet)
         if opcode is Opcode.GET_CAPABILITIES:
-            response[12:16] = bytes([2, 2, 1, 32])
-            struct.pack_into("<HHHH", response, 16, 6, 300, 4000, 30000)
+            keymap = self.profile.keymap
+            response[12:16] = bytes(
+                [keymap.matrix_rows, keymap.matrix_columns, keymap.encoder_count, 32]
+            )
+            struct.pack_into(
+                "<HHHH",
+                response,
+                16,
+                keymap.matrix_rows * keymap.matrix_columns + 2 * keymap.encoder_count,
+                300,
+                4000,
+                30000,
+            )
             response[24] = 7
             response[25] = 7
         if not response_matches(bytes(response)):
@@ -172,7 +186,7 @@ def event_packet(token: int) -> bytes:
 class InteractionClientTests(unittest.TestCase):
     def setUp(self) -> None:
         self.transport = FakeFirmwareTransport()
-        self.client = HostInteractionProtocolClient(self.transport)
+        self.client = HostInteractionProtocolClient(self.transport, profile=TINY)
 
     def test_low_level_client_exposes_every_firmware_command_family(self) -> None:
         capabilities = self.client.get_capabilities()
@@ -260,7 +274,7 @@ class InteractionClientTests(unittest.TestCase):
     def test_compatibility_region_uses_shared_resolved_control_ids(self) -> None:
         self.client.get_capabilities()
         self.client.claim_session(0x11223344)
-        profile = load_profile()
+        profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "layout.json"
             source.write_text(

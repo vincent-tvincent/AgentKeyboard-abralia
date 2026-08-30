@@ -11,6 +11,7 @@ verification, and physical-keyboard validation where that distinction matters.
 | Understand what Abralia does and what is currently supported | [Project overview](../README.md) |
 | Install or use the desktop RGB API and CLI | [Desktop RGB API guide](../abralia/desktop/README.md) |
 | Bind keys or encoder actions through Host Interaction Mode | [Host Interaction desktop API](../abralia/desktop/HOST_INTERACTION_API.md) |
+| Choose a keyboard profile or supply device metadata | [Shared profile catalog](../abralia/desktop/src/abralia/resources/profiles/README.md) |
 | Define user-specific regions with matrix aliases | [User compatibility layouts](../abralia/desktop/COMPATIBILITY_LAYOUTS.md) |
 | Build or flash the Keychron V3 8K firmware | [QMK userspace build and flash guide](../abralia/firmware/qmk-userspace/README.md) |
 | Build experimental original V3 ANSI firmware, with or without a knob | [Original V3 sibling variants](../abralia/firmware/qmk-userspace/README.md#original-v3-sibling-variants-experimental) |
@@ -38,8 +39,10 @@ verification, and physical-keyboard validation where that distinction matters.
 ### Control ID and default-keymap references
 
 - [Control ID lookup guide](control-id-lookups.md)
-- [Side-by-side Keychron and Abralia default mappings](keychron-v3-8k-official-control-id-lookup.md)
-- [Abralia-only default mapping](abralia-v3-8k-default-control-id-lookup.md)
+- [V3 8K ANSI encoder: Keychron and Abralia defaults](keychron-v3-8k-official-control-id-lookup.md)
+- [V3 8K ANSI encoder: Abralia-only defaults](abralia-v3-8k-default-control-id-lookup.md)
+- [Original V3 ANSI without knob: Keychron and Abralia defaults](keychron-v3-ansi-control-id-lookup.md)
+- [Original V3 ANSI encoder: Keychron and Abralia defaults](keychron-v3-ansi-encoder-control-id-lookup.md)
 
 The lookup tables are default snapshots for development and documentation.
 The desktop keycode API reads the live VIA mapping because users can remap the

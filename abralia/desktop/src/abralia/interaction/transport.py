@@ -11,14 +11,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from ..device_profile import DeviceProfile
 from .errors import AmbiguousDeviceError, DeviceNotFoundError, TransportError
 from .protocol import REPORT_LENGTH
-
-
-KEYCHRON_VENDOR_ID = 0x3434
-V3_8K_ANSI_PRODUCT_ID = 0x0F30
-RAW_HID_USAGE_PAGE = 0xFF60
-RAW_HID_USAGE = 0x61
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,24 +69,28 @@ def enumerate_hid_devices() -> list[HidDeviceInfo]:
     ]
 
 
-def find_keychron_v3_8k_interface(
+def find_profile_interface(
+    profile: DeviceProfile,
     devices: Sequence[HidDeviceInfo] | None = None,
+    *,
+    device_index: int | None = None,
 ) -> HidDeviceInfo:
     candidates = [
         device
         for device in (devices if devices is not None else enumerate_hid_devices())
-        if device.vendor_id == KEYCHRON_VENDOR_ID
-        and device.product_id == V3_8K_ANSI_PRODUCT_ID
-        and device.usage_page == RAW_HID_USAGE_PAGE
-        and device.usage == RAW_HID_USAGE
+        if profile.device_match.matches(device)
     ]
     if not candidates:
-        raise DeviceNotFoundError(
-            "No Keychron V3 8K ANSI FF60:61 Raw HID interface was found."
-        )
+        raise DeviceNotFoundError("No Raw HID interface matches the supplied profile.")
+    if device_index is not None:
+        if not 0 <= device_index < len(candidates):
+            raise DeviceNotFoundError(
+                "Device index is outside the matching interfaces."
+            )
+        return candidates[device_index]
     if len(candidates) > 1:
         raise AmbiguousDeviceError(
-            f"Expected one Keychron V3 8K Raw HID interface, found {len(candidates)}."
+            f"Expected one profile-matching Raw HID interface, found {len(candidates)}."
         )
     return candidates[0]
 
@@ -122,8 +121,11 @@ class HidApiInteractionTransport:
         return cls(device)
 
     @classmethod
-    def open_keychron_v3_8k(cls) -> HidApiInteractionTransport:
-        return cls.open_path(find_keychron_v3_8k_interface().path)
+    def open_profile(
+        cls, profile: DeviceProfile, *, device_index: int | None = None
+    ) -> HidApiInteractionTransport:
+        device = find_profile_interface(profile, device_index=device_index)
+        return cls.open_path(device.path)
 
     def write(self, request: Sequence[int] | bytes) -> None:
         if not request or len(request) > REPORT_LENGTH:

@@ -16,7 +16,6 @@ from .key_lookup import (
     UnrenderableReason,
 )
 from .profiles import (
-    DEFAULT_PROFILE,
     EncoderDirection,
     EncoderPosition,
     LayoutProfile,
@@ -37,7 +36,6 @@ from .scene import (
 
 __all__ = [
     "BLACK",
-    "DEFAULT_PROFILE",
     "AbstractScene",
     "Canvas",
     "Color",

@@ -1,8 +1,10 @@
 # Abralia desktop RGB API
 
 This directory contains Abralia's Python 3.11+ desktop developer API and CLI
-for profile-driven keyboard RGB control. Version 0.1 supports macOS first and
-the Keychron V3 8K ANSI encoder running the Abralia effect-25 firmware.
+for profile-driven keyboard RGB control. Version 0.2 requires an explicit JSON profile and supports the Keychron
+effect-25 protocol family. Bundled profiles cover V3 8K ANSI encoder and the
+experimental original V3 ANSI / ANSI encoder ports; original V3 hardware has
+not been physically validated. macOS remains the primary desktop platform.
 
 The implementation follows this fixed data flow:
 
@@ -19,8 +21,31 @@ physical/canvas/semantic scene builders
 ```
 
 The semantic scene builder and temporary-binding overlay are extension
-boundaries only. Version 0.1 intentionally defines no agent-specific slot
+boundaries only. Version 0.2 intentionally defines no agent-specific slot
 vocabulary or priority policy.
+
+## Profiles and migration to 0.2
+
+The caller or a higher application layer chooses the JSON. This library never
+identifies a model to select a profile, and has no model/PID allowlist. USB
+matching uses the selected profile's identity fields; ambiguous matches require
+an explicit device index. The protocol adapter checks available firmware
+capabilities before writing. RGB-only firmware does not require Host Interaction.
+
+Bundled JSON and schemas now live in shared package resources, outside the RGB
+package. See the [profile catalog](src/abralia/resources/profiles/README.md).
+Use `load_device_profile(source)` for metadata-only interaction use, or
+`load_profile(source).device_profile` alongside RGB geometry. Compatibility
+layouts cannot replace hardware identity or the reserved interaction toggle.
+
+This is a breaking API update: profile sources are mandatory, model-specific
+open/find helpers and the implicit profile constant are removed, and both
+`KeychronEffect25Adapter(..., profile=metadata)` and
+`HostInteractionProtocolClient(..., profile=metadata)` require explicit metadata.
+Use `SharedRawHidSession.open_profile(metadata, ...)` or
+`HostInteractionProtocolClient.open_profile(metadata, ...)` instead. Existing
+explicit `builtin:` IDs and schema-v1 RGB-only JSON remain valid; interaction
+use additionally requires `interaction.toggle_matrix`.
 
 ## Install for development
 
@@ -38,13 +63,13 @@ The runtime dependencies are `hidapi` and `jsonschema`.
 Validate the bundled profile without accessing hardware:
 
 ```sh
-.venv/bin/abralia-rgb profile validate
+.venv/bin/abralia-rgb profile validate builtin:keychron-v3-8k-ansi-encoder-effect25
 ```
 
 List matching Raw HID interfaces without changing keyboard state:
 
 ```sh
-.venv/bin/abralia-rgb devices
+.venv/bin/abralia-rgb devices --profile builtin:keychron-v3-8k-ansi-encoder-effect25
 ```
 
 ## Temporary physical-key scene
@@ -54,12 +79,14 @@ five seconds, and then restores the pre-command RGB snapshot:
 
 ```sh
 .venv/bin/abralia-rgb render-keys \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --color W=#FF0000 \
   --color A=#00FF00 \
   --seconds 5
 ```
 
-Use `--profile /path/to/profile.json` for an explicit profile and
+Every device command requires `--profile /path/to/profile.json` or an explicit
+`builtin:` ID. Use
 `--device-index N` when several matching keyboards are connected. Write
 commands do not save persistent VIA or Launcher settings.
 
@@ -86,6 +113,7 @@ Render it onto the six-key navigation cluster:
 
 ```sh
 .venv/bin/abralia-rgb render-canvas canvas.json \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --target navigation_cluster \
   --strategy row_key_index \
   --seconds 5
@@ -111,7 +139,7 @@ scene = PhysicalSceneBuilder().build(
     priority=10,
 )
 
-with RgbController.open() as controller:
+with RgbController.open("builtin:keychron-v3-8k-ansi-encoder-effect25") as controller:
     lease = controller.display([scene], brightness_ceiling=180)
     time.sleep(1)
     lease.refresh()
@@ -136,20 +164,23 @@ protocol-specific views from one physical Raw HID owner:
 
 ```python
 from abralia import SharedRawHidSession
+from abralia.rgb import load_profile
 from abralia.interaction import HostInteractionProtocolClient
 from abralia.rgb.adapters.keychron_effect25 import (
     EffectSelectionPolicy,
     KeychronEffect25Adapter,
 )
 
-with SharedRawHidSession.open_keychron_v3_8k(mode="cooperative") as session:
+profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+with SharedRawHidSession.open_profile(profile.device_profile, mode="cooperative") as session:
     rgb_adapter = KeychronEffect25Adapter(
         session.rgb_transport(),
         session.device_info,
+        profile=profile.device_profile,
         effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
     )
     interaction_protocol = HostInteractionProtocolClient(
-        session.interaction_transport()
+        session.interaction_transport(), profile=profile.device_profile
     )
 ```
 
@@ -157,7 +188,7 @@ with SharedRawHidSession.open_keychron_v3_8k(mode="cooperative") as session:
 one bounded reader that routes the single in-flight response and queues
 unsolicited events. Both views are non-owning: closing an adapter or protocol
 client does not close the keyboard; the `SharedRawHidSession` context owns the
-only physical close. Existing standalone factories remain available.
+only physical close. Standalone opening remains available through explicit-profile factories.
 
 Protocol v2 reports enabled effect-25 availability. A synchronous
 `SharedKeyboardCoordinator` can keep a producer alive while suspending device
@@ -179,7 +210,7 @@ the controller can read the current live VIA matrix and encoder maps across
 explicitly requested layers:
 
 ```python
-with RgbController.open() as controller:
+with RgbController.open("builtin:keychron-v3-8k-ansi-encoder-effect25") as controller:
     scene, resolution = controller.build_keycode_scene(
         "all-live-kc-a-positions",
         keycode=0x0004,
@@ -202,6 +233,7 @@ The equivalent temporary CLI operation is:
 
 ```sh
 .venv/bin/abralia-rgb render-keycode 0x0004 \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --layers 0,1,2,3 \
   --color '#FF5000' \
   --seconds 5
@@ -211,7 +243,7 @@ The shared profile is also the physical lookup table for other desktop
 components:
 
 ```python
-profile = load_profile()
+profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
 home = profile.element_by_id["HOME"]
 print(home.matrix, home.led_address, home.encoder)
 ```

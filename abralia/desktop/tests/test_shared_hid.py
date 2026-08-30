@@ -20,6 +20,7 @@ from abralia.interaction import (
 from abralia.rgb.errors import TransportError as RgbTransportError
 from abralia.rgb.transport import HidDeviceInfo
 from abralia.shared_hid import SharedHidMode, SharedRawHidSession
+from profile_fixtures import REFERENCE
 
 DEVICE = HidDeviceInfo(
     path=b"shared-test",
@@ -124,7 +125,9 @@ class SharedHidTests(unittest.TestCase):
                 with SharedRawHidSession(device, DEVICE, mode=mode) as session:
                     rgb = session.rgb_transport()
                     interaction = session.interaction_transport()
-                    protocol = HostInteractionProtocolClient(interaction)
+                    protocol = HostInteractionProtocolClient(
+                        interaction, profile=REFERENCE
+                    )
                     protocol.session_token = token
 
                     response = rgb.transact(
@@ -156,7 +159,7 @@ class SharedHidTests(unittest.TestCase):
                 device.before_response.append(rgb_effect_event(token, False))
                 with SharedRawHidSession(device, DEVICE, mode=mode) as session:
                     protocol = HostInteractionProtocolClient(
-                        session.interaction_transport()
+                        session.interaction_transport(), profile=REFERENCE
                     )
                     protocol.session_token = token
                     session.rgb_transport().transact(
@@ -277,7 +280,7 @@ class SharedHidTests(unittest.TestCase):
                 with SharedRawHidSession(device, DEVICE, mode=mode) as session:
                     rgb = session.rgb_transport()
                     protocol = HostInteractionProtocolClient(
-                        session.interaction_transport()
+                        session.interaction_transport(), profile=REFERENCE
                     )
                     protocol.session_token = token
                     for sequence in range(20):

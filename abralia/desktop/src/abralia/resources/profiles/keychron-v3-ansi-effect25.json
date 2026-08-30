@@ -1,0 +1,2314 @@
+{
+  "schema_version": 1,
+  "profile_id": "keychron-v3-ansi-effect25",
+  "display_name": "Keychron V3 ANSI with Abralia effect 25",
+  "adapter": {
+    "id": "keychron-effect25-rawhid",
+    "min_version": 1
+  },
+  "device_match": {
+    "vendor_id": 13364,
+    "product_id": 816,
+    "usage_page": 65376,
+    "usage": 97
+  },
+  "keymap": {
+    "matrix_rows": 6,
+    "matrix_columns": 16,
+    "encoder_count": 0
+  },
+  "expected_led_count": 87,
+  "interaction": {
+    "toggle_matrix": [
+      3,
+      14
+    ]
+  },
+  "capabilities": {
+    "per_key_rgb": true,
+    "independent_brightness": true,
+    "guarded_frames": true,
+    "local_animation": true
+  },
+  "elements": [
+    {
+      "id": "ESC",
+      "type": "key",
+      "row": 0,
+      "order": 0,
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 0,
+      "led_point": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "F1",
+      "type": "key",
+      "row": 0,
+      "order": 1,
+      "geometry": {
+        "x": 2,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 1,
+      "led_point": {
+        "x": 2.0603,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        1
+      ]
+    },
+    {
+      "id": "F2",
+      "type": "key",
+      "row": 0,
+      "order": 2,
+      "geometry": {
+        "x": 3,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 2,
+      "led_point": {
+        "x": 3.0904,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        2
+      ]
+    },
+    {
+      "id": "F3",
+      "type": "key",
+      "row": 0,
+      "order": 3,
+      "geometry": {
+        "x": 4,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 3,
+      "led_point": {
+        "x": 4.1205,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        3
+      ]
+    },
+    {
+      "id": "F4",
+      "type": "key",
+      "row": 0,
+      "order": 4,
+      "geometry": {
+        "x": 5,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 4,
+      "led_point": {
+        "x": 5.1507,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        4
+      ]
+    },
+    {
+      "id": "F5",
+      "type": "key",
+      "row": 0,
+      "order": 5,
+      "geometry": {
+        "x": 6.5,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 5,
+      "led_point": {
+        "x": 6.7355,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        5
+      ]
+    },
+    {
+      "id": "F6",
+      "type": "key",
+      "row": 0,
+      "order": 6,
+      "geometry": {
+        "x": 7.5,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 6,
+      "led_point": {
+        "x": 7.7656,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        6
+      ]
+    },
+    {
+      "id": "F7",
+      "type": "key",
+      "row": 0,
+      "order": 7,
+      "geometry": {
+        "x": 8.5,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 7,
+      "led_point": {
+        "x": 8.7958,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        7
+      ]
+    },
+    {
+      "id": "F8",
+      "type": "key",
+      "row": 0,
+      "order": 8,
+      "geometry": {
+        "x": 9.5,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 8,
+      "led_point": {
+        "x": 9.8259,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        8
+      ]
+    },
+    {
+      "id": "F9",
+      "type": "key",
+      "row": 0,
+      "order": 9,
+      "geometry": {
+        "x": 11,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 9,
+      "led_point": {
+        "x": 11.3315,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        9
+      ]
+    },
+    {
+      "id": "F10",
+      "type": "key",
+      "row": 0,
+      "order": 10,
+      "geometry": {
+        "x": 12,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 10,
+      "led_point": {
+        "x": 12.3616,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        10
+      ]
+    },
+    {
+      "id": "F11",
+      "type": "key",
+      "row": 0,
+      "order": 11,
+      "geometry": {
+        "x": 13,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 11,
+      "led_point": {
+        "x": 13.3917,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        11
+      ]
+    },
+    {
+      "id": "F12",
+      "type": "key",
+      "row": 0,
+      "order": 12,
+      "geometry": {
+        "x": 14,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 12,
+      "led_point": {
+        "x": 14.4219,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        12
+      ]
+    },
+    {
+      "id": "SCREENSHOT",
+      "type": "key",
+      "row": 0,
+      "order": 13,
+      "geometry": {
+        "x": 15.25,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 13,
+      "led_point": {
+        "x": 15.6897,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        14
+      ]
+    },
+    {
+      "id": "SCROLL_LOCK",
+      "type": "key",
+      "row": 0,
+      "order": 14,
+      "geometry": {
+        "x": 16.25,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 14,
+      "led_point": {
+        "x": 16.7199,
+        "y": 0.0
+      },
+      "matrix": [
+        0,
+        15
+      ]
+    },
+    {
+      "id": "LIGHTING_KEY",
+      "type": "key",
+      "row": 0,
+      "order": 15,
+      "geometry": {
+        "x": 17.25,
+        "y": 0,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 15,
+      "led_point": {
+        "x": 17.75,
+        "y": 0.0
+      },
+      "matrix": [
+        3,
+        14
+      ]
+    },
+    {
+      "id": "GRAVE",
+      "type": "key",
+      "row": 1,
+      "order": 0,
+      "geometry": {
+        "x": 0,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 16,
+      "led_point": {
+        "x": 0.0,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        0
+      ]
+    },
+    {
+      "id": "1",
+      "type": "key",
+      "row": 1,
+      "order": 1,
+      "geometry": {
+        "x": 1,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 17,
+      "led_point": {
+        "x": 1.0301,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "2",
+      "type": "key",
+      "row": 1,
+      "order": 2,
+      "geometry": {
+        "x": 2,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 18,
+      "led_point": {
+        "x": 2.0603,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "3",
+      "type": "key",
+      "row": 1,
+      "order": 3,
+      "geometry": {
+        "x": 3,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 19,
+      "led_point": {
+        "x": 3.0904,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "4",
+      "type": "key",
+      "row": 1,
+      "order": 4,
+      "geometry": {
+        "x": 4,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 20,
+      "led_point": {
+        "x": 4.1205,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        4
+      ]
+    },
+    {
+      "id": "5",
+      "type": "key",
+      "row": 1,
+      "order": 5,
+      "geometry": {
+        "x": 5,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 21,
+      "led_point": {
+        "x": 5.1507,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        5
+      ]
+    },
+    {
+      "id": "6",
+      "type": "key",
+      "row": 1,
+      "order": 6,
+      "geometry": {
+        "x": 6,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 22,
+      "led_point": {
+        "x": 6.1808,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        6
+      ]
+    },
+    {
+      "id": "7",
+      "type": "key",
+      "row": 1,
+      "order": 7,
+      "geometry": {
+        "x": 7,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 23,
+      "led_point": {
+        "x": 7.2109,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        7
+      ]
+    },
+    {
+      "id": "8",
+      "type": "key",
+      "row": 1,
+      "order": 8,
+      "geometry": {
+        "x": 8,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 24,
+      "led_point": {
+        "x": 8.2411,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        8
+      ]
+    },
+    {
+      "id": "9",
+      "type": "key",
+      "row": 1,
+      "order": 9,
+      "geometry": {
+        "x": 9,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 25,
+      "led_point": {
+        "x": 9.2712,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        9
+      ]
+    },
+    {
+      "id": "0",
+      "type": "key",
+      "row": 1,
+      "order": 10,
+      "geometry": {
+        "x": 10,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 26,
+      "led_point": {
+        "x": 10.3013,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        10
+      ]
+    },
+    {
+      "id": "MINUS",
+      "type": "key",
+      "row": 1,
+      "order": 11,
+      "geometry": {
+        "x": 11,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 27,
+      "led_point": {
+        "x": 11.3315,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        11
+      ]
+    },
+    {
+      "id": "EQUAL",
+      "type": "key",
+      "row": 1,
+      "order": 12,
+      "geometry": {
+        "x": 12,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 28,
+      "led_point": {
+        "x": 12.3616,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        12
+      ]
+    },
+    {
+      "id": "BACKSPACE",
+      "type": "key",
+      "row": 1,
+      "order": 13,
+      "geometry": {
+        "x": 13,
+        "y": 1.25,
+        "width": 2,
+        "height": 1
+      },
+      "led_address": 29,
+      "led_point": {
+        "x": 13.9464,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        13
+      ]
+    },
+    {
+      "id": "INSERT",
+      "type": "key",
+      "row": 1,
+      "order": 14,
+      "geometry": {
+        "x": 15.25,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 30,
+      "led_point": {
+        "x": 15.6897,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        14
+      ]
+    },
+    {
+      "id": "HOME",
+      "type": "key",
+      "row": 1,
+      "order": 15,
+      "geometry": {
+        "x": 16.25,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 31,
+      "led_point": {
+        "x": 16.7199,
+        "y": 1.2305
+      },
+      "matrix": [
+        1,
+        15
+      ]
+    },
+    {
+      "id": "PAGE_UP",
+      "type": "key",
+      "row": 1,
+      "order": 16,
+      "geometry": {
+        "x": 17.25,
+        "y": 1.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 32,
+      "led_point": {
+        "x": 17.75,
+        "y": 1.2305
+      },
+      "matrix": [
+        3,
+        15
+      ]
+    },
+    {
+      "id": "TAB",
+      "type": "key",
+      "row": 2,
+      "order": 0,
+      "geometry": {
+        "x": 0,
+        "y": 2.25,
+        "width": 1.5,
+        "height": 1
+      },
+      "led_address": 33,
+      "led_point": {
+        "x": 0.2377,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        0
+      ]
+    },
+    {
+      "id": "Q",
+      "type": "key",
+      "row": 2,
+      "order": 1,
+      "geometry": {
+        "x": 1.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 34,
+      "led_point": {
+        "x": 1.5848,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        1
+      ]
+    },
+    {
+      "id": "W",
+      "type": "key",
+      "row": 2,
+      "order": 2,
+      "geometry": {
+        "x": 2.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 35,
+      "led_point": {
+        "x": 2.615,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "E",
+      "type": "key",
+      "row": 2,
+      "order": 3,
+      "geometry": {
+        "x": 3.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 36,
+      "led_point": {
+        "x": 3.6451,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "R",
+      "type": "key",
+      "row": 2,
+      "order": 4,
+      "geometry": {
+        "x": 4.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 37,
+      "led_point": {
+        "x": 4.6752,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        4
+      ]
+    },
+    {
+      "id": "T",
+      "type": "key",
+      "row": 2,
+      "order": 5,
+      "geometry": {
+        "x": 5.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 38,
+      "led_point": {
+        "x": 5.7054,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        5
+      ]
+    },
+    {
+      "id": "Y",
+      "type": "key",
+      "row": 2,
+      "order": 6,
+      "geometry": {
+        "x": 6.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 39,
+      "led_point": {
+        "x": 6.7355,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        6
+      ]
+    },
+    {
+      "id": "U",
+      "type": "key",
+      "row": 2,
+      "order": 7,
+      "geometry": {
+        "x": 7.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 40,
+      "led_point": {
+        "x": 7.7656,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        7
+      ]
+    },
+    {
+      "id": "I",
+      "type": "key",
+      "row": 2,
+      "order": 8,
+      "geometry": {
+        "x": 8.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 41,
+      "led_point": {
+        "x": 8.7958,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        8
+      ]
+    },
+    {
+      "id": "O",
+      "type": "key",
+      "row": 2,
+      "order": 9,
+      "geometry": {
+        "x": 9.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 42,
+      "led_point": {
+        "x": 9.8259,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        9
+      ]
+    },
+    {
+      "id": "P",
+      "type": "key",
+      "row": 2,
+      "order": 10,
+      "geometry": {
+        "x": 10.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 43,
+      "led_point": {
+        "x": 10.856,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        10
+      ]
+    },
+    {
+      "id": "LEFT_BRACKET",
+      "type": "key",
+      "row": 2,
+      "order": 11,
+      "geometry": {
+        "x": 11.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 44,
+      "led_point": {
+        "x": 11.8862,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        11
+      ]
+    },
+    {
+      "id": "RIGHT_BRACKET",
+      "type": "key",
+      "row": 2,
+      "order": 12,
+      "geometry": {
+        "x": 12.5,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 45,
+      "led_point": {
+        "x": 12.9163,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        12
+      ]
+    },
+    {
+      "id": "BACKSLASH",
+      "type": "key",
+      "row": 2,
+      "order": 13,
+      "geometry": {
+        "x": 13.5,
+        "y": 2.25,
+        "width": 1.5,
+        "height": 1
+      },
+      "led_address": 46,
+      "led_point": {
+        "x": 14.1842,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        13
+      ]
+    },
+    {
+      "id": "DELETE",
+      "type": "key",
+      "row": 2,
+      "order": 14,
+      "geometry": {
+        "x": 15.25,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 47,
+      "led_point": {
+        "x": 15.6897,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        14
+      ]
+    },
+    {
+      "id": "END",
+      "type": "key",
+      "row": 2,
+      "order": 15,
+      "geometry": {
+        "x": 16.25,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 48,
+      "led_point": {
+        "x": 16.7199,
+        "y": 2.2969
+      },
+      "matrix": [
+        2,
+        15
+      ]
+    },
+    {
+      "id": "PAGE_DOWN",
+      "type": "key",
+      "row": 2,
+      "order": 16,
+      "geometry": {
+        "x": 17.25,
+        "y": 2.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 49,
+      "led_point": {
+        "x": 17.75,
+        "y": 2.2969
+      },
+      "matrix": [
+        3,
+        12
+      ]
+    },
+    {
+      "id": "CAPS_LOCK",
+      "type": "key",
+      "row": 3,
+      "order": 0,
+      "geometry": {
+        "x": 0,
+        "y": 3.25,
+        "width": 1.75,
+        "height": 1
+      },
+      "led_address": 50,
+      "led_point": {
+        "x": 0.3962,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        0
+      ]
+    },
+    {
+      "id": "A",
+      "type": "key",
+      "row": 3,
+      "order": 1,
+      "geometry": {
+        "x": 1.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 51,
+      "led_point": {
+        "x": 1.8225,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        1
+      ]
+    },
+    {
+      "id": "S",
+      "type": "key",
+      "row": 3,
+      "order": 2,
+      "geometry": {
+        "x": 2.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 52,
+      "led_point": {
+        "x": 2.8527,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        2
+      ]
+    },
+    {
+      "id": "D",
+      "type": "key",
+      "row": 3,
+      "order": 3,
+      "geometry": {
+        "x": 3.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 53,
+      "led_point": {
+        "x": 3.8828,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "F",
+      "type": "key",
+      "row": 3,
+      "order": 4,
+      "geometry": {
+        "x": 4.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 54,
+      "led_point": {
+        "x": 4.9129,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        4
+      ]
+    },
+    {
+      "id": "G",
+      "type": "key",
+      "row": 3,
+      "order": 5,
+      "geometry": {
+        "x": 5.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 55,
+      "led_point": {
+        "x": 5.9431,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        5
+      ]
+    },
+    {
+      "id": "H",
+      "type": "key",
+      "row": 3,
+      "order": 6,
+      "geometry": {
+        "x": 6.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 56,
+      "led_point": {
+        "x": 6.9732,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        6
+      ]
+    },
+    {
+      "id": "J",
+      "type": "key",
+      "row": 3,
+      "order": 7,
+      "geometry": {
+        "x": 7.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 57,
+      "led_point": {
+        "x": 8.0033,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        7
+      ]
+    },
+    {
+      "id": "K",
+      "type": "key",
+      "row": 3,
+      "order": 8,
+      "geometry": {
+        "x": 8.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 58,
+      "led_point": {
+        "x": 9.0335,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        8
+      ]
+    },
+    {
+      "id": "L",
+      "type": "key",
+      "row": 3,
+      "order": 9,
+      "geometry": {
+        "x": 9.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 59,
+      "led_point": {
+        "x": 10.0636,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        9
+      ]
+    },
+    {
+      "id": "SEMICOLON",
+      "type": "key",
+      "row": 3,
+      "order": 10,
+      "geometry": {
+        "x": 10.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 60,
+      "led_point": {
+        "x": 11.0938,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        10
+      ]
+    },
+    {
+      "id": "QUOTE",
+      "type": "key",
+      "row": 3,
+      "order": 11,
+      "geometry": {
+        "x": 11.75,
+        "y": 3.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 61,
+      "led_point": {
+        "x": 12.1239,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        11
+      ]
+    },
+    {
+      "id": "ENTER",
+      "type": "key",
+      "row": 3,
+      "order": 12,
+      "geometry": {
+        "x": 12.75,
+        "y": 3.25,
+        "width": 2.25,
+        "height": 1
+      },
+      "led_address": 62,
+      "led_point": {
+        "x": 13.7879,
+        "y": 3.2812
+      },
+      "matrix": [
+        3,
+        13
+      ]
+    },
+    {
+      "id": "LEFT_SHIFT",
+      "type": "key",
+      "row": 4,
+      "order": 0,
+      "geometry": {
+        "x": 0,
+        "y": 4.25,
+        "width": 2.25,
+        "height": 1
+      },
+      "led_address": 63,
+      "led_point": {
+        "x": 0.6339,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        0
+      ]
+    },
+    {
+      "id": "Z",
+      "type": "key",
+      "row": 4,
+      "order": 1,
+      "geometry": {
+        "x": 2.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 64,
+      "led_point": {
+        "x": 2.298,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        2
+      ]
+    },
+    {
+      "id": "X",
+      "type": "key",
+      "row": 4,
+      "order": 2,
+      "geometry": {
+        "x": 3.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 65,
+      "led_point": {
+        "x": 3.3281,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        3
+      ]
+    },
+    {
+      "id": "C",
+      "type": "key",
+      "row": 4,
+      "order": 3,
+      "geometry": {
+        "x": 4.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 66,
+      "led_point": {
+        "x": 4.3583,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "V",
+      "type": "key",
+      "row": 4,
+      "order": 4,
+      "geometry": {
+        "x": 5.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 67,
+      "led_point": {
+        "x": 5.3884,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        5
+      ]
+    },
+    {
+      "id": "B",
+      "type": "key",
+      "row": 4,
+      "order": 5,
+      "geometry": {
+        "x": 6.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 68,
+      "led_point": {
+        "x": 6.4185,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        6
+      ]
+    },
+    {
+      "id": "N",
+      "type": "key",
+      "row": 4,
+      "order": 6,
+      "geometry": {
+        "x": 7.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 69,
+      "led_point": {
+        "x": 7.4487,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        7
+      ]
+    },
+    {
+      "id": "M",
+      "type": "key",
+      "row": 4,
+      "order": 7,
+      "geometry": {
+        "x": 8.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 70,
+      "led_point": {
+        "x": 8.4788,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        8
+      ]
+    },
+    {
+      "id": "COMMA",
+      "type": "key",
+      "row": 4,
+      "order": 8,
+      "geometry": {
+        "x": 9.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 71,
+      "led_point": {
+        "x": 9.5089,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        9
+      ]
+    },
+    {
+      "id": "PERIOD",
+      "type": "key",
+      "row": 4,
+      "order": 9,
+      "geometry": {
+        "x": 10.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 72,
+      "led_point": {
+        "x": 10.5391,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        10
+      ]
+    },
+    {
+      "id": "SLASH",
+      "type": "key",
+      "row": 4,
+      "order": 10,
+      "geometry": {
+        "x": 11.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 73,
+      "led_point": {
+        "x": 11.5692,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        11
+      ]
+    },
+    {
+      "id": "RIGHT_SHIFT",
+      "type": "key",
+      "row": 4,
+      "order": 11,
+      "geometry": {
+        "x": 12.25,
+        "y": 4.25,
+        "width": 2.75,
+        "height": 1
+      },
+      "led_address": 74,
+      "led_point": {
+        "x": 13.5502,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        13
+      ]
+    },
+    {
+      "id": "UP",
+      "type": "key",
+      "row": 4,
+      "order": 12,
+      "geometry": {
+        "x": 16.25,
+        "y": 4.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 75,
+      "led_point": {
+        "x": 16.7199,
+        "y": 4.2656
+      },
+      "matrix": [
+        4,
+        15
+      ]
+    },
+    {
+      "id": "LEFT_CONTROL",
+      "type": "key",
+      "row": 5,
+      "order": 0,
+      "geometry": {
+        "x": 0,
+        "y": 5.25,
+        "width": 1.25,
+        "height": 1
+      },
+      "led_address": 76,
+      "led_point": {
+        "x": 0.1585,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        0
+      ]
+    },
+    {
+      "id": "LEFT_MODIFIER_2",
+      "type": "key",
+      "row": 5,
+      "order": 1,
+      "geometry": {
+        "x": 1.25,
+        "y": 5.25,
+        "width": 1.25,
+        "height": 1
+      },
+      "led_address": 77,
+      "led_point": {
+        "x": 1.4263,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        1
+      ]
+    },
+    {
+      "id": "LEFT_MODIFIER_3",
+      "type": "key",
+      "row": 5,
+      "order": 2,
+      "geometry": {
+        "x": 2.5,
+        "y": 5.25,
+        "width": 1.25,
+        "height": 1
+      },
+      "led_address": 78,
+      "led_point": {
+        "x": 2.6942,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        2
+      ]
+    },
+    {
+      "id": "SPACE",
+      "type": "key",
+      "row": 5,
+      "order": 3,
+      "geometry": {
+        "x": 3.75,
+        "y": 5.25,
+        "width": 6.25,
+        "height": 1
+      },
+      "led_address": 79,
+      "led_point": {
+        "x": 6.577,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        6
+      ]
+    },
+    {
+      "id": "RIGHT_MODIFIER_1",
+      "type": "key",
+      "row": 5,
+      "order": 4,
+      "geometry": {
+        "x": 10,
+        "y": 5.25,
+        "width": 1.25,
+        "height": 1
+      },
+      "led_address": 80,
+      "led_point": {
+        "x": 10.3806,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        10
+      ]
+    },
+    {
+      "id": "RIGHT_MODIFIER_2",
+      "type": "key",
+      "row": 5,
+      "order": 5,
+      "geometry": {
+        "x": 11.25,
+        "y": 5.25,
+        "width": 1.25,
+        "height": 1
+      },
+      "led_address": 81,
+      "led_point": {
+        "x": 11.7277,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        11
+      ]
+    },
+    {
+      "id": "FN",
+      "type": "key",
+      "row": 5,
+      "order": 6,
+      "geometry": {
+        "x": 12.5,
+        "y": 5.25,
+        "width": 1.25,
+        "height": 1
+      },
+      "led_address": 82,
+      "led_point": {
+        "x": 12.9955,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        12
+      ]
+    },
+    {
+      "id": "RIGHT_CONTROL",
+      "type": "key",
+      "row": 5,
+      "order": 7,
+      "geometry": {
+        "x": 13.75,
+        "y": 5.25,
+        "width": 1.25,
+        "height": 1
+      },
+      "led_address": 83,
+      "led_point": {
+        "x": 14.2634,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        13
+      ]
+    },
+    {
+      "id": "LEFT",
+      "type": "key",
+      "row": 5,
+      "order": 8,
+      "geometry": {
+        "x": 15.25,
+        "y": 5.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 84,
+      "led_point": {
+        "x": 15.6897,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        14
+      ]
+    },
+    {
+      "id": "DOWN",
+      "type": "key",
+      "row": 5,
+      "order": 9,
+      "geometry": {
+        "x": 16.25,
+        "y": 5.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 85,
+      "led_point": {
+        "x": 16.7199,
+        "y": 5.25
+      },
+      "matrix": [
+        5,
+        15
+      ]
+    },
+    {
+      "id": "RIGHT",
+      "type": "key",
+      "row": 5,
+      "order": 10,
+      "geometry": {
+        "x": 17.25,
+        "y": 5.25,
+        "width": 1,
+        "height": 1
+      },
+      "led_address": 86,
+      "led_point": {
+        "x": 17.75,
+        "y": 5.25
+      },
+      "matrix": [
+        4,
+        14
+      ]
+    }
+  ],
+  "regions": [
+    {
+      "id": "full_keyboard",
+      "elements": [
+        "ESC",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "F11",
+        "F12",
+        "SCREENSHOT",
+        "SCROLL_LOCK",
+        "LIGHTING_KEY",
+        "GRAVE",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "0",
+        "MINUS",
+        "EQUAL",
+        "BACKSPACE",
+        "INSERT",
+        "HOME",
+        "PAGE_UP",
+        "TAB",
+        "Q",
+        "W",
+        "E",
+        "R",
+        "T",
+        "Y",
+        "U",
+        "I",
+        "O",
+        "P",
+        "LEFT_BRACKET",
+        "RIGHT_BRACKET",
+        "BACKSLASH",
+        "DELETE",
+        "END",
+        "PAGE_DOWN",
+        "CAPS_LOCK",
+        "A",
+        "S",
+        "D",
+        "F",
+        "G",
+        "H",
+        "J",
+        "K",
+        "L",
+        "SEMICOLON",
+        "QUOTE",
+        "ENTER",
+        "LEFT_SHIFT",
+        "Z",
+        "X",
+        "C",
+        "V",
+        "B",
+        "N",
+        "M",
+        "COMMA",
+        "PERIOD",
+        "SLASH",
+        "RIGHT_SHIFT",
+        "UP",
+        "LEFT_CONTROL",
+        "LEFT_MODIFIER_2",
+        "LEFT_MODIFIER_3",
+        "SPACE",
+        "RIGHT_MODIFIER_1",
+        "RIGHT_MODIFIER_2",
+        "FN",
+        "RIGHT_CONTROL",
+        "LEFT",
+        "DOWN",
+        "RIGHT"
+      ],
+      "rows": [
+        [
+          "ESC",
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "SCREENSHOT",
+          "SCROLL_LOCK",
+          "LIGHTING_KEY"
+        ],
+        [
+          "GRAVE",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "0",
+          "MINUS",
+          "EQUAL",
+          "BACKSPACE",
+          "INSERT",
+          "HOME",
+          "PAGE_UP"
+        ],
+        [
+          "TAB",
+          "Q",
+          "W",
+          "E",
+          "R",
+          "T",
+          "Y",
+          "U",
+          "I",
+          "O",
+          "P",
+          "LEFT_BRACKET",
+          "RIGHT_BRACKET",
+          "BACKSLASH",
+          "DELETE",
+          "END",
+          "PAGE_DOWN"
+        ],
+        [
+          "CAPS_LOCK",
+          "A",
+          "S",
+          "D",
+          "F",
+          "G",
+          "H",
+          "J",
+          "K",
+          "L",
+          "SEMICOLON",
+          "QUOTE",
+          "ENTER"
+        ],
+        [
+          "LEFT_SHIFT",
+          "Z",
+          "X",
+          "C",
+          "V",
+          "B",
+          "N",
+          "M",
+          "COMMA",
+          "PERIOD",
+          "SLASH",
+          "RIGHT_SHIFT",
+          "UP"
+        ],
+        [
+          "LEFT_CONTROL",
+          "LEFT_MODIFIER_2",
+          "LEFT_MODIFIER_3",
+          "SPACE",
+          "RIGHT_MODIFIER_1",
+          "RIGHT_MODIFIER_2",
+          "FN",
+          "RIGHT_CONTROL",
+          "LEFT",
+          "DOWN",
+          "RIGHT"
+        ]
+      ],
+      "strategies": [
+        "geometry_resample",
+        "row_key_index"
+      ],
+      "large_key_threshold_u": 4
+    },
+    {
+      "id": "function_row",
+      "elements": [
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "F11",
+        "F12"
+      ],
+      "rows": [
+        [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12"
+        ]
+      ],
+      "strategies": [
+        "geometry_resample",
+        "row_key_index"
+      ],
+      "large_key_threshold_u": 4
+    },
+    {
+      "id": "alphanumeric_block",
+      "elements": [
+        "GRAVE",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "0",
+        "MINUS",
+        "EQUAL",
+        "BACKSPACE",
+        "TAB",
+        "Q",
+        "W",
+        "E",
+        "R",
+        "T",
+        "Y",
+        "U",
+        "I",
+        "O",
+        "P",
+        "LEFT_BRACKET",
+        "RIGHT_BRACKET",
+        "BACKSLASH",
+        "CAPS_LOCK",
+        "A",
+        "S",
+        "D",
+        "F",
+        "G",
+        "H",
+        "J",
+        "K",
+        "L",
+        "SEMICOLON",
+        "QUOTE",
+        "ENTER",
+        "LEFT_SHIFT",
+        "Z",
+        "X",
+        "C",
+        "V",
+        "B",
+        "N",
+        "M",
+        "COMMA",
+        "PERIOD",
+        "SLASH",
+        "RIGHT_SHIFT",
+        "LEFT_CONTROL",
+        "LEFT_MODIFIER_2",
+        "LEFT_MODIFIER_3",
+        "SPACE",
+        "RIGHT_MODIFIER_1",
+        "RIGHT_MODIFIER_2",
+        "FN",
+        "RIGHT_CONTROL"
+      ],
+      "rows": [
+        [
+          "GRAVE",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "0",
+          "MINUS",
+          "EQUAL",
+          "BACKSPACE"
+        ],
+        [
+          "TAB",
+          "Q",
+          "W",
+          "E",
+          "R",
+          "T",
+          "Y",
+          "U",
+          "I",
+          "O",
+          "P",
+          "LEFT_BRACKET",
+          "RIGHT_BRACKET",
+          "BACKSLASH"
+        ],
+        [
+          "CAPS_LOCK",
+          "A",
+          "S",
+          "D",
+          "F",
+          "G",
+          "H",
+          "J",
+          "K",
+          "L",
+          "SEMICOLON",
+          "QUOTE",
+          "ENTER"
+        ],
+        [
+          "LEFT_SHIFT",
+          "Z",
+          "X",
+          "C",
+          "V",
+          "B",
+          "N",
+          "M",
+          "COMMA",
+          "PERIOD",
+          "SLASH",
+          "RIGHT_SHIFT"
+        ],
+        [
+          "LEFT_CONTROL",
+          "LEFT_MODIFIER_2",
+          "LEFT_MODIFIER_3",
+          "SPACE",
+          "RIGHT_MODIFIER_1",
+          "RIGHT_MODIFIER_2",
+          "FN",
+          "RIGHT_CONTROL"
+        ]
+      ],
+      "strategies": [
+        "geometry_resample",
+        "row_key_index"
+      ],
+      "large_key_threshold_u": 4
+    },
+    {
+      "id": "navigation_cluster",
+      "elements": [
+        "INSERT",
+        "HOME",
+        "PAGE_UP",
+        "DELETE",
+        "END",
+        "PAGE_DOWN"
+      ],
+      "rows": [
+        [
+          "INSERT",
+          "HOME",
+          "PAGE_UP"
+        ],
+        [
+          "DELETE",
+          "END",
+          "PAGE_DOWN"
+        ]
+      ],
+      "strategies": [
+        "geometry_resample",
+        "row_key_index",
+        "anchored_row_grid"
+      ],
+      "large_key_threshold_u": 4,
+      "anchored_rows": [
+        "INSERT",
+        "DELETE"
+      ]
+    },
+    {
+      "id": "arrows",
+      "elements": [
+        "UP",
+        "LEFT",
+        "DOWN",
+        "RIGHT"
+      ],
+      "rows": [
+        [
+          "UP"
+        ],
+        [
+          "LEFT",
+          "DOWN",
+          "RIGHT"
+        ]
+      ],
+      "strategies": [
+        "geometry_resample",
+        "row_key_index"
+      ],
+      "large_key_threshold_u": 4
+    }
+  ],
+  "semantic_bindings": {},
+  "aliases": {
+    "APPLICATION": "INSERT",
+    "CMD": "LEFT_MODIFIER_3",
+    "CONTROL": "LEFT_CONTROL",
+    "ESCAPE": "ESC",
+    "LEFT_COMMAND": "LEFT_MODIFIER_3",
+    "LEFT_OPTION": "LEFT_MODIFIER_2",
+    "OPTION": "LEFT_MODIFIER_2",
+    "RETURN": "ENTER",
+    "RIGHT_COMMAND": "RIGHT_MODIFIER_1",
+    "RIGHT_OPTION": "RIGHT_MODIFIER_2"
+  }
+}

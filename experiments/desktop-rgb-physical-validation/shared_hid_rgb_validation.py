@@ -34,6 +34,9 @@ PALETTE = (
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--profile", required=True, help="explicit bundled profile ID or JSON path"
+    )
+    parser.add_argument(
         "--mode",
         choices=("cooperative", "threaded", "both"),
         default="both",
@@ -164,13 +167,16 @@ def animation_scene(profile, elapsed: float, duration: float):
 
 
 def run_mode(args: argparse.Namespace, mode: SharedHidMode) -> None:
-    profile = load_profile()
+    profile = load_profile(args.profile)
     print(f"PHASE mode={mode.value} action=open", flush=True)
-    with SharedRawHidSession.open_keychron_v3_8k(
+    with SharedRawHidSession.open_profile(
+        profile.device_profile,
         device_index=args.device_index,
         mode=mode,
     ) as session:
-        adapter = KeychronEffect25Adapter(session.rgb_transport(), session.device_info)
+        adapter = KeychronEffect25Adapter(
+            session.rgb_transport(), session.device_info, profile=profile.device_profile
+        )
         with RgbController(adapter, profile) as controller:
             for index, region_id in enumerate(profile.regions):
                 print(

@@ -82,11 +82,12 @@ window. Outside that state the key passes through immediately. Consequently a
 single stock-mapped tap can leave effect 25 and disarm interaction normally.
 No VIA remapping is performed by this port.
 
-**Desktop support is separate:** the current desktop auto-open factories,
-RGB adapter/profile, reserved-control default, and physical demos still target
-V3 8K ANSI encoder. They have not been extended to these PIDs or mappings.
-Adding these firmware builds does not make the existing desktop demos
-plug-and-play on an original V3.
+**Desktop support:** desktop API 0.2 consumes an explicit profile for each
+variant. Select the matching original V3 JSON from the
+[profile catalog](../../desktop/src/abralia/resources/profiles/README.md);
+there is no automatic model/profile selection. The current demos accept a
+required `--profile` argument. Firmware and desktop coverage remain offline-only
+for the original V3 variants.
 
 Before claiming hardware support, an owner must verify ordinary keys/Fn,
 encoder where present, VIA/Launcher, RGB geometry and effect IDs, frame timeout,

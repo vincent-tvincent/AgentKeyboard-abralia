@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from .layout import CompatibilityLayoutError, load_compatibility_layout
-from .rgb.profiles import DEFAULT_PROFILE, ProfileValidationError, load_profile
+from .rgb.profiles import ProfileValidationError, load_profile
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -26,7 +26,7 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("source", help="compatibility-layout JSON path")
         command.add_argument(
             "--profile",
-            default=DEFAULT_PROFILE,
+            required=True,
             help="bundled hardware profile ID or JSON path",
         )
         if name == "resolve":

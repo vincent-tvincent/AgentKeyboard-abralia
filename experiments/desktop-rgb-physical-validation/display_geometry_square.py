@@ -38,6 +38,7 @@ def parse_hex_color(value: str) -> Srgb8:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", required=True)
     parser.add_argument("--x", type=int, default=DEFAULT_SQUARE_X_U, metavar="U")
     parser.add_argument("--y", type=int, default=DEFAULT_SQUARE_Y_U, metavar="U")
     parser.add_argument("--color", type=parse_hex_color, default=Srgb8(255, 255, 255))
@@ -148,7 +149,7 @@ def run(args: argparse.Namespace) -> float:
     print_canvas(args.x, args.y)
 
     started = time.monotonic()
-    with RgbController.open(device_index=args.device_index) as controller:
+    with RgbController.open(args.profile, device_index=args.device_index) as controller:
         timeout = controller.adapter.capabilities().lease_timeout_seconds
         if timeout is not None and args.refresh_interval >= timeout:
             raise ValueError(

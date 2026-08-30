@@ -50,7 +50,7 @@ from .transport import (
     HidDeviceInfo,
     InteractionTransport,
     enumerate_hid_devices,
-    find_keychron_v3_8k_interface,
+    find_profile_interface,
 )
 
 __all__ = [
@@ -91,6 +91,6 @@ __all__ = [
     "TransportError",
     "ViaKeymapReader",
     "enumerate_hid_devices",
-    "find_keychron_v3_8k_interface",
+    "find_profile_interface",
     "parse_keycode",
 ]

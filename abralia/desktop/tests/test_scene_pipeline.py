@@ -28,7 +28,7 @@ CAPABILITIES = AdapterCapabilities(True, True, True, True, 2.0)
 
 class ProfileTests(unittest.TestCase):
     def test_bundled_v3_profile_has_exact_physical_and_led_coverage(self) -> None:
-        profile = load_profile()
+        profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
 
         self.assertEqual(len(profile.elements), 90)
         self.assertEqual(len(profile.rgb_elements), 87)
@@ -47,7 +47,7 @@ class ProfileTests(unittest.TestCase):
 
     def test_profile_semantics_reject_unknown_alias_target(self) -> None:
         data = json.loads(
-            resources.files("abralia.rgb")
+            resources.files("abralia")
             .joinpath("resources/profiles/keychron-v3-8k-ansi-encoder-effect25.json")
             .read_text(encoding="utf-8")
         )
@@ -81,7 +81,7 @@ class ColorTests(unittest.TestCase):
 
 class ScenePipelineTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.profile = load_profile()
+        self.profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
         self.compiler = SceneCompiler()
 
     def test_physical_scene_becomes_a_complete_ordered_device_frame(self) -> None:

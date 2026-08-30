@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from ...device_profile import DeviceProfile
 from ..compatibility import AdapterCapabilities
 from ..led_mapper import DeviceFrame
 from ..transport import HidDeviceInfo
@@ -30,9 +31,10 @@ class AdapterHealth:
 class RgbDeviceAdapter(Protocol):
     adapter_id: str
     adapter_version: int
+    profile: DeviceProfile
 
     @classmethod
-    def discover(cls) -> list[HidDeviceInfo]: ...
+    def discover(cls, profile: DeviceProfile) -> list[HidDeviceInfo]: ...
 
     def capabilities(self) -> AdapterCapabilities: ...
     def snapshot(self) -> DeviceSnapshot: ...

@@ -18,6 +18,9 @@
     "encoder_count": 1
   },
   "expected_led_count": 87,
+  "interaction": {
+    "toggle_matrix": [0, 16]
+  },
   "capabilities": {
     "per_key_rgb": true,
     "independent_brightness": true,

@@ -1,16 +1,22 @@
 # Host Interaction ControlId lookup tables
 
-Two generated default-keymap views are available for the Keychron V3 8K ANSI
-encoder:
+Choose the exact wired ANSI variant:
 
-- [Side-by-side Keychron and Abralia defaults](keychron-v3-8k-official-control-id-lookup.md)
-- [Abralia-only Host Interaction default](abralia-v3-8k-default-control-id-lookup.md)
+| Keyboard | Default-keymap lookup | Physical controls covered |
+| --- | --- | --- |
+| V3 8K ANSI encoder | [Keychron/Abralia comparison](keychron-v3-8k-official-control-id-lookup.md) · [Abralia-only view](abralia-v3-8k-default-control-id-lookup.md) | 88 matrix controls and two encoder directions |
+| Original V3 ANSI, no knob | [Keychron/Abralia comparison](keychron-v3-ansi-control-id-lookup.md) | 87 matrix keys; no encoder |
+| Original V3 ANSI encoder | [Keychron/Abralia comparison](keychron-v3-ansi-encoder-control-id-lookup.md) | 88 matrix controls and two encoder directions |
 
-Both views cover macOS base layer 0, Windows base layer 2, matrix keys, knob
-press, and both encoder directions. The primary table places the pinned
-Keychron mappings and this project's Abralia mappings in adjacent columns so
-their differences are visible without switching documents. The Abralia-only
-view remains available as a compact project-default reference.
+Every comparison covers macOS base layer 0 and Windows base layer 2, with
+separate Keychron and Abralia columns. Original V3 ports preserve the upstream
+default keymap, so those columns match. Their tables were generated from source
+without hardware and do not establish physical validation.
+
+Do not reuse V3 8K matrix addresses for the original V3: the original's reserved
+top-right lighting key is `[3,14]` / `0x030E`, not `[0,16]` / `0x0010`. Its
+default action is RGB effect cycling, not Pause. These tables do not cover V3
+Max, V3 Ultra, ISO, JIS, or ABNT2 variants.
 
 These are human-readable defaults, not persistent runtime truth. The desktop
 API's keycode mode always reads the live VIA mapping and fans out to all
@@ -23,5 +29,7 @@ For live discovery without consulting either table, run the guarded
 It assigns unique volatile binding IDs to all firmware-reported controls and
 prints both the binding ID and Control ID whenever a control is pressed.
 
-Generated from Keychron/QMK revision `ee7390c3bbdc1f71a1cc8d54323f3f1d97868593` and Abralia public
-revision `fee375b4e97179b0e5c7ea7b793241b927afaa8b`.
+Each page records its own source revisions and generation method. The original
+V3 pages also record the exact JSON profile snapshot hash. See the
+[profile catalog](../abralia/desktop/src/abralia/resources/profiles/README.md)
+for the corresponding desktop configuration files.

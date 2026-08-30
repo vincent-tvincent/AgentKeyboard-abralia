@@ -8,12 +8,12 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from importlib import resources
 from itertools import pairwise
 from pathlib import Path
 
 import jsonschema
 
+from .device_profile import load_schema
 from .interaction.protocol import ControlId, ControlKind
 from .rgb.profiles import LayoutProfile, PhysicalElement, RegionTarget
 from .rgb.scene import MappingStrategy
@@ -158,18 +158,9 @@ class ResolvedCompatibilityLayout:
         }
 
 
-def _schema(name: str) -> dict[str, object]:
-    text = (
-        resources.files("abralia.rgb")
-        .joinpath(f"resources/schemas/{name}")
-        .read_text(encoding="utf-8")
-    )
-    return json.loads(text)
-
-
 def _validate_schema(data: object, schema_name: str, source: str) -> None:
     try:
-        jsonschema.Draft202012Validator(_schema(schema_name)).validate(data)
+        jsonschema.Draft202012Validator(load_schema(schema_name)).validate(data)
     except jsonschema.ValidationError as error:
         path = ".".join(str(part) for part in error.absolute_path) or "document"
         raise CompatibilityLayoutError(f"{source}: {path}: {error.message}") from error

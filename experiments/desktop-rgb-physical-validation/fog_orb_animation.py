@@ -60,9 +60,7 @@ def color_at(x: float, y: float, elapsed: float, index: int) -> Srgb8:
 
     seed = math.sin(index * 91.7) * 43758.5453
     star_gate = 1.0 if seed - math.floor(seed) > 0.90 else 0.0
-    star = star_gate * (
-        0.5 + 0.5 * math.sin(elapsed * 1.7 + index * 0.73)
-    ) ** 4
+    star = star_gate * (0.5 + 0.5 * math.sin(elapsed * 1.7 + index * 0.73)) ** 4
 
     red = 9 * trail + 27 * volume + 112 * shell * rim_bias
     red += 235 * spark + 34 * star
@@ -82,6 +80,7 @@ def color_at(x: float, y: float, elapsed: float, index: int) -> Srgb8:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", required=True)
     parser.add_argument("--seconds", type=float, default=20.0)
     parser.add_argument("--fps", type=float, default=20.0)
     parser.add_argument("--brightness", type=int, default=190)
@@ -101,7 +100,7 @@ def validate_args(args: argparse.Namespace) -> None:
 def run(args: argparse.Namespace) -> tuple[int, float]:
     validate_args(args)
     frame_count = 0
-    with RgbController.open(device_index=args.device_index) as controller:
+    with RgbController.open(args.profile, device_index=args.device_index) as controller:
         points = []
         for index, element in enumerate(controller.profile.rgb_elements):
             point = element.led_point

@@ -5,20 +5,27 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from importlib import resources
 from itertools import pairwise
 from pathlib import Path
 
 import jsonschema
 
+from ..device_profile import (
+    DeviceMatch,
+    DeviceProfile,
+    DeviceProfileError,
+    InteractionProfile,
+    KeymapGeometry,
+    ProfileCapabilities,
+    device_profile_from_data,
+    load_profile_data,
+    load_schema,
+)
 from .errors import ProfileValidationError
 from .scene import MappingStrategy
-
-DEFAULT_PROFILE = "builtin:keychron-v3-8k-ansi-encoder-effect25"
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,29 +82,6 @@ class RegionTarget:
 
 
 @dataclass(frozen=True, slots=True)
-class DeviceMatch:
-    vendor_id: int
-    product_id: int
-    usage_page: int
-    usage: int
-
-
-@dataclass(frozen=True, slots=True)
-class ProfileCapabilities:
-    per_key_rgb: bool
-    independent_brightness: bool
-    guarded_frames: bool
-    local_animation: bool
-
-
-@dataclass(frozen=True, slots=True)
-class KeymapGeometry:
-    matrix_rows: int
-    matrix_columns: int
-    encoder_count: int
-
-
-@dataclass(frozen=True, slots=True)
 class LayoutProfile:
     schema_version: int
     profile_id: str
@@ -112,6 +96,22 @@ class LayoutProfile:
     regions: Mapping[str, RegionTarget]
     semantic_bindings: Mapping[str, Mapping[str, tuple[str, ...]]]
     aliases: Mapping[str, str]
+    interaction: InteractionProfile | None = None
+
+    @property
+    def device_profile(self) -> DeviceProfile:
+        return DeviceProfile(
+            self.schema_version,
+            self.profile_id,
+            self.display_name,
+            self.adapter_id,
+            self.adapter_min_version,
+            self.device_match,
+            self.keymap,
+            self.expected_led_count,
+            self.capabilities,
+            self.interaction,
+        )
 
     @property
     def element_by_id(self) -> dict[str, PhysicalElement]:
@@ -127,20 +127,26 @@ class LayoutProfile:
             return normalized
         return self.aliases.get(normalized, normalized)
 
-
-def _resource_text(package: str, relative: str) -> str:
-    return resources.files(package).joinpath(relative).read_text(encoding="utf-8")
-
-
-def _schema() -> dict[str, object]:
-    return json.loads(
-        _resource_text("abralia.rgb", "resources/schemas/profile-v1.schema.json")
-    )
+    def interaction_toggle_element_id(self) -> str:
+        """Resolve a visual toggle without assuming its legend or current keycode."""
+        matrix = self.device_profile.require_interaction().toggle_matrix
+        for element in self.elements:
+            if element.matrix == matrix and element.rgb_capable:
+                return element.element_id
+        raise ProfileValidationError(
+            "The interaction toggle has no RGB element in this profile."
+        )
 
 
 def validate_profile(data: Mapping[str, object]) -> None:
     try:
-        jsonschema.Draft202012Validator(_schema()).validate(data)
+        device_profile_from_data(data)
+    except DeviceProfileError as error:
+        raise ProfileValidationError(str(error)) from error
+    try:
+        jsonschema.Draft202012Validator(load_schema("profile-v1.schema.json")).validate(
+            data
+        )
     except jsonschema.ValidationError as error:
         path = ".".join(str(part) for part in error.absolute_path) or "profile"
         raise ProfileValidationError(f"{path}: {error.message}") from error
@@ -276,24 +282,13 @@ def validate_profile(data: Mapping[str, object]) -> None:
         )
 
 
-def _load_data(source: str | Path) -> dict[str, object]:
-    if isinstance(source, str) and source.startswith("builtin:"):
-        profile_id = source.removeprefix("builtin:")
-        try:
-            text = _resource_text(
-                "abralia.rgb", f"resources/profiles/{profile_id}.json"
-            )
-        except FileNotFoundError as error:
-            raise ProfileValidationError(
-                f"Unknown bundled profile {profile_id!r}."
-            ) from error
-        return json.loads(text)
-    return json.loads(Path(source).read_text(encoding="utf-8"))
-
-
-def load_profile(source: str | Path = DEFAULT_PROFILE) -> LayoutProfile:
-    data = _load_data(source)
+def load_profile(source: str | Path) -> LayoutProfile:
+    try:
+        data = load_profile_data(source)
+    except DeviceProfileError as error:
+        raise ProfileValidationError(str(error)) from error
     validate_profile(data)
+    metadata = device_profile_from_data(data)
     elements = tuple(
         PhysicalElement(
             element_id=item["id"],
@@ -347,4 +342,5 @@ def load_profile(source: str | Path = DEFAULT_PROFILE) -> LayoutProfile:
             for region, slots in data.get("semantic_bindings", {}).items()
         },
         aliases=data.get("aliases", {}),
+        interaction=metadata.interaction,
     )

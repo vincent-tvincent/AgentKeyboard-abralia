@@ -12,6 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar
 
+from ..device_profile import DeviceProfile
 from .errors import (
     FirmwareRejectedError,
     KeycodeLookupError,
@@ -98,7 +99,10 @@ def _chunks(values: Sequence[T], size: int) -> Iterable[Sequence[T]]:
 class HostInteractionProtocolClient:
     """Exact synchronous representation of every firmware protocol v2 command."""
 
-    def __init__(self, transport: InteractionTransport):
+    def __init__(self, transport: InteractionTransport, *, profile: DeviceProfile):
+        profile.require_adapter("keychron-effect25-rawhid", 1)
+        profile.require_interaction()
+        self.profile = profile
         self.transport = transport
         self.session_token = 0
         self.capabilities: Capabilities | None = None
@@ -108,8 +112,15 @@ class HostInteractionProtocolClient:
         self._unexpected_reports: deque[bytes] = deque(maxlen=64)
 
     @classmethod
-    def open_keychron_v3_8k(cls) -> HostInteractionProtocolClient:
-        return cls(HidApiInteractionTransport.open_keychron_v3_8k())
+    def open_profile(
+        cls, profile: DeviceProfile, *, device_index: int | None = None
+    ) -> HostInteractionProtocolClient:
+        profile.require_adapter("keychron-effect25-rawhid", 1)
+        profile.require_interaction()
+        return cls(
+            HidApiInteractionTransport.open_profile(profile, device_index=device_index),
+            profile=profile,
+        )
 
     def _capture_report(self, report: bytes) -> None:
         if is_device_event(report):
@@ -151,19 +162,25 @@ class HostInteractionProtocolClient:
             raise FirmwareRejectedError(
                 "GET_CAPABILITIES was rejected.", capabilities.response
             )
+        expected = self.profile.keymap
+        if (
+            capabilities.matrix_rows,
+            capabilities.matrix_columns,
+            capabilities.encoder_count,
+        ) != (expected.matrix_rows, expected.matrix_columns, expected.encoder_count):
+            raise ProtocolError(
+                "Firmware matrix/encoder capabilities do not match the supplied profile."
+            )
         self.capabilities = capabilities
         return capabilities
 
     def get_status(self) -> Response:
-        return self._transact(
-            get_status_packet(self.session_token), Opcode.GET_STATUS
-        )
+        return self._transact(get_status_packet(self.session_token), Opcode.GET_STATUS)
 
     def claim_session(self, token: int | None = None) -> Response:
+        self.get_capabilities()
         claimed = token if token is not None else (secrets.randbits(32) or 1)
-        response = self._transact(
-            claim_session_packet(claimed), Opcode.CLAIM_SESSION
-        )
+        response = self._transact(claim_session_packet(claimed), Opcode.CLAIM_SESSION)
         if response.session_token != claimed:
             raise ProtocolError("Firmware acknowledged a different session token.")
         self.session_token = claimed
@@ -181,18 +198,14 @@ class HostInteractionProtocolClient:
         token = self._require_session()
         if sequence is None:
             sequence = (self._heartbeat_sequence + 1) & 0xFFFF
-        response = self._transact(
-            keepalive_packet(token, sequence), Opcode.KEEPALIVE
-        )
+        response = self._transact(keepalive_packet(token, sequence), Opcode.KEEPALIVE)
         self._heartbeat_sequence = sequence
         self._next_heartbeat_at = time.monotonic() + 1.0
         return response
 
     def release_session(self) -> Response:
         token = self._require_session()
-        response = self._transact(
-            release_session_packet(token), Opcode.RELEASE_SESSION
-        )
+        response = self._transact(release_session_packet(token), Opcode.RELEASE_SESSION)
         self.session_token = 0
         self._heartbeat_sequence = 0
         self._next_heartbeat_at = 0.0
@@ -212,9 +225,7 @@ class HostInteractionProtocolClient:
         entries: Sequence[BindingEntry],
     ) -> Response:
         return self._transact(
-            write_bindings_packet(
-                self._require_session(), generation, policy, entries
-            ),
+            write_bindings_packet(self._require_session(), generation, policy, entries),
             Opcode.WRITE_BINDINGS,
         )
 
@@ -347,8 +358,12 @@ class HostInteractionProtocolClient:
         self.transport.close()
 
     def __enter__(self) -> HostInteractionProtocolClient:
-        self.get_capabilities()
-        self.claim_session()
+        try:
+            self.get_capabilities()
+            self.claim_session()
+        except BaseException:
+            self.close()
+            raise
         return self
 
     def __exit__(self, _type: object, _value: object, _traceback: object) -> None:
@@ -358,8 +373,6 @@ class HostInteractionProtocolClient:
 class HostInteractionController:
     """Layout-agnostic direct-ControlId and live-keycode binding API."""
 
-    PAUSE_CONTROL = ControlId.key(0, 16)
-
     def __init__(
         self,
         client: HostInteractionProtocolClient,
@@ -368,6 +381,15 @@ class HostInteractionController:
         compatibility: ResolvedCompatibilityLayout | None = None,
     ):
         self.client = client
+        self.profile = client.profile
+        self.toggle_control = ControlId.key(
+            *self.profile.require_interaction().toggle_matrix
+        )
+        if (
+            compatibility is not None
+            and compatibility.profile_id != self.profile.profile_id
+        ):
+            raise ProtocolError("Compatibility layout targets a different profile.")
         self.capabilities = client.get_capabilities()
         self.keymap_reader = keymap_reader or ViaKeymapReader(client.transport)
         self.compatibility = compatibility
@@ -386,8 +408,10 @@ class HostInteractionController:
         return self.resolve_region(region_id).controls
 
     def _validate_control(self, control_id: ControlId) -> None:
-        if control_id == self.PAUSE_CONTROL:
-            raise ProtocolError("The physical Pause control is reserved by firmware.")
+        if control_id == self.toggle_control:
+            raise ProtocolError(
+                "The physical interaction toggle is reserved by firmware."
+            )
         if control_id.kind is ControlKind.KEY:
             if (
                 control_id.primary >= self.capabilities.matrix_rows
@@ -395,8 +419,13 @@ class HostInteractionController:
             ):
                 raise ProtocolError(f"Key control {control_id} is outside the matrix.")
             return
-        if control_id.primary >= self.capabilities.encoder_count or control_id.secondary:
-            raise ProtocolError(f"Encoder control {control_id} is outside capabilities.")
+        if (
+            control_id.primary >= self.capabilities.encoder_count
+            or control_id.secondary
+        ):
+            raise ProtocolError(
+                f"Encoder control {control_id} is outside capabilities."
+            )
 
     def _replace(self, desired: dict[ControlId, ConfiguredBinding]) -> BindingUpdate:
         status = self.client.get_status()
@@ -468,9 +497,7 @@ class HostInteractionController:
             policy=policy or BindingPolicy(),
         )
 
-    def replace_bindings(
-        self, bindings: Iterable[ConfiguredBinding]
-    ) -> BindingUpdate:
+    def replace_bindings(self, bindings: Iterable[ConfiguredBinding]) -> BindingUpdate:
         """Atomically replace the complete table with caller-addressed controls."""
 
         desired: dict[ControlId, ConfiguredBinding] = {}
@@ -507,9 +534,7 @@ class HostInteractionController:
             controls, update.binding_generation, update.response, matches
         )
 
-    def remove_controls(
-        self, controls: Iterable[ControlId | int]
-    ) -> BindingUpdate:
+    def remove_controls(self, controls: Iterable[ControlId | int]) -> BindingUpdate:
         resolved = tuple(
             sorted(
                 {

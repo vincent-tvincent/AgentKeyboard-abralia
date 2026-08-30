@@ -26,18 +26,19 @@ from abralia.interaction import (
     Routing,
 )
 
+from abralia import load_device_profile
 
-PAUSE_CONTROL = ControlId.key(0, 16)
 
-
-def controls_from_capabilities(capabilities: Capabilities) -> tuple[ControlId, ...]:
+def controls_from_capabilities(
+    capabilities: Capabilities, toggle_control: ControlId
+) -> tuple[ControlId, ...]:
     """Enumerate firmware addresses without assuming a physical layout."""
 
     controls = [
         ControlId.key(row, column)
         for row in range(capabilities.matrix_rows)
         for column in range(capabilities.matrix_columns)
-        if ControlId.key(row, column) != PAUSE_CONTROL
+        if ControlId.key(row, column) != toggle_control
     ]
     for index in range(capabilities.encoder_count):
         controls.extend(
@@ -51,6 +52,7 @@ def controls_from_capabilities(capabilities: Capabilities) -> tuple[ControlId, .
 
 def inspection_bindings(
     capabilities: Capabilities,
+    toggle_control: ControlId,
 ) -> tuple[ConfiguredBinding, ...]:
     policy = BindingPolicy(
         routing=Routing.MIRROR,
@@ -62,7 +64,7 @@ def inspection_bindings(
     return tuple(
         ConfiguredBinding(BindingEntry(control_id, index), policy)
         for index, control_id in enumerate(
-            controls_from_capabilities(capabilities), start=1
+            controls_from_capabilities(capabilities, toggle_control), start=1
         )
     )
 
@@ -109,6 +111,8 @@ def print_event(event: DeviceEvent, *, json_lines: bool) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", required=True)
+    parser.add_argument("--device-index", type=int)
     parser.add_argument(
         "--yes",
         action="store_true",
@@ -146,21 +150,23 @@ def run(args: argparse.Namespace) -> None:
         if confirmation != "INSPECT":
             raise HostInteractionError("Confirmation did not match.")
 
-    with HostInteractionProtocolClient.open_keychron_v3_8k() as protocol:
+    profile = load_device_profile(args.profile)
+    toggle_control = ControlId.key(*profile.require_interaction().toggle_matrix)
+    with HostInteractionProtocolClient.open_profile(
+        profile, device_index=args.device_index
+    ) as protocol:
         controller = HostInteractionController(protocol)
-        bindings = inspection_bindings(controller.capabilities)
+        bindings = inspection_bindings(controller.capabilities, toggle_control)
         controller.replace_bindings(bindings)
         controller.activate_all(lease_ms=args.lease_ms)
 
         print(
             f"listening controls={len(bindings)} "
-            f"reserved_pause={PAUSE_CONTROL} routing=MIRROR",
+            f"reserved_pause={toggle_control} routing=MIRROR",
             file=sys.stderr,
             flush=True,
         )
-        deadline = (
-            time.monotonic() + args.seconds if args.seconds > 0 else None
-        )
+        deadline = time.monotonic() + args.seconds if args.seconds > 0 else None
         renew_interval = max(0.001, args.lease_ms * 0.75 / 1000)
         renew_at = time.monotonic() + renew_interval
 
@@ -177,7 +183,7 @@ def main() -> int:
         run(parse_args())
     except KeyboardInterrupt:
         return 0
-    except HostInteractionError as error:
+    except (HostInteractionError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     return 0

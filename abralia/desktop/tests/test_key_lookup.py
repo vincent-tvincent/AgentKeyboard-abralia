@@ -49,7 +49,7 @@ class FakeLiveKeymapReader:
 
 class LiveKeycodeResolverTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.profile = load_profile()
+        self.profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
         self.reader = FakeLiveKeymapReader()
         self.resolver = LiveKeycodeResolver()
 

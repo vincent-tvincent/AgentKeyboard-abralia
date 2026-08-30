@@ -12,11 +12,12 @@ import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ..device_profile import load_device_profile
 from .adapters.keychron_effect25 import KeychronEffect25Adapter
 from .colors import BLACK, Color, Srgb8, parse_color
 from .controller import DisplayLease, RgbController
 from .errors import RgbError
-from .profiles import DEFAULT_PROFILE, load_profile
+from .profiles import load_profile
 from .scene import (
     AbstractScene,
     Canvas,
@@ -84,7 +85,7 @@ def _layers(value: str) -> tuple[int, ...]:
 
 def _add_device_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--profile", default=DEFAULT_PROFILE, help="bundled profile ID or JSON path"
+        "--profile", required=True, help="bundled profile ID or JSON path"
     )
     parser.add_argument(
         "--compatibility",
@@ -163,8 +164,8 @@ def _render(
             lease.close()
 
 
-def _devices() -> int:
-    devices = KeychronEffect25Adapter.discover()
+def _devices(profile_source: str) -> int:
+    devices = KeychronEffect25Adapter.discover(load_device_profile(profile_source))
     if not devices:
         print("No matching Keychron V3 8K Raw HID interfaces found.")
         return 0
@@ -284,7 +285,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser("devices", help="list matching Raw HID interfaces")
+    devices = subparsers.add_parser(
+        "devices", help="list profile-matching Raw HID interfaces"
+    )
+    devices.add_argument("--profile", required=True)
 
     profile = subparsers.add_parser(
         "profile", help="validate or describe a layout profile"
@@ -293,7 +297,7 @@ def _parser() -> argparse.ArgumentParser:
     validate = profile_subparsers.add_parser(
         "validate", help="validate schema and profile invariants"
     )
-    validate.add_argument("source", nargs="?", default=DEFAULT_PROFILE)
+    validate.add_argument("source")
 
     keys = subparsers.add_parser(
         "render-keys", help="display a complete physical-key scene"
@@ -341,7 +345,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "devices":
-            return _devices()
+            return _devices(args.profile)
         if args.command == "profile":
             return _validate_profile(args.source)
         if args.command == "render-keys":

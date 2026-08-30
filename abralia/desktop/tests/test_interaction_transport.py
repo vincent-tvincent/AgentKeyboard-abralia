@@ -10,8 +10,9 @@ from abralia.interaction.errors import AmbiguousDeviceError, DeviceNotFoundError
 from abralia.interaction.transport import (
     HidApiInteractionTransport,
     HidDeviceInfo,
-    find_keychron_v3_8k_interface,
+    find_profile_interface,
 )
+from profile_fixtures import REFERENCE
 
 
 class FakeHidDevice:
@@ -63,10 +64,10 @@ class InteractionTransportTests(unittest.TestCase):
 
     def test_device_discovery_rejects_zero_and_ambiguous_matches(self) -> None:
         with self.assertRaises(DeviceNotFoundError):
-            find_keychron_v3_8k_interface([])
+            find_profile_interface(REFERENCE, [])
         with self.assertRaises(AmbiguousDeviceError):
-            find_keychron_v3_8k_interface([device("a"), device("b")])
-        self.assertEqual(find_keychron_v3_8k_interface([device("a")]).path, "a")
+            find_profile_interface(REFERENCE, [device("a"), device("b")])
+        self.assertEqual(find_profile_interface(REFERENCE, [device("a")]).path, "a")
 
 
 if __name__ == "__main__":

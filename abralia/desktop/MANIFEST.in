@@ -1,0 +1,3 @@
+include HOST_INTERACTION_API.md COMPATIBILITY_LAYOUTS.md
+recursive-include tests *.py
+recursive-include examples *.json

@@ -9,6 +9,7 @@ from .coordinator import (
     SharedKeyboardCoordinator,
     SharedKeyboardState,
 )
+from .device_profile import DeviceProfile, DeviceProfileError, load_device_profile
 from .shared_hid import (
     SharedHidError,
     SharedHidMode,
@@ -19,6 +20,8 @@ from .shared_hid import (
 
 __all__ = [
     "CoordinatorTransition",
+    "DeviceProfile",
+    "DeviceProfileError",
     "RgbProducerLifecycle",
     "SharedHidError",
     "SharedHidMode",
@@ -27,4 +30,5 @@ __all__ = [
     "SharedKeyboardState",
     "SharedRawHidSession",
     "SharedRgbTransportView",
+    "load_device_profile",
 ]

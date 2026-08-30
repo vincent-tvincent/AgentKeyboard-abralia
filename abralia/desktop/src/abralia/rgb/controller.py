@@ -23,7 +23,7 @@ from .errors import (
 )
 from .key_lookup import KeycodeResolution, LiveKeycodeResolver, LiveKeymapReader
 from .led_mapper import DeviceFrame, PhysicalElementLedMapper
-from .profiles import DEFAULT_PROFILE, LayoutProfile, load_profile
+from .profiles import LayoutProfile, load_profile
 from .recovery import StateRecoveryManager
 from .scene import (
     AbstractScene,
@@ -85,6 +85,12 @@ class RgbController:
             raise CapabilityError(
                 f"Profile requires adapter version {profile.adapter_min_version} or newer."
             )
+        if adapter.profile != profile.device_profile:
+            raise CapabilityError(
+                "Adapter metadata differs from the supplied RGB profile."
+            )
+        if compatibility is not None and compatibility.profile_id != profile.profile_id:
+            raise CapabilityError("Compatibility layout targets a different profile.")
         self.recovery = StateRecoveryManager(
             adapter,
             cleanup_callbacks=(self.compiler.resolver.overlay.clear,),
@@ -97,7 +103,7 @@ class RgbController:
     @classmethod
     def open(
         cls,
-        profile_source: str | Path = DEFAULT_PROFILE,
+        profile_source: str | Path,
         *,
         device_index: int | None = None,
         compatibility_source: str | Path | None = None,
@@ -117,7 +123,7 @@ class RgbController:
         match = profile.device_match
         devices = [
             device
-            for device in KeychronEffect25Adapter.discover()
+            for device in KeychronEffect25Adapter.discover(profile.device_profile)
             if device.vendor_id == match.vendor_id
             and device.product_id == match.product_id
             and device.usage_page == match.usage_page
@@ -140,7 +146,7 @@ class RgbController:
                 )
             device = devices[device_index]
         return cls(
-            KeychronEffect25Adapter.open(device),
+            KeychronEffect25Adapter.open(device, profile=profile.device_profile),
             profile,
             compatibility=compatibility,
         )

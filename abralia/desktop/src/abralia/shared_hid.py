@@ -12,6 +12,7 @@ from collections.abc import Callable, Sequence
 from enum import Enum
 from typing import Self
 
+from .device_profile import DeviceProfile
 from .interaction.errors import TransportError as InteractionTransportError
 from .rgb.errors import TransportError as RgbTransportError
 from .rgb.transport import HidDeviceInfo
@@ -104,19 +105,24 @@ class SharedRawHidSession:
         )
 
     @classmethod
-    def open_keychron_v3_8k(
+    def open_profile(
         cls,
+        profile: DeviceProfile,
         *,
         device_index: int | None = None,
         mode: SharedHidMode | str = SharedHidMode.COOPERATIVE,
         unmatched_capacity: int = 64,
         reader_poll_ms: int = 20,
     ) -> SharedRawHidSession:
-        from .rgb.adapters.keychron_effect25 import KeychronEffect25Adapter
+        from .rgb.transport import enumerate_hid_devices
 
-        devices = KeychronEffect25Adapter.discover()
+        devices = [
+            item
+            for item in enumerate_hid_devices()
+            if profile.device_match.matches(item)
+        ]
         if not devices:
-            raise SharedHidError("No matching Keychron V3 8K Raw HID interface found.")
+            raise SharedHidError("No Raw HID interface matches the supplied profile.")
         if device_index is None:
             if len(devices) != 1:
                 raise SharedHidError(

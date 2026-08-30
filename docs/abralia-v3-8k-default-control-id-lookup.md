@@ -4,7 +4,7 @@
 - **Snapshot layers:** macOS base layer 0 and Windows base layer 2
 - **Public-repository revision:** `fee375b4e97179b0e5c7ea7b793241b927afaa8b`
 - **Default keymap source:** [Abralia keymap.c](../abralia/firmware/qmk-userspace/keyboards/keychron/v3_8k/ansi_encoder/keymaps/abralia_host_interaction/keymap.c)
-- **Shared physical profile:** [V3 8K layout profile](../abralia/desktop/src/abralia/rgb/resources/profiles/keychron-v3-8k-ansi-encoder-effect25.json)
+- **Shared physical profile:** [V3 8K layout profile](../abralia/desktop/src/abralia/resources/profiles/keychron-v3-8k-ansi-encoder-effect25.json)
 - **Pinned matrix source:** [Keychron keyboard.json](https://github.com/Keychron/qmk_firmware/blob/ee7390c3bbdc1f71a1cc8d54323f3f1d97868593/keyboards/keychron/v3_8k/ansi_encoder/keyboard.json)
 - **Generated with:** QMK `c2json --no-cpp` plus the shared physical profile
 

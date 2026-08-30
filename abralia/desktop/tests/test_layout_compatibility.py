@@ -23,7 +23,7 @@ EXAMPLE = (
 
 class CompatibilityLayoutTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.profile = load_profile()
+        self.profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
 
     def write_json(self, directory: str, name: str, data: dict[str, object]) -> Path:
         path = Path(directory) / name

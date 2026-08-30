@@ -14,6 +14,7 @@ from abralia.rgb import PhysicalSceneBuilder, RgbController, Srgb8
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", required=True)
     parser.add_argument(
         "--initial-delay",
         type=float,
@@ -49,12 +50,11 @@ def run(args: argparse.Namespace) -> None:
         owner="physical-test",
     )
     time.sleep(args.initial_delay)
-    with RgbController.open(device_index=args.device_index) as controller:
+    with RgbController.open(args.profile, device_index=args.device_index) as controller:
         timeout = controller.adapter.capabilities().lease_timeout_seconds
         controller.display([scene], brightness_ceiling=args.brightness)
         print(
-            "FRAME_SUBMITTED_WITHOUT_REFRESH "
-            f"lease_timeout_seconds={timeout}",
+            f"FRAME_SUBMITTED_WITHOUT_REFRESH lease_timeout_seconds={timeout}",
             flush=True,
         )
         time.sleep(args.hold_seconds)

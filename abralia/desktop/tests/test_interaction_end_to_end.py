@@ -25,6 +25,7 @@ from abralia.interaction import (
     Routing,
     StatusFlags,
 )
+from profile_fixtures import TINY
 
 VIA_GET_LAYER_COUNT = 0x11
 VIA_GET_KEYMAP_BUFFER = 0x12
@@ -239,7 +240,7 @@ class HostInteractionEndToEndTests(unittest.TestCase):
     def test_live_keycode_binding_event_retry_heartbeat_and_release(self) -> None:
         firmware = FakeRawHidFirmware()
         transport = HidApiInteractionTransport(firmware)
-        client = HostInteractionProtocolClient(transport)
+        client = HostInteractionProtocolClient(transport, profile=TINY)
 
         capabilities = client.get_capabilities()
         self.assertEqual(capabilities.total_control_slots, 6)
@@ -299,7 +300,7 @@ class HostInteractionEndToEndTests(unittest.TestCase):
     def test_force_activation_is_rejected_when_effect25_is_unavailable(self) -> None:
         firmware = FakeRawHidFirmware()
         transport = HidApiInteractionTransport(firmware)
-        client = HostInteractionProtocolClient(transport)
+        client = HostInteractionProtocolClient(transport, profile=TINY)
         client.get_capabilities()
         client.claim_session(0x11223344)
         controller = HostInteractionController(client)

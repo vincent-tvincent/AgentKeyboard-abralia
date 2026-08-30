@@ -10,6 +10,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag
 
+from ...device_profile import DeviceProfile, DeviceProfileError
 from ..colors import BLACK, Hsv8, to_hsv8
 from ..compatibility import AdapterCapabilities
 from ..errors import CapabilityError, EffectUnavailableError, TransportError
@@ -24,17 +25,9 @@ from ..transport import (
 )
 from .base import AdapterHealth, DeviceSnapshot
 
-KEYCHRON_VID = 0x3434
-V3_8K_PID = 0x0F30
-RAW_USAGE_PAGE = 0xFF60
-RAW_USAGE = 0x61
 EFFECT_25 = 25
-EXPECTED_LED_COUNT = 87
 MAX_COLORS_PER_PACKET = 9
 MAX_KEYMAP_BYTES_PER_PACKET = 28
-MATRIX_ROWS = 6
-MATRIX_COLUMNS = 17
-ENCODER_COUNT = 1
 
 
 class EffectSelectionPolicy(IntEnum):
@@ -86,8 +79,15 @@ class KeychronEffect25Adapter:
         transport: RawHidTransport,
         device: HidDeviceInfo,
         *,
+        profile: DeviceProfile,
         effect_selection_policy: EffectSelectionPolicy = EffectSelectionPolicy.AUTO_SELECT,
     ):
+        self._validate_profile(profile)
+        if not profile.device_match.matches(device):
+            raise CapabilityError(
+                "Device identity does not match the supplied profile."
+            )
+        self.profile = profile
         self.transport = transport
         self.device = device
         self.effect_selection_policy = effect_selection_policy
@@ -98,19 +98,33 @@ class KeychronEffect25Adapter:
         self._capabilities: AdapterCapabilities | None = None
 
     @classmethod
-    def discover(cls) -> list[HidDeviceInfo]:
+    def _validate_profile(cls, profile: DeviceProfile) -> None:
+        try:
+            profile.require_adapter(cls.adapter_id, cls.adapter_version)
+        except DeviceProfileError as error:
+            raise CapabilityError(str(error)) from error
+        if profile.expected_led_count > 255:
+            raise CapabilityError("Keychron RGB supports at most 255 LED addresses.")
+
+    @classmethod
+    def discover(cls, profile: DeviceProfile) -> list[HidDeviceInfo]:
+        cls._validate_profile(profile)
         return [
             device
             for device in enumerate_hid_devices()
-            if device.vendor_id == KEYCHRON_VID
-            and device.product_id == V3_8K_PID
-            and device.usage_page == RAW_USAGE_PAGE
-            and device.usage == RAW_USAGE
+            if profile.device_match.matches(device)
         ]
 
     @classmethod
-    def open(cls, device: HidDeviceInfo) -> KeychronEffect25Adapter:
-        return cls(HidApiTransport.open_path(device.path), device)
+    def open(
+        cls, device: HidDeviceInfo, *, profile: DeviceProfile
+    ) -> KeychronEffect25Adapter:
+        cls._validate_profile(profile)
+        if not profile.device_match.matches(device):
+            raise CapabilityError(
+                "Device identity does not match the supplied profile."
+            )
+        return cls(HidApiTransport.open_path(device.path), device, profile=profile)
 
     def capabilities(self) -> AdapterCapabilities:
         if self._capabilities is not None:
@@ -120,8 +134,10 @@ class KeychronEffect25Adapter:
         )
         if protocol[1] == 0:
             raise CapabilityError("Keychron protocol version is unavailable.")
-        if self._led_count() != EXPECTED_LED_COUNT:
-            raise CapabilityError("Device does not expose the expected 87 LEDs.")
+        if self._led_count() != self.profile.expected_led_count:
+            raise CapabilityError(
+                f"Device LED count does not match the profile ({self.profile.expected_led_count})."
+            )
         try:
             self._frame_status()
         except TransportError as error:
@@ -222,9 +238,13 @@ class KeychronEffect25Adapter:
         return response[1]
 
     def keymap_address_space(self) -> LiveKeymapAddressSpace:
-        """Return the complete V3 8K firmware control address space."""
+        """Return the complete address space declared by the supplied profile."""
 
-        return LiveKeymapAddressSpace(MATRIX_ROWS, MATRIX_COLUMNS, ENCODER_COUNT)
+        return LiveKeymapAddressSpace(
+            self.profile.keymap.matrix_rows,
+            self.profile.keymap.matrix_columns,
+            self.profile.keymap.encoder_count,
+        )
 
     def read_matrix_keycodes(
         self,
@@ -233,9 +253,12 @@ class KeychronEffect25Adapter:
         rows: int,
         columns: int,
     ) -> Mapping[tuple[int, int, int], int]:
-        if (rows, columns) != (MATRIX_ROWS, MATRIX_COLUMNS):
+        if (rows, columns) != (
+            self.profile.keymap.matrix_rows,
+            self.profile.keymap.matrix_columns,
+        ):
             raise CapabilityError(
-                f"The effect-25 adapter expects a {MATRIX_ROWS}x{MATRIX_COLUMNS} matrix."
+                f"The effect-25 adapter expects a {self.profile.keymap.matrix_rows}x{self.profile.keymap.matrix_columns} matrix."
             )
         layer_size = rows * columns * 2
         values: dict[tuple[int, int, int], int] = {}
@@ -265,6 +288,11 @@ class KeychronEffect25Adapter:
         layers: tuple[int, ...],
         positions: tuple[EncoderPosition, ...],
     ) -> Mapping[tuple[int, EncoderPosition], int]:
+        if any(
+            not 0 <= position.index < self.profile.keymap.encoder_count
+            for position in positions
+        ):
+            raise CapabilityError("Encoder address is outside the supplied profile.")
         values: dict[tuple[int, EncoderPosition], int] = {}
         for layer in layers:
             for position in positions:
@@ -349,16 +377,18 @@ class KeychronEffect25Adapter:
         raise error
 
     def snapshot(self) -> DeviceSnapshot:
+        self.capabilities()
         frame_state = self._frame_status()[0]
         if frame_state is FrameState.GUARDED:
             raise CapabilityError(
                 "The device already has an active guarded RGB session; refusing to preempt it."
             )
         colors: list[Hsv8] = []
-        for start in range(0, EXPECTED_LED_COUNT, MAX_COLORS_PER_PACKET):
+        for start in range(0, self.profile.expected_led_count, MAX_COLORS_PER_PACKET):
             colors.extend(
                 self._get_colors(
-                    start, min(MAX_COLORS_PER_PACKET, EXPECTED_LED_COUNT - start)
+                    start,
+                    min(MAX_COLORS_PER_PACKET, self.profile.expected_led_count - start),
                 )
             )
         return DeviceSnapshot(
@@ -373,10 +403,15 @@ class KeychronEffect25Adapter:
         )
 
     def submit_frame(self, frame: DeviceFrame, *, brightness_ceiling: int) -> int:
+        self.capabilities()
         if not 0 <= brightness_ceiling <= 255:
             raise ValueError("brightness_ceiling must be in 0...255.")
-        if [item.address for item in frame.leds] != list(range(EXPECTED_LED_COUNT)):
-            raise CapabilityError("Keychron frames must contain all 87 ordered LEDs.")
+        if [item.address for item in frame.leds] != list(
+            range(self.profile.expected_led_count)
+        ):
+            raise CapabilityError(
+                f"Frames must contain all {self.profile.expected_led_count} ordered LEDs."
+            )
         self._ensure_guarded()
         try:
             hsv = tuple(to_hsv8(item.color) for item in frame.leds)
@@ -425,7 +460,10 @@ class KeychronEffect25Adapter:
     def clear(self) -> None:
         self.submit_frame(
             DeviceFrame(
-                tuple(LedColor(index, BLACK) for index in range(EXPECTED_LED_COUNT))
+                tuple(
+                    LedColor(index, BLACK)
+                    for index in range(self.profile.expected_led_count)
+                )
             ),
             brightness_ceiling=self._brightness_ceiling,
         )
@@ -442,7 +480,12 @@ class KeychronEffect25Adapter:
             snapshot.payload, KeychronEffect25Snapshot
         ):
             raise TransportError("Snapshot belongs to a different adapter.")
+        self.capabilities()
         state = snapshot.payload
+        if len(state.colors) != self.profile.expected_led_count:
+            raise CapabilityError(
+                "Snapshot LED count does not match the supplied profile."
+            )
         self._via_set(0x01, 0)
         current_frame_state = self._frame_status()[0]
         if current_frame_state is not FrameState.AWAITING:
@@ -471,7 +514,12 @@ class KeychronEffect25Adapter:
             snapshot.payload, KeychronEffect25Snapshot
         ):
             raise TransportError("Snapshot belongs to a different adapter.")
+        self.capabilities()
         state = snapshot.payload
+        if len(state.colors) != self.profile.expected_led_count:
+            raise CapabilityError(
+                "Snapshot LED count does not match the supplied profile."
+            )
         selected_effect = self._effect()
         self._via_set(0x01, 0)
         current_frame_state = self._frame_status()[0]
@@ -513,7 +561,12 @@ class KeychronEffect25Adapter:
             snapshot.payload, KeychronEffect25Snapshot
         ):
             raise TransportError("Snapshot belongs to a different adapter.")
+        self.capabilities()
         state = snapshot.payload
+        if len(state.colors) != self.profile.expected_led_count:
+            raise CapabilityError(
+                "Snapshot LED count does not match the supplied profile."
+            )
         return DeviceSnapshot(
             self.adapter_id,
             KeychronEffect25Snapshot(

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "abralia-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Diagram-aligned generalized RGB host library and CLI for Abralia"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,7 +26,8 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-"abralia.rgb" = [
+"abralia" = [
   "resources/profiles/*.json",
+  "resources/profiles/README.md",
   "resources/schemas/*.json",
 ]

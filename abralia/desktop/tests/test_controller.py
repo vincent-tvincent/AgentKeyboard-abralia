@@ -22,13 +22,15 @@ from abralia.rgb.errors import CapabilityError, OutputSuspendedError
 from abralia.rgb.key_lookup import LiveKeymapAddressSpace
 from abralia.rgb.led_mapper import DeviceFrame
 from abralia.rgb.profiles import EncoderDirection, EncoderPosition
+from profile_fixtures import REFERENCE
 
 
 class FakeAdapter:
     adapter_id = "keychron-effect25-rawhid"
     adapter_version = 1
 
-    def __init__(self) -> None:
+    def __init__(self, *, profile) -> None:
+        self.profile = profile
         self.original = DeviceSnapshot(self.adapter_id, {"original": True})
         self.submitted: list[DeviceFrame] = []
         self.refresh_count = 0
@@ -116,8 +118,8 @@ class FakeAdapter:
 
 class ControllerTests(unittest.TestCase):
     def test_compatibility_layout_replaces_runtime_region(self) -> None:
-        adapter = FakeAdapter()
-        profile = load_profile()
+        adapter = FakeAdapter(profile=REFERENCE)
+        profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
         source = (
             Path(__file__).parents[1]
             / "examples"
@@ -145,8 +147,10 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(lit, [1, 2, 3, 4, 5, 6])
 
     def test_context_captures_displays_refreshes_and_restores(self) -> None:
-        adapter = FakeAdapter()
-        controller = RgbController(adapter, load_profile())
+        adapter = FakeAdapter(profile=REFERENCE)
+        controller = RgbController(
+            adapter, load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+        )
         scene = PhysicalSceneBuilder().build(
             "test", {"W": Srgb8(255, 0, 0)}, owner="test"
         )
@@ -163,8 +167,10 @@ class ControllerTests(unittest.TestCase):
         self.assertTrue(adapter.closed)
 
     def test_manual_restore_ends_the_session(self) -> None:
-        adapter = FakeAdapter()
-        controller = RgbController(adapter, load_profile())
+        adapter = FakeAdapter(profile=REFERENCE)
+        controller = RgbController(
+            adapter, load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+        )
         scene = PhysicalSceneBuilder().build("test", {}, owner="test")
 
         controller.__enter__()
@@ -175,8 +181,10 @@ class ControllerTests(unittest.TestCase):
         controller.close()
 
     def test_suspend_revokes_leases_and_rebases_final_recovery(self) -> None:
-        adapter = FakeAdapter()
-        controller = RgbController(adapter, load_profile())
+        adapter = FakeAdapter(profile=REFERENCE)
+        controller = RgbController(
+            adapter, load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+        )
         scene = PhysicalSceneBuilder().build(
             "test", {"W": Srgb8(255, 0, 0)}, owner="test"
         )
@@ -199,8 +207,10 @@ class ControllerTests(unittest.TestCase):
         )
 
     def test_keycode_scene_targets_every_deduplicated_physical_match(self) -> None:
-        adapter = FakeAdapter()
-        controller = RgbController(adapter, load_profile())
+        adapter = FakeAdapter(profile=REFERENCE)
+        controller = RgbController(
+            adapter, load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+        )
 
         with controller:
             scene, resolution = controller.build_keycode_scene(
@@ -218,8 +228,10 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(adapter.submitted[0].leds[35].color, Srgb8(255, 0, 0))
 
     def test_keycode_scene_rejects_matching_control_without_rgb(self) -> None:
-        adapter = FakeAdapter()
-        controller = RgbController(adapter, load_profile())
+        adapter = FakeAdapter(profile=REFERENCE)
+        controller = RgbController(
+            adapter, load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+        )
 
         with controller, self.assertRaisesRegex(CapabilityError, "KNOB_CLOCKWISE"):
             controller.build_keycode_scene(
@@ -231,8 +243,10 @@ class ControllerTests(unittest.TestCase):
             )
 
     def test_keycode_scene_rejects_raw_match_missing_from_profile(self) -> None:
-        adapter = FakeAdapter()
-        controller = RgbController(adapter, load_profile())
+        adapter = FakeAdapter(profile=REFERENCE)
+        controller = RgbController(
+            adapter, load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
+        )
 
         with controller, self.assertRaisesRegex(CapabilityError, r"matrix\[3,12\]"):
             controller.build_keycode_scene(

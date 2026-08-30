@@ -8,7 +8,6 @@ from collections.abc import Callable, Sequence
 
 from abralia.rgb.adapters.keychron_effect25 import (
     EFFECT_25,
-    EXPECTED_LED_COUNT,
     EffectSelectionPolicy,
     FrameFlags,
     FrameOperation,
@@ -21,14 +20,18 @@ from abralia.rgb.errors import CapabilityError, EffectUnavailableError
 from abralia.rgb.led_mapper import DeviceFrame, LedColor
 from abralia.rgb.profiles import EncoderDirection, EncoderPosition
 from abralia.rgb.transport import HidDeviceInfo
+from profile_fixtures import REFERENCE
 
 
 class FakeTransport:
-    def __init__(self) -> None:
+    def __init__(self, *, profile) -> None:
+        self.profile = profile
         self.effect = EFFECT_25
         self.brightness = 77
         self.per_key_type = 3
-        self.colors = [Hsv8(index, 200, 100) for index in range(EXPECTED_LED_COUNT)]
+        self.colors = [
+            Hsv8(index, 200, 100) for index in range(self.profile.expected_led_count)
+        ]
         self.frame_state = FrameState.DIRECT
         self.active_sequence = 0
         self.active_valid = False
@@ -36,7 +39,11 @@ class FakeTransport:
         self.pending = False
         self.defer_commit_once = False
         self.keymap = [
-            [[0 for _column in range(17)] for _row in range(6)] for _layer in range(4)
+            [
+                [0 for _column in range(self.profile.keymap.matrix_columns)]
+                for _row in range(self.profile.keymap.matrix_rows)
+            ]
+            for _layer in range(4)
         ]
         self.encoder_map: dict[tuple[int, int, bool], int] = {}
         self.requests: list[list[int]] = []
@@ -140,7 +147,7 @@ class FakeTransport:
             self.brightness = values[3]
             response = self._report(values)
         elif values[:2] == [0xA8, 0x05]:
-            response = self._report([0xA8, 0x05, 0, EXPECTED_LED_COUNT])
+            response = self._report([0xA8, 0x05, 0, len(self.colors)])
         elif values[:2] == [0xA8, 0x07]:
             response = self._report([0xA8, 0x07, 0, self.per_key_type])
         elif values[:2] == [0xA8, 0x08]:
@@ -194,18 +201,18 @@ class KeychronAdapterTests(unittest.TestCase):
         return DeviceFrame(
             tuple(
                 LedColor(index, Srgb8(255, 0, 0) if index == 0 else Srgb8(0, 0, 0))
-                for index in range(EXPECTED_LED_COUNT)
+                for index in range(REFERENCE.expected_led_count)
             )
         )
 
     def test_guarded_submit_waits_for_active_valid_even_for_sequence_zero(self) -> None:
-        transport = FakeTransport()
-        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        transport = FakeTransport(profile=REFERENCE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE)
         before = adapter.snapshot()
         frame = DeviceFrame(
             tuple(
                 LedColor(index, Srgb8(255, 0, 0) if index == 0 else Srgb8(0, 0, 0))
-                for index in range(EXPECTED_LED_COUNT)
+                for index in range(REFERENCE.expected_led_count)
             )
         )
 
@@ -223,8 +230,8 @@ class KeychronAdapterTests(unittest.TestCase):
         self.assertEqual(adapter.snapshot(), before)
 
     def test_capability_probe_is_cached(self) -> None:
-        transport = FakeTransport()
-        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        transport = FakeTransport(profile=REFERENCE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE)
 
         adapter.capabilities()
         adapter.capabilities()
@@ -232,32 +239,36 @@ class KeychronAdapterTests(unittest.TestCase):
         self.assertEqual(sum(request == [0xA0] for request in transport.requests), 1)
 
     def test_effect_selection_policies_preserve_standalone_auto_select(self) -> None:
-        strict_transport = FakeTransport()
+        strict_transport = FakeTransport(profile=REFERENCE)
         strict_transport.effect = 23
         strict_transport.frame_state = FrameState.AWAITING
         strict = KeychronEffect25Adapter(
             strict_transport,
             DEVICE,
             effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
+            profile=REFERENCE,
         )
         with self.assertRaises(EffectUnavailableError):
             strict.submit_frame(self._frame(), brightness_ceiling=128)
         self.assertEqual(strict_transport.effect, 23)
         self.assertNotIn([0x07, 0x03, 0x02, EFFECT_25], strict_transport.requests)
 
-        automatic_transport = FakeTransport()
+        automatic_transport = FakeTransport(profile=REFERENCE)
         automatic_transport.effect = 23
         automatic_transport.frame_state = FrameState.AWAITING
-        automatic = KeychronEffect25Adapter(automatic_transport, DEVICE)
+        automatic = KeychronEffect25Adapter(
+            automatic_transport, DEVICE, profile=REFERENCE
+        )
         automatic.submit_frame(self._frame(), brightness_ceiling=128)
         self.assertEqual(automatic_transport.effect, EFFECT_25)
 
     def test_strict_refresh_translates_effect_change_to_standby_signal(self) -> None:
-        transport = FakeTransport()
+        transport = FakeTransport(profile=REFERENCE)
         adapter = KeychronEffect25Adapter(
             transport,
             DEVICE,
             effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
+            profile=REFERENCE,
         )
         adapter.submit_frame(self._frame(), brightness_ceiling=128)
         transport.effect = 1
@@ -269,8 +280,8 @@ class KeychronAdapterTests(unittest.TestCase):
     def test_effect_preserving_restore_rebases_snapshot_without_mode_change(
         self,
     ) -> None:
-        transport = FakeTransport()
-        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        transport = FakeTransport(profile=REFERENCE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE)
         before = adapter.snapshot()
         adapter.submit_frame(self._frame(), brightness_ceiling=128)
         transport.effect = 23
@@ -298,11 +309,12 @@ class KeychronAdapterTests(unittest.TestCase):
     def test_black_frame_preserves_nonzero_brightness_for_awaiting_recovery(
         self,
     ) -> None:
-        transport = FakeTransport()
-        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        transport = FakeTransport(profile=REFERENCE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE)
         frame = DeviceFrame(
             tuple(
-                LedColor(index, Srgb8(0, 0, 0)) for index in range(EXPECTED_LED_COUNT)
+                LedColor(index, Srgb8(0, 0, 0))
+                for index in range(REFERENCE.expected_led_count)
             )
         )
 
@@ -315,19 +327,19 @@ class KeychronAdapterTests(unittest.TestCase):
         self.assertEqual(transport.brightness, 160)
 
     def test_existing_guarded_session_is_not_preempted(self) -> None:
-        transport = FakeTransport()
+        transport = FakeTransport(profile=REFERENCE)
         transport.frame_state = FrameState.GUARDED
-        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE)
 
         with self.assertRaisesRegex(CapabilityError, "refusing to preempt"):
             adapter.snapshot()
 
     def test_live_via_matrix_and_encoder_reads_are_current_and_batched(self) -> None:
-        transport = FakeTransport()
+        transport = FakeTransport(profile=REFERENCE)
         transport.keymap[0][2][2] = 0x0004
         transport.keymap[2][2][2] = 0x1234
         transport.encoder_map[(0, 0, True)] = 0x0080
-        adapter = KeychronEffect25Adapter(transport, DEVICE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE)
         clockwise = EncoderPosition(0, EncoderDirection.CLOCKWISE)
 
         matrix = adapter.read_matrix_keycodes((0, 2), rows=6, columns=17)

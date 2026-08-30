@@ -81,9 +81,11 @@ These commands do not access hardware:
 
 ```sh
 .venv/bin/abralia-layout validate \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   abralia/desktop/examples/compatibility/f-row-navigation.json
 
 .venv/bin/abralia-layout resolve \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   abralia/desktop/examples/compatibility/f-row-navigation.json \
   --output resolved-layout.json
 ```
@@ -95,7 +97,7 @@ rewritten.
 
 ## RGB usage
 
-Pass the overlay to `RgbController.open()` or the CLI:
+Pass the overlay to `RgbController.open("builtin:keychron-v3-8k-ansi-encoder-effect25")` or the CLI:
 
 ```python
 with RgbController.open(compatibility_source="my-layout.json") as controller:
@@ -104,6 +106,7 @@ with RgbController.open(compatibility_source="my-layout.json") as controller:
 
 ```sh
 .venv/bin/abralia-rgb render-canvas canvas.json \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --compatibility my-layout.json \
   --target navigation_cluster \
   --strategy row_key_index
@@ -122,8 +125,9 @@ from abralia.interaction import HostInteractionController
 from abralia.layout import load_compatibility_layout
 from abralia.rgb import load_profile
 
-profile = load_profile()
+profile = load_profile("builtin:keychron-v3-8k-ansi-encoder-effect25")
 layout = load_compatibility_layout(profile, "my-layout.json")
+# protocol was constructed with profile=profile.device_profile
 controller = HostInteractionController(protocol, compatibility=layout)
 
 controls = controller.region_controls("navigation_cluster")

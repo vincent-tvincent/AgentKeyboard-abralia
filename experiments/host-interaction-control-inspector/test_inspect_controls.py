@@ -50,8 +50,12 @@ def capabilities(rows: int, columns: int, encoders: int) -> Capabilities:
 
 
 class ControlInspectorTests(unittest.TestCase):
-    def test_enumeration_uses_only_capabilities_and_excludes_reserved_pause(self) -> None:
-        controls = controls_from_capabilities(capabilities(6, 17, 1))
+    def test_enumeration_uses_only_capabilities_and_excludes_reserved_pause(
+        self,
+    ) -> None:
+        controls = controls_from_capabilities(
+            capabilities(6, 17, 1), ControlId.key(0, 16)
+        )
         self.assertEqual(len(controls), 103)
         self.assertNotIn(ControlId.key(0, 16), controls)
         self.assertIn(ControlId.key(5, 16), controls)
@@ -59,9 +63,11 @@ class ControlInspectorTests(unittest.TestCase):
         self.assertIn(ControlId.encoder_counterclockwise(0), controls)
 
     def test_unique_binding_ids_use_mirror_down_only_session_policy(self) -> None:
-        bindings = inspection_bindings(capabilities(2, 2, 1))
-        self.assertEqual([binding.entry.binding_id for binding in bindings], list(range(1, 7)))
-        self.assertEqual(len({binding.entry.control_id for binding in bindings}), 6)
+        bindings = inspection_bindings(capabilities(2, 2, 1), ControlId.key(1, 1))
+        self.assertEqual(
+            [binding.entry.binding_id for binding in bindings], list(range(1, 6))
+        )
+        self.assertEqual(len({binding.entry.control_id for binding in bindings}), 5)
         for binding in bindings:
             self.assertEqual(binding.policy.lifetime, Lifetime.SESSION)
             self.assertEqual(

@@ -1,54 +1,66 @@
-# Keychron V3 8K ControlId and default keymap lookup
+# Original Keychron V3 ANSI encoder ControlId and default keymap lookup
 
-- **Target:** Keychron V3 8K ANSI encoder
+- **Target:** `keychron/v3/ansi_encoder`; original wired V3, not V3 8K, Max, Ultra, or an ISO/JIS layout
 - **Snapshot layers:** macOS base layer 0 and Windows base layer 2
 - **Pinned upstream revision:** `ee7390c3bbdc1f71a1cc8d54323f3f1d97868593`
-- **Abralia public-repository revision:** `fee375b4e97179b0e5c7ea7b793241b927afaa8b`
-- **Keychron default keymap source:** [Keychron keymap.c](https://github.com/Keychron/qmk_firmware/blob/ee7390c3bbdc1f71a1cc8d54323f3f1d97868593/keyboards/keychron/v3_8k/ansi_encoder/keymaps/keychron/keymap.c)
-- **Abralia default keymap source:** [Abralia keymap.c](../abralia/firmware/qmk-userspace/keyboards/keychron/v3_8k/ansi_encoder/keymaps/abralia_host_interaction/keymap.c)
-- **Matrix/layout source:** [Keychron keyboard.json](https://github.com/Keychron/qmk_firmware/blob/ee7390c3bbdc1f71a1cc8d54323f3f1d97868593/keyboards/keychron/v3_8k/ansi_encoder/keyboard.json)
-- **Shared physical profile:** [V3 8K layout profile](../abralia/desktop/src/abralia/resources/profiles/keychron-v3-8k-ansi-encoder-effect25.json)
-- **Generated with:** QMK `c2json --no-cpp` plus the pinned matrix and shared physical profile
+- **Abralia firmware revision:** `a82285df197f8697525ba8125a0e4ba64d18280c`
+- **Keychron default keymap source:** [Keychron keymap.c](https://github.com/Keychron/qmk_firmware/blob/ee7390c3bbdc1f71a1cc8d54323f3f1d97868593/keyboards/keychron/v3/ansi_encoder/keymaps/keychron/keymap.c)
+- **Abralia default keymap source:** [Abralia keymap.c](../abralia/firmware/qmk-userspace/keyboards/keychron/v3/ansi_encoder/keymaps/abralia_host_interaction/keymap.c)
+- **Matrix/layout source:** [Keychron keyboard.json](https://github.com/Keychron/qmk_firmware/blob/ee7390c3bbdc1f71a1cc8d54323f3f1d97868593/keyboards/keychron/v3/ansi_encoder/keyboard.json)
+- **Shared physical profile:** [Original Keychron V3 ANSI encoder profile](../abralia/desktop/src/abralia/resources/profiles/keychron-v3-ansi-encoder-effect25.json)
+- **Profile snapshot SHA-256:** `75e559845092d69a337ccd87631e0fe4d547fbe23d99f298cdd57d3e4fb6e23c`
+- **Verification:** generated and cross-checked from source without hardware; physical behavior remains unverified
 
 ## How to use this table
 
-This is a side-by-side default-keymap snapshot for human development and
-documentation. It does not replace live VIA lookup. After a user remaps the
-keyboard, the desktop API reads the current VIA keymap and encoder map and
-applies a keycode operation to **every** matching physical control across the
-queried layers, deduplicating identical Control IDs.
+This is a human-readable default-keymap snapshot, not a live VIA dump. Physical
+position names come from the profile and do not imply that the corresponding
+key currently produces that keycode. After remapping, use live VIA lookup;
+these tables are not loaded by the runtime API.
 
-`binding_id` is not part of this static table. It is a volatile, host-assigned
-action correlation value. The table maps the pinned Keychron and Abralia
-default **keycodes** and physical positions to firmware **Control IDs**.
+The original V3 `abralia` and `abralia_host_interaction` keymaps directly include
+the pinned upstream `keychron` keymap. Their default mappings are therefore
+identical, which is why the Keychron and Abralia columns below match. This does
+not mean Host Interaction bindings cannot temporarily change input routing.
 
-Matrix-key Control IDs use `(row << 8) | column`. Encoder clockwise uses kind 1
-(`0x4000` for encoder 0); counterclockwise uses kind 2 (`0x8000` for encoder 0).
-The knob press is the ordinary matrix control `KNOB_PRESS` at `[0,13]`. The
-physical Pause control at `[0,16]` is shown for completeness but is reserved
-from Host Interaction bindings by firmware.
+Matrix-key Control IDs use `(row << 8) | column`. The table covers 88 matrix controls (87 ordinary keys plus knob press) and two encoder directions.
+It does not list unused scan-matrix cells or the OS-selection switch.
+
+The knob press is `KNOB_PRESS` at `[0,13]` / `0x000D`. Encoder 0 clockwise
+is `0x4000`; counterclockwise is `0x8000`.
+
+The top-right `LIGHTING_KEY` at `[3,14]` / `0x030E` is shown for completeness
+but is reserved from Host Interaction bindings. Its default action is
+`UG_NEXT` (RGB effect cycling), **not** `KC_PAUS`. With a live host session and
+enabled effect 25, a double tap toggles interaction and an unmatched tap replays
+its normal action after the gesture window. Outside that state, it passes
+through immediately.
+
+`binding_id` is a separate, volatile host-assigned action identifier and is
+not part of this table. `FN_MAC` is `MO(1)`, and `FN_WIN` is `MO(3)`; the
+Fn-layer contents themselves are not included in this base-layer view.
 
 ## Lookup table
 
 | Physical position | Matrix / encoder | Control ID | Keychron macOS layer 0 | Keychron Windows layer 2 | Abralia macOS layer 0 | Abralia Windows layer 2 |
 | --- | --- | ---: | --- | --- | --- | --- |
 | `ESC` | `[0,0]` | `0x0000` | `KC_ESC` | `KC_ESC` | `KC_ESC` | `KC_ESC` |
-| `F1` | `[0,1]` | `0x0001` | `KC_BRID` | `KC_F1` | `KC_F1` | `KC_F1` |
-| `F2` | `[0,2]` | `0x0002` | `KC_BRIU` | `KC_F2` | `KC_F2` | `KC_F2` |
-| `F3` | `[0,3]` | `0x0003` | `KC_MCTRL` | `KC_F3` | `KC_F3` | `KC_F3` |
-| `F4` | `[0,4]` | `0x0004` | `KC_LNPAD` | `KC_F4` | `KC_F4` | `KC_F4` |
-| `F5` | `[0,5]` | `0x0005` | `UG_VALD` | `KC_F5` | `KC_F5` | `KC_F5` |
-| `F6` | `[0,6]` | `0x0006` | `UG_VALU` | `KC_F6` | `KC_F6` | `KC_F6` |
-| `F7` | `[0,7]` | `0x0007` | `KC_MPRV` | `KC_F7` | `KC_F7` | `KC_F7` |
-| `F8` | `[0,8]` | `0x0008` | `KC_MPLY` | `KC_F8` | `KC_F8` | `KC_F8` |
-| `F9` | `[0,9]` | `0x0009` | `KC_MNXT` | `KC_F9` | `KC_F9` | `KC_F9` |
-| `F10` | `[0,10]` | `0x000A` | `KC_MUTE` | `KC_F10` | `KC_F10` | `KC_F10` |
-| `F11` | `[0,11]` | `0x000B` | `KC_VOLD` | `KC_F11` | `KC_F11` | `KC_F11` |
-| `F12` | `[0,12]` | `0x000C` | `KC_VOLU` | `KC_F12` | `KC_F12` | `KC_F12` |
+| `F1` | `[0,1]` | `0x0001` | `KC_BRID` | `KC_F1` | `KC_BRID` | `KC_F1` |
+| `F2` | `[0,2]` | `0x0002` | `KC_BRIU` | `KC_F2` | `KC_BRIU` | `KC_F2` |
+| `F3` | `[0,3]` | `0x0003` | `KC_MCTL` | `KC_F3` | `KC_MCTL` | `KC_F3` |
+| `F4` | `[0,4]` | `0x0004` | `KC_LPAD` | `KC_F4` | `KC_LPAD` | `KC_F4` |
+| `F5` | `[0,5]` | `0x0005` | `UG_VALD` | `KC_F5` | `UG_VALD` | `KC_F5` |
+| `F6` | `[0,6]` | `0x0006` | `UG_VALU` | `KC_F6` | `UG_VALU` | `KC_F6` |
+| `F7` | `[0,7]` | `0x0007` | `KC_MPRV` | `KC_F7` | `KC_MPRV` | `KC_F7` |
+| `F8` | `[0,8]` | `0x0008` | `KC_MPLY` | `KC_F8` | `KC_MPLY` | `KC_F8` |
+| `F9` | `[0,9]` | `0x0009` | `KC_MNXT` | `KC_F9` | `KC_MNXT` | `KC_F9` |
+| `F10` | `[0,10]` | `0x000A` | `KC_MUTE` | `KC_F10` | `KC_MUTE` | `KC_F10` |
+| `F11` | `[0,11]` | `0x000B` | `KC_VOLD` | `KC_F11` | `KC_VOLD` | `KC_F11` |
+| `F12` | `[0,12]` | `0x000C` | `KC_VOLU` | `KC_F12` | `KC_VOLU` | `KC_F12` |
 | `KNOB_PRESS` | `[0,13]` | `0x000D` | `KC_MUTE` | `KC_MUTE` | `KC_MUTE` | `KC_MUTE` |
 | `SCREENSHOT` | `[0,14]` | `0x000E` | `KC_SNAP` | `KC_PSCR` | `KC_SNAP` | `KC_PSCR` |
-| `SCROLL_LOCK` | `[0,15]` | `0x000F` | `KC_SIRI` | `KC_CTANA` | `KC_SCRL` | `KC_SCRL` |
-| `PAUSE` | `[0,16]` | `0x0010` | `UG_NEXT` | `UG_NEXT` | `KC_PAUS` | `KC_PAUS` |
+| `SCROLL_LOCK` | `[0,15]` | `0x000F` | `KC_SIRI` | `KC_CTANA` | `KC_SIRI` | `KC_CTANA` |
+| `LIGHTING_KEY` | `[3,14]` | `0x030E` | `UG_NEXT` | `UG_NEXT` | `UG_NEXT` | `UG_NEXT` |
 | `GRAVE` | `[1,0]` | `0x0100` | `KC_GRV` | `KC_GRV` | `KC_GRV` | `KC_GRV` |
 | `1` | `[1,1]` | `0x0101` | `KC_1` | `KC_1` | `KC_1` | `KC_1` |
 | `2` | `[1,2]` | `0x0102` | `KC_2` | `KC_2` | `KC_2` | `KC_2` |
@@ -63,9 +75,9 @@ from Host Interaction bindings by firmware.
 | `MINUS` | `[1,11]` | `0x010B` | `KC_MINS` | `KC_MINS` | `KC_MINS` | `KC_MINS` |
 | `EQUAL` | `[1,12]` | `0x010C` | `KC_EQL` | `KC_EQL` | `KC_EQL` | `KC_EQL` |
 | `BACKSPACE` | `[1,13]` | `0x010D` | `KC_BSPC` | `KC_BSPC` | `KC_BSPC` | `KC_BSPC` |
-| `INSERT` | `[1,14]` | `0x010E` | `KC_INS` | `KC_INS` | `KC_APP` | `KC_INS` |
+| `INSERT` | `[1,14]` | `0x010E` | `KC_INS` | `KC_INS` | `KC_INS` | `KC_INS` |
 | `HOME` | `[1,15]` | `0x010F` | `KC_HOME` | `KC_HOME` | `KC_HOME` | `KC_HOME` |
-| `PAGE_UP` | `[1,16]` | `0x0110` | `KC_PGUP` | `KC_PGUP` | `KC_PGUP` | `KC_PGUP` |
+| `PAGE_UP` | `[3,15]` | `0x030F` | `KC_PGUP` | `KC_PGUP` | `KC_PGUP` | `KC_PGUP` |
 | `TAB` | `[2,0]` | `0x0200` | `KC_TAB` | `KC_TAB` | `KC_TAB` | `KC_TAB` |
 | `Q` | `[2,1]` | `0x0201` | `KC_Q` | `KC_Q` | `KC_Q` | `KC_Q` |
 | `W` | `[2,2]` | `0x0202` | `KC_W` | `KC_W` | `KC_W` | `KC_W` |
@@ -82,7 +94,7 @@ from Host Interaction bindings by firmware.
 | `BACKSLASH` | `[2,13]` | `0x020D` | `KC_BSLS` | `KC_BSLS` | `KC_BSLS` | `KC_BSLS` |
 | `DELETE` | `[2,14]` | `0x020E` | `KC_DEL` | `KC_DEL` | `KC_DEL` | `KC_DEL` |
 | `END` | `[2,15]` | `0x020F` | `KC_END` | `KC_END` | `KC_END` | `KC_END` |
-| `PAGE_DOWN` | `[2,16]` | `0x0210` | `KC_PGDN` | `KC_PGDN` | `KC_PGDN` | `KC_PGDN` |
+| `PAGE_DOWN` | `[3,12]` | `0x030C` | `KC_PGDN` | `KC_PGDN` | `KC_PGDN` | `KC_PGDN` |
 | `CAPS_LOCK` | `[3,0]` | `0x0300` | `KC_CAPS` | `KC_CAPS` | `KC_CAPS` | `KC_CAPS` |
 | `A` | `[3,1]` | `0x0301` | `KC_A` | `KC_A` | `KC_A` | `KC_A` |
 | `S` | `[3,2]` | `0x0302` | `KC_S` | `KC_S` | `KC_S` | `KC_S` |
@@ -110,23 +122,36 @@ from Host Interaction bindings by firmware.
 | `RIGHT_SHIFT` | `[4,13]` | `0x040D` | `KC_RSFT` | `KC_RSFT` | `KC_RSFT` | `KC_RSFT` |
 | `UP` | `[4,15]` | `0x040F` | `KC_UP` | `KC_UP` | `KC_UP` | `KC_UP` |
 | `LEFT_CONTROL` | `[5,0]` | `0x0500` | `KC_LCTL` | `KC_LCTL` | `KC_LCTL` | `KC_LCTL` |
-| `LEFT_MODIFIER_2` | `[5,1]` | `0x0501` | `KC_LOPTN` | `KC_LWIN` | `KC_LOPTN` | `KC_LGUI` |
+| `LEFT_MODIFIER_2` | `[5,1]` | `0x0501` | `KC_LOPTN` | `KC_LWIN` | `KC_LOPTN` | `KC_LWIN` |
 | `LEFT_MODIFIER_3` | `[5,2]` | `0x0502` | `KC_LCMMD` | `KC_LALT` | `KC_LCMMD` | `KC_LALT` |
 | `SPACE` | `[5,6]` | `0x0506` | `KC_SPC` | `KC_SPC` | `KC_SPC` | `KC_SPC` |
 | `RIGHT_MODIFIER_1` | `[5,10]` | `0x050A` | `KC_RCMMD` | `KC_RALT` | `KC_RCMMD` | `KC_RALT` |
-| `RIGHT_MODIFIER_2` | `[5,11]` | `0x050B` | `KC_ROPTN` | `KC_RWIN` | `KC_ROPTN` | `KC_RGUI` |
+| `RIGHT_MODIFIER_2` | `[5,11]` | `0x050B` | `KC_ROPTN` | `KC_RWIN` | `KC_ROPTN` | `KC_RWIN` |
 | `FN` | `[5,12]` | `0x050C` | `FN_MAC` | `FN_WIN` | `FN_MAC` | `FN_WIN` |
 | `RIGHT_CONTROL` | `[5,13]` | `0x050D` | `KC_RCTL` | `KC_RCTL` | `KC_RCTL` | `KC_RCTL` |
 | `LEFT` | `[5,14]` | `0x050E` | `KC_LEFT` | `KC_LEFT` | `KC_LEFT` | `KC_LEFT` |
 | `DOWN` | `[5,15]` | `0x050F` | `KC_DOWN` | `KC_DOWN` | `KC_DOWN` | `KC_DOWN` |
-| `RIGHT` | `[5,16]` | `0x0510` | `KC_RGHT` | `KC_RGHT` | `KC_RGHT` | `KC_RGHT` |
+| `RIGHT` | `[4,14]` | `0x040E` | `KC_RGHT` | `KC_RGHT` | `KC_RGHT` | `KC_RGHT` |
 | `KNOB_COUNTERCLOCKWISE` | `encoder 0 CCW` | `0x8000` | `KC_VOLD` | `KC_VOLD` | `KC_VOLD` | `KC_VOLD` |
 | `KNOB_CLOCKWISE` | `encoder 0 CW` | `0x4000` | `KC_VOLU` | `KC_VOLU` | `KC_VOLU` | `KC_VOLU` |
 
-## License and provenance
+## Generation and provenance
 
-The Keychron default keymap and layout facts are derived from the pinned
-Keychron/QMK source linked above. The Abralia columns are derived from the
-project keymap linked above. Keychron and QMK retain their original notices and
-licenses. This generated Abralia documentation is covered by the repository's
-host/documentation Apache-2.0 scope; see `LICENSE.md`.
+The base-layer tokens were extracted with the pinned QMK parser:
+
+```sh
+qmk c2json --no-cpp -kb keychron/v3/ansi_encoder -km keychron \
+  keyboards/keychron/v3/ansi_encoder/keymaps/keychron/keymap.c
+```
+
+The parser's layout-ordered keys were joined to `keyboard.json` by matrix
+position and then to the shared profile's physical IDs. Encoder mappings were read from the same source's explicit `ENCODER_CCW_CW` entries. Both Abralia wrapper keymaps
+were checked to include that upstream keymap without redefining its arrays.
+Every physical profile control appears exactly once.
+
+The default keymap and layout facts derive from the pinned Keychron/QMK
+sources; upstream notices and licenses remain unchanged. This generated
+documentation is Apache-2.0 under [LICENSE.md](../LICENSE.md).
+
+Return to the [lookup index](control-id-lookups.md) or
+[documentation navigation](README.md).

@@ -42,12 +42,14 @@ from abralia import (
 )
 
 INTERACTION_REGION = "navigation_cluster"
-PAUSE_CONTROL = ControlId.key(0, 16)
 POLL_MS = 10
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--profile", required=True, help="explicit bundled profile ID or JSON path"
+    )
     parser.add_argument(
         "--mode", choices=("cooperative", "threaded"), default="cooperative"
     )
@@ -63,13 +65,16 @@ def parse_args() -> argparse.Namespace:
 
 
 def region_controls(profile) -> tuple[ControlId, ...]:
+    toggle_control = ControlId.key(
+        *profile.device_profile.require_interaction().toggle_matrix
+    )
     controls = []
     for element_id in profile.regions[INTERACTION_REGION].elements:
         matrix = profile.element_by_id[element_id].matrix
         if matrix is None:
             continue
         control = ControlId.key(*matrix)
-        if control != PAUSE_CONTROL and control not in controls:
+        if control != toggle_control and control not in controls:
             controls.append(control)
     return tuple(controls)
 
@@ -109,6 +114,7 @@ class InteractiveAnimationProducer:
     ):
         self.rgb = rgb
         self.profile = profile
+        self.toggle_element_id = profile.interaction_toggle_element_id()
         self.fps = fps
         self.brightness = brightness
         self.state = SharedKeyboardState.RGB_SUSPENDED
@@ -167,7 +173,7 @@ class InteractiveAnimationProducer:
             if self.state is SharedKeyboardState.ACTIVE
             else Srgb8(55, 235, 165)
         )
-        colors["PAUSE"] = scale(pause_color, breathing)
+        colors[self.toggle_element_id] = scale(pause_color, breathing)
         region_color = (
             Srgb8(155, 78, 15)
             if self.state is SharedKeyboardState.ACTIVE
@@ -208,7 +214,7 @@ class InteractiveAnimationProducer:
 
 
 def run(args: argparse.Namespace) -> bool:
-    profile = load_profile()
+    profile = load_profile(args.profile)
     controls = region_controls(profile)
     routing = Routing.MIRROR if args.routing == "mirror" else Routing.CAPTURE
     labels = {
@@ -217,16 +223,20 @@ def run(args: argparse.Namespace) -> bool:
             profile.regions[INTERACTION_REGION].elements, start=1
         )
     }
-    with SharedRawHidSession.open_keychron_v3_8k(
+    with SharedRawHidSession.open_profile(
+        profile.device_profile,
         device_index=args.device_index,
         mode=SharedHidMode(args.mode),
     ) as session:
         adapter = KeychronEffect25Adapter(
             session.rgb_transport(),
             session.device_info,
+            profile=profile.device_profile,
             effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
         )
-        protocol = HostInteractionProtocolClient(session.interaction_transport())
+        protocol = HostInteractionProtocolClient(
+            session.interaction_transport(), profile=profile.device_profile
+        )
         with RgbController(adapter, profile) as rgb, protocol:
             interaction = HostInteractionController(protocol)
             producer = InteractiveAnimationProducer(

@@ -17,7 +17,6 @@ from abralia.rgb import (
     Srgb8,
 )
 
-
 WIDTH = 19
 HEIGHT = 7
 COLORS = (Srgb8(255, 0, 0), Srgb8(0, 255, 0), Srgb8(0, 0, 255))
@@ -25,6 +24,7 @@ COLORS = (Srgb8(255, 0, 0), Srgb8(0, 255, 0), Srgb8(0, 0, 255))
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", required=True)
     parser.add_argument("--seconds", type=float, default=15.0)
     parser.add_argument("--refresh-interval", type=float, default=0.5)
     parser.add_argument("--brightness", type=int, default=160)
@@ -44,9 +44,7 @@ def validate_args(args: argparse.Namespace) -> None:
 def run(args: argparse.Namespace) -> float:
     validate_args(args)
     cells = tuple(
-        COLORS[min(2, column // 6)]
-        for _row in range(HEIGHT)
-        for column in range(WIDTH)
+        COLORS[min(2, column // 6)] for _row in range(HEIGHT) for column in range(WIDTH)
     )
     scene = RectangularSceneBuilder().build(
         "full-geometry-bands",
@@ -56,7 +54,7 @@ def run(args: argparse.Namespace) -> float:
         owner="physical-test",
     )
     started = time.monotonic()
-    with RgbController.open(device_index=args.device_index) as controller:
+    with RgbController.open(args.profile, device_index=args.device_index) as controller:
         timeout = controller.adapter.capabilities().lease_timeout_seconds
         if timeout is not None and args.refresh_interval >= timeout:
             raise ValueError(

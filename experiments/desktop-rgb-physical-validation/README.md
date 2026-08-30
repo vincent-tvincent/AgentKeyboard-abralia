@@ -12,6 +12,12 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -e abralia/desktop
 ```
 
+Every keyboard command below supplies a profile explicitly. Select a different
+JSON or bundled ID for another target; there is no automatic profile selection.
+The breathing indicator follows the profile toggle matrix (the lighting key on
+original V3), not a hardcoded Pause legend. Original V3 profiles are
+hardware-unverified.
+
 Close Keychron Launcher and VIA before a hardware run because only one process
 can own the Raw HID interface.
 
@@ -24,6 +30,7 @@ addressing visually obvious.
 ```sh
 .venv/bin/python \
   experiments/desktop-rgb-physical-validation/display_full_geometry.py \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --seconds 15
 ```
 
@@ -44,6 +51,7 @@ from the 36 colored source cells.
 ```sh
 .venv/bin/python \
   experiments/desktop-rgb-physical-validation/display_geometry_square.py \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --seconds 15 \
   --verbose-map
 ```
@@ -57,7 +65,7 @@ snapshot is then restored when the script exits.
 
 ```sh
 .venv/bin/python \
-  experiments/desktop-rgb-physical-validation/display_without_refresh.py
+  experiments/desktop-rgb-physical-validation/display_without_refresh.py --profile builtin:keychron-v3-8k-ansi-encoder-effect25
 ```
 
 ## Fog-orb animation
@@ -70,6 +78,7 @@ cadence, and complete-frame stress test rather than a product scene.
 ```sh
 .venv/bin/python \
   experiments/desktop-rgb-physical-validation/fog_orb_animation.py \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --seconds 20 \
   --fps 20
 ```
@@ -84,12 +93,14 @@ exercise exact row-index and anchored-row mappings through the production CLI:
 
 ```sh
 .venv/bin/abralia-rgb render-canvas \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   experiments/desktop-rgb-physical-validation/rgb-six-cells.json \
   --target navigation_cluster \
   --strategy row_key_index \
   --seconds 5
 
 .venv/bin/abralia-rgb render-canvas \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   experiments/desktop-rgb-physical-validation/rgb-six-cells.json \
   --target navigation_cluster \
   --strategy anchored_row_grid \
@@ -107,6 +118,7 @@ enabling Host Interaction bindings:
 ```sh
 .venv/bin/python \
   experiments/desktop-rgb-physical-validation/shared_hid_rgb_validation.py \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --mode both
 ```
 
@@ -142,6 +154,7 @@ presses and is not part of unattended validation:
 ```sh
 .venv/bin/python \
   experiments/desktop-rgb-physical-validation/shared_hid_region_interaction_validation.py \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --mode cooperative
 ```
 
@@ -171,6 +184,7 @@ proving that inactive input routing does not block desktop RGB output.
 ```sh
 .venv/bin/python \
   experiments/desktop-rgb-physical-validation/effect25_inactive_active_animation.py \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 \
   --mode cooperative \
   --seconds 45
 ```

@@ -43,12 +43,14 @@ from abralia import (
     SharedRawHidSession,
 )
 
-PAUSE_CONTROL = ControlId.key(0, 16)
 INTERACTION_POLL_MS = 10
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--profile", required=True, help="explicit bundled profile ID or JSON path"
+    )
     parser.add_argument(
         "--mode",
         choices=("cooperative", "threaded", "both"),
@@ -58,13 +60,13 @@ def parse_args() -> argparse.Namespace:
         "--seconds-per-region",
         type=float,
         default=0.0,
-        help="maximum active seconds per region; 0 waits for double-Pause",
+        help="maximum active seconds per region; 0 waits for double-tap the profile toggle",
     )
     parser.add_argument(
         "--combined-seconds",
         type=float,
         default=0.0,
-        help="maximum active seconds for the combined phase; 0 waits for double-Pause",
+        help="maximum active seconds for the combined phase; 0 waits for double-tap the profile toggle",
     )
     parser.add_argument(
         "--activation-timeout",
@@ -100,10 +102,13 @@ def control_for_element(element) -> ControlId | None:
 
 
 def region_controls(profile, region_id: str) -> tuple[ControlId, ...]:
+    toggle_control = ControlId.key(
+        *profile.device_profile.require_interaction().toggle_matrix
+    )
     controls: list[ControlId] = []
     for element_id in profile.regions[region_id].elements:
         control = control_for_element(profile.element_by_id[element_id])
-        if control is None or control == PAUSE_CONTROL or control in controls:
+        if control is None or control == toggle_control or control in controls:
             continue
         controls.append(control)
     return tuple(controls)
@@ -136,13 +141,13 @@ def bindings_for_controls(
     return tuple(bindings), labels
 
 
-def pause_breathing_scene(elapsed: float):
+def pause_breathing_scene(elapsed: float, element_id: str):
     phase = elapsed / 2.0 * math.tau
     breath = (math.sin(phase - math.pi / 2) + 1.0) / 2.0
     value = round(16 + 239 * breath * breath)
     return PhysicalSceneBuilder().build(
         "unactivated-pause-breathing",
-        {"PAUSE": Srgb8(value // 5, value // 2, value)},
+        {element_id: Srgb8(value // 5, value // 2, value)},
         background=BLACK,
         owner="shared-hid-region-interaction-validation",
     )
@@ -151,6 +156,7 @@ def pause_breathing_scene(elapsed: float):
 class ValidationProducer:
     def __init__(self, rgb: RgbController, *, brightness: int, pause_fps: float):
         self.rgb = rgb
+        self.toggle_element_id = rgb.hardware_profile.interaction_toggle_element_id()
         self.brightness = brightness
         self.pause_fps = pause_fps
         self.phase_name = ""
@@ -190,7 +196,7 @@ class ValidationProducer:
         self.next_frame_at = time.monotonic()
         print(
             f"WAITING_ACTIVATION phase={self.phase_name} "
-            "scene=pause_breathing gesture=double_pause",
+            "scene=pause_breathing gesture=double_toggle",
             flush=True,
         )
 
@@ -208,7 +214,11 @@ class ValidationProducer:
             if self.state is SharedKeyboardState.STANDBY and now >= self.next_frame_at:
                 self.close_lease()
                 self.lease = self.rgb.display(
-                    [pause_breathing_scene(now - self.started_at)],
+                    [
+                        pause_breathing_scene(
+                            now - self.started_at, self.toggle_element_id
+                        )
+                    ],
                     brightness_ceiling=self.brightness,
                 )
                 self.next_frame_at = now + 1.0 / self.pause_fps
@@ -320,7 +330,7 @@ def run_phase(
                 return False
             if active_deadline is not None and now >= active_deadline:
                 print(
-                    f"DEACTIVATION_TIMEOUT phase={phase_name} gesture=double_pause",
+                    f"DEACTIVATION_TIMEOUT phase={phase_name} gesture=double_toggle",
                     flush=True,
                 )
                 return False
@@ -356,19 +366,26 @@ def run_phase(
 
 
 def run_mode(args: argparse.Namespace, mode: SharedHidMode) -> bool:
-    profile = load_profile()
+    profile = load_profile(args.profile)
+    toggle_control = ControlId.key(
+        *profile.device_profile.require_interaction().toggle_matrix
+    )
     passed = True
     routing = Routing.CAPTURE if args.routing == "capture" else Routing.MIRROR
-    with SharedRawHidSession.open_keychron_v3_8k(
+    with SharedRawHidSession.open_profile(
+        profile.device_profile,
         device_index=args.device_index,
         mode=mode,
     ) as session:
         adapter = KeychronEffect25Adapter(
             session.rgb_transport(),
             session.device_info,
+            profile=profile.device_profile,
             effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
         )
-        protocol = HostInteractionProtocolClient(session.interaction_transport())
+        protocol = HostInteractionProtocolClient(
+            session.interaction_transport(), profile=profile.device_profile
+        )
         with RgbController(adapter, profile) as rgb, protocol:
             interaction = HostInteractionController(protocol)
             producer = ValidationProducer(
@@ -380,7 +397,7 @@ def run_mode(args: argparse.Namespace, mode: SharedHidMode) -> bool:
             initialize_coordinator = True
             for index, region_id in enumerate(profile.regions):
                 controls = region_controls(profile, region_id)
-                excluded_pause = PAUSE_CONTROL in {
+                excluded_pause = toggle_control in {
                     control_for_element(profile.element_by_id[element_id])
                     for element_id in profile.regions[region_id].elements
                 }
