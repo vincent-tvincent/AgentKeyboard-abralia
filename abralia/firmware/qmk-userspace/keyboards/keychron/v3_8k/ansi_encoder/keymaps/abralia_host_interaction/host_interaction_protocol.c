@@ -21,8 +21,6 @@
 #define HOST_INTERACTION_CONTROL_COUNT                                         \
   (HOST_INTERACTION_MATRIX_CONTROL_COUNT +                                     \
    HOST_INTERACTION_ENCODER_CONTROL_COUNT)
-#define HOST_INTERACTION_PAUSE_CONTROL                                         \
-  HOST_INTERACTION_CONTROL_ID(HOST_INTERACTION_CONTROL_KEY, 0, 16)
 
 #define HOST_INTERACTION_STATUS_SESSION_VALID (1 << 0)
 #define HOST_INTERACTION_STATUS_MANUAL_ACTIVE (1 << 1)
@@ -34,8 +32,11 @@
 #define HOST_INTERACTION_STATUS_RGB_EFFECT25_SELECTED (1 << 7)
 
 _Static_assert(RAW_EPSIZE == 32, "Host Interaction requires 32-byte Raw HID");
-_Static_assert(MATRIX_ROWS > 0 && MATRIX_COLS > 16,
-               "The V3 8K Pause position must be present");
+_Static_assert(HOST_INTERACTION_PAUSE_ROW >= 0 &&
+                   HOST_INTERACTION_PAUSE_ROW < MATRIX_ROWS &&
+                   HOST_INTERACTION_PAUSE_COL >= 0 &&
+                   HOST_INTERACTION_PAUSE_COL < MATRIX_COLS,
+               "The reserved Host Interaction toggle must be in the matrix");
 _Static_assert(MATRIX_ROWS <= 64, "Control IDs allocate six bits to rows");
 _Static_assert(MATRIX_COLS <= 256,
                "Control IDs allocate eight bits to columns");

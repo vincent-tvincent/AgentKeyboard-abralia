@@ -6,6 +6,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Board keymaps may relocate the physical toggle; retain the V3 8K defaults.
+#ifndef HOST_INTERACTION_PAUSE_ROW
+#define HOST_INTERACTION_PAUSE_ROW 0
+#endif
+#ifndef HOST_INTERACTION_PAUSE_COL
+#define HOST_INTERACTION_PAUSE_COL 16
+#endif
+
 #define HOST_INTERACTION_VALUE_ID 0x02
 #define HOST_INTERACTION_PROTOCOL_VERSION 0x02
 #define HOST_INTERACTION_EVENT_GROUP 0xF0
@@ -33,6 +41,11 @@ enum host_interaction_control_kind {
   ((uint8_t)(((control_id) >> 8) & 0x3FU))
 #define HOST_INTERACTION_CONTROL_SECONDARY(control_id)                         \
   ((uint8_t)((control_id) & 0xFFU))
+
+#define HOST_INTERACTION_PAUSE_CONTROL                                         \
+  HOST_INTERACTION_CONTROL_ID(HOST_INTERACTION_CONTROL_KEY,                    \
+                              HOST_INTERACTION_PAUSE_ROW,                     \
+                              HOST_INTERACTION_PAUSE_COL)
 
 enum host_interaction_opcode {
   HOST_INTERACTION_GET_CAPABILITIES = 0x00,

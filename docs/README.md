@@ -13,6 +13,7 @@ verification, and physical-keyboard validation where that distinction matters.
 | Bind keys or encoder actions through Host Interaction Mode | [Host Interaction desktop API](../abralia/desktop/HOST_INTERACTION_API.md) |
 | Define user-specific regions with matrix aliases | [User compatibility layouts](../abralia/desktop/COMPATIBILITY_LAYOUTS.md) |
 | Build or flash the Keychron V3 8K firmware | [QMK userspace build and flash guide](../abralia/firmware/qmk-userspace/README.md) |
+| Build experimental original V3 ANSI firmware, with or without a knob | [Original V3 sibling variants](../abralia/firmware/qmk-userspace/README.md#original-v3-sibling-variants-experimental) |
 | Understand the firmware directory and licensing boundary | [Firmware overview](../abralia/firmware/README.md) |
 | Find a physical key's Control ID or compare default mappings | [Control ID lookup guide](control-id-lookups.md) |
 | Discover live matrix and encoder Control IDs | [Host Interaction control inspector](../experiments/host-interaction-control-inspector/README.md) |

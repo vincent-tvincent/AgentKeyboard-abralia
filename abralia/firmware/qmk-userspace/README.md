@@ -6,14 +6,16 @@ QMK External Userspace for the Abralia firmware.
 
 - QMK CLI
 - Keychron QMK Firmware version recorded in `qmk-upstream.lock.json`
-- Keychron V3 8K ANSI encoder
+- A matching firmware target listed below; original V3 ports are experimental
 
 ## Setup
 
-Configure this directory as the QMK userspace:
+From the pinned Keychron QMK checkout, select this directory as the userspace
+for the current shell (paths below start at the Abralia repository root):
 
 ```sh
-qmk config user.overlay_dir="/path/to/abralia/firmware/qmk-userspace"
+export QMK_USERSPACE="/path/to/abralia-repository/abralia/firmware/qmk-userspace"
+cd /path/to/keychron-qmk_firmware
 ```
 
 ## Build
@@ -30,9 +32,71 @@ RGB plus Host Interaction firmware:
 qmk compile -j 10 -kb keychron/v3_8k/ansi_encoder -km abralia_host_interaction
 ```
 
+### Original V3 sibling variants (experimental)
+
+These are firmware-only ports for the original **wired ANSI V3**, not V3 Max,
+V3 Ultra, ISO, JIS, or ABNT2. Both variants are hardware-unverified. Compilation
+and offline tests do not establish physical compatibility.
+
+| Target | USB VID:PID | Matrix | Rotary encoders |
+| --- | --- | --- | --- |
+| `keychron/v3/ansi` | `3434:0330` | 6 x 16 | 0 |
+| `keychron/v3/ansi_encoder` | `3434:0331` | 6 x 16 | 1 |
+
+Build the RGB-only and Host Interaction versions independently:
+
+```sh
+qmk compile -j 10 -kb keychron/v3/ansi -km abralia
+qmk compile -j 10 -kb keychron/v3/ansi -km abralia_host_interaction
+qmk compile -j 10 -kb keychron/v3/ansi_encoder -km abralia
+qmk compile -j 10 -kb keychron/v3/ansi_encoder -km abralia_host_interaction
+```
+
+Sources live in `keyboards/keychron/v3/{ansi,ansi_encoder}/keymaps/` in this
+userspace. QMK copies the following generated files into this userspace root,
+alongside the reference V3 8K binaries:
+
+```text
+keychron_v3_ansi_abralia.bin
+keychron_v3_ansi_abralia_host_interaction.bin
+keychron_v3_ansi_encoder_abralia.bin
+keychron_v3_ansi_encoder_abralia_host_interaction.bin
+```
+
+Generated binaries remain Git-ignored. Rebuild from the pinned upstream source
+and this userspace; never interchange images between models, layouts, or knob
+variants. These targets inherit the original STM32 bootloader, scan/LED drivers,
+USB descriptors, and stock polling configuration; they do not gain 8K polling.
+
+The new keymaps include their pinned upstream `keychron` keymap directly and
+reuse the reference Abralia RGB/interaction sources through small include
+wrappers. They do not duplicate the state machines or change QMK common files.
+Keep the complete userspace tree when building them.
+
+**Original V3 toggle:** Host Interaction reserves the top-right physical key at
+matrix `[3,14]` (Control ID `0x030E`), rather than the 8K's `[0,16]`. Its stock
+mapping is RGB effect cycling (`UG_NEXT`), not `KC_PAUS`. The port preserves
+that mapping: double-tap toggles interaction while a host session and effect 25
+are active; an unmatched tap replays the actual key mapping after the gesture
+window. Outside that state the key passes through immediately. Consequently a
+single stock-mapped tap can leave effect 25 and disarm interaction normally.
+No VIA remapping is performed by this port.
+
+**Desktop support is separate:** the current desktop auto-open factories,
+RGB adapter/profile, reserved-control default, and physical demos still target
+V3 8K ANSI encoder. They have not been extended to these PIDs or mappings.
+Adding these firmware builds does not make the existing desktop demos
+plug-and-play on an original V3.
+
+Before claiming hardware support, an owner must verify ordinary keys/Fn,
+encoder where present, VIA/Launcher, RGB geometry and effect IDs, frame timeout,
+interaction entry/exit, effect-change disarm, held-key release, heartbeat
+recovery, reconnect, and the board's own recovery procedure. See also the
+[offline firmware tests](../tests/README.md).
+
 ## Independent-V effect
 
-The V3 8K keymap appends `PER_KEY_RGB_INDEPENDENT_V` as RGB Matrix effect 25.
+The keymaps append `PER_KEY_RGB_INDEPENDENT_V` as RGB Matrix effect 25.
 Effects 0 through 24 and Keychron's `0xA8/0x0A` per-key write command are
 unchanged.
 

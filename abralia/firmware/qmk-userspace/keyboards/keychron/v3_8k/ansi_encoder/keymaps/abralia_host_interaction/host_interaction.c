@@ -20,12 +20,6 @@
 #define HOST_INTERACTION_CONTROL_COUNT                                         \
   (HOST_INTERACTION_MATRIX_CONTROL_COUNT +                                     \
    HOST_INTERACTION_ENCODER_CONTROL_COUNT)
-#define HOST_INTERACTION_PAUSE_ROW 0
-#define HOST_INTERACTION_PAUSE_COL 16
-#define HOST_INTERACTION_PAUSE_CONTROL                                         \
-  HOST_INTERACTION_CONTROL_ID(HOST_INTERACTION_CONTROL_KEY,                    \
-                              HOST_INTERACTION_PAUSE_ROW,                      \
-                              HOST_INTERACTION_PAUSE_COL)
 
 typedef enum {
   PAUSE_GESTURE_IDLE,
