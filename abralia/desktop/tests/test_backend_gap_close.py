@@ -67,11 +67,11 @@ class GapCloseTests(unittest.TestCase):
                 middle=self.r.frame(self.b).payload
                 self.assertEqual(len({middle.colors[key] for key in snapshot['keys']}),1)
                 self.assertGreater(to_hsv8(middle.colors['F2']).value,to_hsv8(before.colors['F2']).value)
+                with patch.object(self.b,'gap_feedback',None):
+                    without_gap=self.r.frame(self.b).payload
                 for limit in (0,77,160,255):
-                    old,new=output_values(before,self.profile,limit),output_values(middle,self.profile,limit)
+                    old,new=output_values(without_gap,self.profile,limit),output_values(middle,self.profile,limit)
                     other=set(old)-set(snapshot['keys'])
-                    # Pause intentionally changes saturation over time.
-                    other.discard('PAUSE')
                     self.assertEqual({k:old[k] for k in other},{k:new[k] for k in other})
                 self.assertEqual(self.b.slots[6].position,6)
 
@@ -218,10 +218,16 @@ class GapCloseTests(unittest.TestCase):
                 self.assertIsNone(self.b.gap_feedback)
                 self.assertEqual(self.b.slots[6].position,6)
 
-    def test_empty_f_keys_are_reserved_only_while_browsing_and_tail_has_no_action(self):
+    def test_empty_f_keys_stay_reserved_throughout_agent_mode_and_tail_has_no_action(self):
         self.assertEqual(routes_for(self.b,self.profile)[122].action,'close_gap')
         self.b.disarm_navigation('explicit')
+        self.assertEqual(routes_for(self.b,self.profile)[122].action,'close_gap')
+        self.assertTrue(self.b.gap_valid(self.b.gap_at(3)))
+        self.b.select_slot(self.tokens[0])
+        self.assertEqual(routes_for(self.b,self.profile)[122].action,'close_gap')
+        self.b.set_active(False)
         self.assertFalse(any(r.action=='close_gap' for r in routes_for(self.b,self.profile).values()))
+        self.b.set_active(True)
         self.b.toggle_navigation()
         self.b.turn_page(2)
         self.assertIsNone(self.b.gap_at(26))
@@ -229,6 +235,15 @@ class GapCloseTests(unittest.TestCase):
         self.b.turn_page(-2)
         self.b.reserved_positions[30]='pending-owner'
         self.assertIsNone(self.b.gap_at(3))
+
+    def test_whole_gap_hold_works_in_page_mode_without_navigation_or_agent_selection(self):
+        self.b.disarm_navigation('explicit')
+        self.assertEqual(self.b.knob_mode,'pages')
+        self.assertFalse(self.b.navigation_active)
+        d=self.driver()
+        self.hold(d,124)
+        self.assertEqual(self.b.gap_snapshot()['phase'],'flash')
+        self.assertEqual(self.b.slots[6].position,2)
 
     def test_recovery_version_two_persists_position_and_version_one_keeps_old_layout(self):
         with tempfile.TemporaryDirectory(dir='/private/tmp') as temp:

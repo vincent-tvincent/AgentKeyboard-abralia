@@ -174,6 +174,45 @@ class PageDisplayTests(unittest.TestCase):
         self.assertAlmostEqual(to_hsv8(muted.colors['F1']).value,to_hsv8(before.colors['F1']).value / 2,delta=1)
         self.assertLess(to_hsv8(muted.colors['F1']).saturation,to_hsv8(before.colors['F1']).saturation)
 
+    def test_selected_v_breath_keeps_other_slots_and_background_steady(self):
+        self.b.cycle_knob()
+        frames=[]
+        for now in (0,.5,1,1.5,2):
+            self.now=now
+            frames.append(self.renderer.frame(self.b).payload)
+        selected=[to_hsv8(f.colors['F1']) for f in frames]
+        self.assertGreater(selected[0].value,selected[2].value)
+        self.assertEqual(selected[0].value,selected[4].value)
+        self.assertLessEqual(max(s.saturation for s in selected)-min(s.saturation for s in selected),2)
+        for frame in frames:
+            self.assertGreaterEqual(to_hsv8(frame.colors['F1']).value,
+                                    to_hsv8(frame.colors['F2']).value * 1.3)
+            self.assertEqual(frame.colors['F2'],frames[0].colors['F2'])
+            self.assertEqual(frame.background,frames[0].background)
+            before=output_values(frames[0],self.profile,160)
+            after=output_values(frame,self.profile,160)
+            self.assertEqual(before['A'],after['A'])
+            self.assertEqual(before['F2'],after['F2'])
+        self.b.rotate_knob(1)
+        first=self.renderer.frame(self.b).payload
+        self.now += 1
+        second=self.renderer.frame(self.b).payload
+        self.assertEqual(first.colors['F1'],second.colors['F1'])
+        self.assertNotEqual(first.colors['F2'],second.colors['F2'])
+
+    def test_page_mode_candidate_stays_steady_and_muted_selection_stays_dim(self):
+        self.b.toggle_navigation()
+        before=self.renderer.frame(self.b).payload
+        self.b.agent_mutes[self.tokens[0]]=600
+        muted=self.renderer.frame(self.b).payload
+        self.assertAlmostEqual(to_hsv8(muted.colors['F1']).value,
+                               to_hsv8(before.colors['F1']).value / 2,delta=1)
+        self.b.cycle_knob()
+        first=self.renderer.frame(self.b).payload
+        self.now=.9
+        second=self.renderer.frame(self.b).payload
+        self.assertEqual(first.colors['F1'],second.colors['F1'])
+
     def test_page_capture_and_native_question_hints_do_not_compete(self):
         slot = self.b.slots[1]
         self.b.call(self.owners[0],'report_question',{'slot_token':slot.slot_token,'idempotency_key':'q',

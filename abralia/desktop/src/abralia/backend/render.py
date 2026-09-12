@@ -122,7 +122,7 @@ class Renderer:
         self.onset = ((.18, prepare), (.2, expansion), (.1, fill), (.1, [dict.fromkeys(self.region, ATTENTION)]))
 
     def state_color(self, broker: Broker, slot: Allocation, now: float, *, animate=True) -> Srgb8:
-        """Task identity stays steady; explicit notifications own animation."""
+        """Task identity stays steady; the renderer layers separate UI effects."""
         return hex_color(slot.identity_color)
 
     def slot_background(self, broker: Broker, color: Srgb8) -> Srgb8:
@@ -256,10 +256,16 @@ class Renderer:
             factor = broker.config.selection_brightness_percent / 100
             reference = max((value(colors[k]) for k in others), default=value(colors[key]))
             target = min(global_reference_v or 255, round(max(value(colors[key]), reference * factor)))
-            colors[key] = at_value(saturation(colors[key], broker.config.selection_saturation_percent / 100), target)
+            minimum = target
+            selected_value = target
+            if broker.knob_selection_active():
+                minimum = target * broker.config.selection_breath_min_percent / 100
+                selected_value = round(minimum + (target - minimum) * wave(now, broker.config.selection_breath_seconds))
+            colors[key] = at_value(saturation(colors[key], broker.config.selection_saturation_percent / 100), selected_value)
             # Raising the frame maximum would dim the rest of this firmware's
             # scene. When headroom is exhausted, lower only the other slots.
-            other_limit = math.floor(target / factor)
+            # Keep neighbours steady and retain the contrast at the breath's trough.
+            other_limit = math.floor(minimum / factor)
             for other in others:
                 if value(colors[other]) > other_limit:
                     colors[other] = at_value(colors[other], other_limit)

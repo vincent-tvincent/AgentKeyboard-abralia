@@ -68,7 +68,7 @@ def routes_for(broker, profile, *, hold_enabled=False) -> dict[int, Route]:
         position = (slot.position - 1) % 12 + 1
         control = ControlId.key(*profile.element_by_id[f"F{position}"].matrix)
         routes[position] = Route(control, "select", slot.slot_token, page_revision=broker.page_revision)
-    if broker.slots and broker.selection_preview_active():
+    if broker.slots and broker.active:
         for key_position in range(1,13):
             position = broker.page * 12 + key_position
             if broker.slot_at_position(position) is None:

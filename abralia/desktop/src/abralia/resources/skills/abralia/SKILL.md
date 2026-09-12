@@ -76,10 +76,12 @@ for direct page jumps; they are not native question-answer shortcuts. Status
 `page_display` gives the exact mapping and whether capture is active. A passive
 page display does not capture digits. A brighter, slightly whiter candidate is
 a preview; it is not proof of task pickup or an answer.
-During selection/navigation, holding an empty F-key closes its whole contiguous
+In knob agent-selection mode that candidate also breathes on brightness (HSV V).
+Other task slots remain steady; this cursor effect is not a new notification.
+Throughout active Agent Mode, holding an empty F-key closes its whole contiguous
 visible gap after all gap keys brighten and flash together. Later agents move
 forward across pages while keeping their IDs, tokens and task state. Short taps
-on these empty positions do nothing in that mode; outside it they remain ordinary
+on these empty positions do nothing while active; inactive typing retains ordinary
 input. This is a user gesture, not an operation the agent should synthesize.
 Page keys use cyan, single-slot arrows orange, and Home/End violet by default.
 Enter stays yellow-green; strong pickup green and mute red are unchanged.

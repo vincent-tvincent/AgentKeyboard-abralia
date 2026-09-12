@@ -283,6 +283,12 @@ reduces only the other occupied slots to at most roughly 77% of the candidate's
 value. It never raises the keyboard's global brightness limit or dims unrelated
 keys. The normal slot colors/values return when selection preview ends. Timed
 mute dimming/desaturation is applied afterward, so a muted candidate remains dim.
+In knob agent-selection mode, the candidate additionally breathes on HSV V,
+cycling between 85% and 100% of its allowed value over two seconds. Other occupied
+slots are capped against the breath's minimum and stay steady, retaining at least
+the intended relative contrast before mute dimming. The main background and
+keyboard brightness limit remain steady. Page-mode previews do not use this V
+breath; only the currently previewed agent receives it.
 
 A page change displays the populated pages on the physical number row: other
 occupied pages are dim cyan and the current page is orange. Outside agent
@@ -352,7 +358,7 @@ cancel the pending gesture. No firmware modification or synthetic keypress is us
 
 ### Hold an empty gap to close it
 
-In agent selection or armed keyboard navigation, hold any empty F-key for about
+Whenever Agent Mode is active, hold any empty F-key for about
 1.2 seconds. All keys in that contiguous visible gap brighten together, flash
 once, and the later agents compact forward in their existing order, including
 from later pages. For an F2–F5 gap, holding any of those four keys animates all
@@ -360,9 +366,9 @@ four. Positions before the chosen gap stay unchanged; later holes close as agent
 pack forward. A wholly empty page is one twelve-key gap. A trailing gap with no
 later agent has nothing to close.
 
-Empty F-keys are reserved for this gesture in selection/navigation: short taps
-do nothing, and early release cancels the entire group's feedback. Outside that
-mode they retain ordinary input. Page/mode/layout changes, interrupted input or
+Empty F-keys are reserved throughout active Agent Mode: short taps do nothing,
+and early release cancels the entire group's feedback. In inactive typing mode
+they retain ordinary input. Page/layout changes, leaving Agent Mode, interrupted input or
 stale releases cancel the gesture. The original hold's release is consumed even
 when an agent has moved onto that key. No task is opened by closing a gap.
 
@@ -406,7 +412,7 @@ These are host-owned gestures, not new agent-callable mutation tools.
   For a pending call/question, this also performs pickup and releases that
   call's controls, just like Print Screen. A pending muted question can be opened
   through its F-key without restarting the notification. Empty positions remain ordinary keys
-  outside the selection/navigation gap-hold layer described above.
+  in inactive typing mode; active Agent Mode reserves them for gap holds.
   Paging alone does not open a task. Rapid selections replace any pending open
   request with the latest selected destination.
 - With at least one logical slot registered across all pages, empty F-key positions
@@ -587,6 +593,8 @@ Selection/page settings are `selection_brightness_percent` (130),
 `page_current_color` (`FF9000`) and `page_occupied_brightness_percent` (35).
 Status also includes `knob_selection_remaining_seconds` and `page_display`
 with visibility, bank offset, page/key assignments and capture availability.
+Selected-slot V breathing uses `selection_breath_min_percent` (85) and
+`selection_breath_seconds` (2); setting the minimum to 100 makes the cue steady.
 
 Keyboard navigation settings are `keyboard_navigation_enabled` (true),
 `navigation_hold_seconds` (0.8) and `navigation_timeout_seconds` (15). Status also

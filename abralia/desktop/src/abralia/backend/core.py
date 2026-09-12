@@ -48,6 +48,8 @@ class BrokerConfig:
     overview_highlight_percent: float = 85
     selection_brightness_percent: float = 130
     selection_saturation_percent: float = 85
+    selection_breath_min_percent: float = 85
+    selection_breath_seconds: float = 2
     page_display_seconds: float = 5
     knob_selection_idle_seconds: float = 60
     page_occupied_color: str = '00BFFF'
@@ -82,6 +84,7 @@ class BrokerConfig:
                   "background_brightness_percent": (0, 100),
                   "overview_tint_percent": (0, 100), "overview_highlight_percent": (0, 100)}
         limits.update(selection_brightness_percent=(100, 200), selection_saturation_percent=(0, 100),
+                      selection_breath_min_percent=(50, 100), selection_breath_seconds=(.5, 10),
                       page_display_seconds=(1, 30), knob_selection_idle_seconds=(1, 600),
                       page_occupied_brightness_percent=(0, 100),
                       gap_close_hold_seconds=(.4, 5), gap_close_flash_seconds=(.05, .5))
@@ -293,7 +296,7 @@ class Broker:
         return GapSelection(start, end, self.page, self.layout_revision)
 
     def gap_valid(self, gap: GapSelection) -> bool:
-        return self.selection_preview_active() and self.gap_at(gap.start) == gap
+        return self.active and self.gap_at(gap.start) == gap
 
     def begin_gap_hold(self, position: int, revision: int) -> GapSelection | None:
         gap = self.gap_at(position)

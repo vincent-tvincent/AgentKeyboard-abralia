@@ -195,7 +195,7 @@ class BackendOverviewTests(unittest.TestCase):
         self.assertFalse(routes_for(self.b, self.profile))
         self.assertNotIn('ENTER', self.renderer.frame(self.b).payload.colors)
 
-    def test_selection_appearance_is_steady_and_resets_after_confirmation(self):
+    def test_selection_breathes_without_modulating_neighbours_and_resets_after_confirmation(self):
         self.call(3, 'release_slot', slot_token=self.tokens[3])
         self.b.set_active(True)
         original = self.renderer.frame(self.b).payload
@@ -208,7 +208,10 @@ class BackendOverviewTests(unittest.TestCase):
         self.assertGreater(frame.colors['F1'].blue,19)  # Slightly whiter than the prior blend.
         self.assertEqual(frame.colors['ENTER'], Srgb8(80, 128, 0))
         self.now += .5
-        self.assertEqual(self.renderer.frame(self.b).payload.colors['F1'], frame.colors['F1'])
+        later=self.renderer.frame(self.b).payload
+        self.assertNotEqual(later.colors['F1'], frame.colors['F1'])
+        self.assertEqual(later.colors['F2'], frame.colors['F2'])
+        self.assertEqual(later.background, frame.background)
         self.send(32)
         focused = self.renderer.frame(self.b).payload
         self.assertEqual(focused.background, original.background)
