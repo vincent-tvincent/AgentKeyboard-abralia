@@ -461,7 +461,8 @@ These are host-owned gestures, not new agent-callable mutation tools.
   question remains pickup-able until its own expiry. Its quiet pickup action remains
   available without restarting the notification or showing an unavailable mute.
   An already muted or picked-up call never regains controls through expiry.
-- Answer keys are not captured or synthesized: Codex receives normal input.
+- Outside the selection/navigation bindings described above, native answer keys
+  remain ordinary input. Abralia does not synthesize answers.
   The old numbered-key hints are experimental and have not worked with the
   inspected desktop asynchronous question card. Use the native UI to answer;
   task pickup does not guarantee panel focus or a working number shortcut.
@@ -519,7 +520,7 @@ after pickup and have their own lifetime.
 
 `serve` enables the experimental Codex observer by default. Use
 `--no-observe-codex` to disable it. A background reader watches only Codex tasks
-that already own slots through MCP. It validates each session header against
+registered in the backend, through MCP or host registration. It validates each session header against
 the native task ID and selected project; it does not register unrelated tasks.
 The reader submits metadata to the same serialized broker worker as MCP and
 never accesses HID itself.

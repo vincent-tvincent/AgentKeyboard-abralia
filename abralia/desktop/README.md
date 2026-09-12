@@ -1,15 +1,22 @@
-# Abralia desktop RGB API
+# Abralia desktop host
 
-This directory contains Abralia's Python 3.11+ desktop developer API and CLI
-for profile-driven keyboard RGB control. Version 0.3 requires an explicit JSON profile and supports the Keychron
-effect-25 protocol family. Bundled profiles cover V3 8K ANSI encoder and the
+This Python 3.11+ package provides profile-driven RGB and Host Interaction APIs,
+their CLIs, and an optional terminal backend for agent notifications and task
+navigation. Version 0.3 requires an explicit JSON device profile and supports
+the Keychron effect-25 protocol family. Bundled profiles cover V3 8K ANSI encoder and the
 experimental original V3 ANSI / ANSI encoder ports; original V3 hardware has
 not been physically validated. macOS remains the primary desktop platform.
 
-The optional [agent backend](BACKEND.md) adds a terminal-running broker,
-project-local MCP and skill setup, paged F-key allocations, notifications, and
-pickup-gated native question highlights. Install `abralia-desktop[backend]` to
-use its additional commands. The RGB library remains usable without MCP.
+For the agent workflow, start with the **[backend guide](BACKEND.md)**. It covers
+project-local MCP/skill setup, agent and host registration, stable slot identities,
+page navigation, pickup/mute, timed attention policies, gap closing, lighting and
+restart recovery. One device worker owns HID; MCP bridges connect over a private
+Unix socket. Answer native questions in Codex: automatic panel focus and native
+answer/approval execution are optional extensions outside this backend version.
+
+The remainder of this guide covers the standalone RGB APIs, which remain usable
+without MCP. Temporary input bindings are documented in the
+[Host Interaction API guide](HOST_INTERACTION_API.md).
 
 The implementation follows this fixed data flow:
 
@@ -29,7 +36,7 @@ The semantic scene builder and temporary-binding overlay remain generic RGB
 extension boundaries. Agent-specific slot vocabulary and scene policy live in
 the optional backend rather than the RGB library.
 
-## Profiles and migration to 0.2
+## Explicit device profiles
 
 The caller or a higher application layer chooses the JSON. This library never
 identifies a model to select a profile, and has no model/PID allowlist. USB
@@ -62,6 +69,15 @@ python3 -m venv .venv
 ```
 
 The runtime dependencies are `hidapi` and `jsonschema`.
+To also install the backend and MCP bridge, use the optional extra:
+
+```sh
+.venv/bin/python -m pip install -e '.[backend]'
+```
+
+This installs the MCP SDK needed by `abralia-mcp`. Use `abralia-backend` for
+setup and service commands. Follow the [backend setup](BACKEND.md#install-and-start) for a simulated
+or hardware session and project-local enablement.
 
 ## Read-only commands
 
@@ -270,7 +286,12 @@ separate physical controls; none has a separate LED address.
 
 Offline tests cover profile/schema invariants, all mapping strategies, scene
 composition, complete LED frames, recovery orchestration, Raw HID report
-handling, and the effect-25 frame protocol through fakes. A successful offline
+handling, and the effect-25 frame protocol through fakes. Backend tests also cover
+ownership, registration/release, queueing, paging, mapping-preserving gap closing,
+rendering, stale input and real STDIO MCP clients against simulated devices.
+Selected Codex notification/pickup and keyboard interaction flows have been
+exercised on the V3 8K reference hardware; other profiles remain hardware-unverified.
+A successful offline
 test or acknowledged HID command does not prove the physical colors look
 correct. Flashing firmware and changing hardware state require separate,
 explicit action.

@@ -4,17 +4,19 @@
 
 # Abralia
 
-## Give Your Keyboard an Agent Mode - Without Tradeoff
-
-***Don't be afraid of flashing our firmware, your keyboard will still able
-to loop through existing RGB modes, configure with VIA and Keychron Launcher,
-and switch to 8K polling rate with our version of firmware,
-and getting additional cool functions !***
+## Give your keyboard an Agent Mode
 
 <p align="center"><img src="./docs/demo_image_banner.jpg" alt="Keychron V3 8K displaying Abralia's Codex-style hero frame" height="300"></p>
 
 Abralia is an open-source firmware and desktop software project that turns a
 compatible per-key RGB keyboard into a physical interface for coding agents.
+Agents occupy colored slots, request attention through the keyboard, and let
+you pick up a task, mute interruptions, or browse tasks using physical controls.
+
+**Current application: a Codex keyboard interface on macOS.** The repository
+includes a terminal backend, project-local MCP tools and skill, automatic Codex
+session observation, and keyboard interaction. Setup and administration currently
+use terminal commands.
 
 Abralia is compatibility-first and additive by design. Its native firmware
 keeps Keychron RGB effects 0–24 and keeps VIA/Keychron Launcher, encoder, and
@@ -26,38 +28,90 @@ bindings. Unbound controls continue to behave normally, Host Interaction
 bindings are volatile, and stale or disconnected host sessions are designed
 to restore ordinary input behavior.
 
-This repository is currently a pre-alpha implementation checkpoint. The
-device foundation is substantially implemented: Abralia provides buildable
-Keychron V3 8K firmware, effect-25 guarded RGB rendering, Host Interaction
-protocol v2, volatile per-control input routing, shared Raw HID ownership,
-profile and compatibility-layout APIs, effect-aware RGB standby coordination,
-and reusable desktop RGB and interaction controllers.
+The firmware and standalone desktop RGB/input APIs can also be used independently
+of the agent backend.
 
-The project is now transitioning from keyboard infrastructure to the complete
-agent workflow. The remaining major work is the long-running desktop broker,
-canonical agent/session and request state, the first coding-agent integration,
-trusted mapping from physical events to exact agent actions, and the
-agent-callable semantic lighting and choice API. Abralia can already render
-scenes and receive structured physical-control events, but it does not yet
-connect those capabilities into the final end-to-end loop of agent state →
-keyboard display → user action → verified agent response.
+## What works today
 
-The next functional milestone is one real coding-agent integration that
-displays live task states, accepts at least one trusted physical action, and
-exposes a bounded agent-callable lighting operation. Completing that loop will
-turn the current reusable firmware and device-control foundation into the first
-fully functional Abralia agent keyboard application.
+- **One terminal backend owns the keyboard.** A serialized device worker handles
+  RGB and input through `SharedRawHidSession`; MCP bridges use a private local
+  socket and never open HID themselves. Hardware and simulated modes are available.
+- **Agents register through project-local MCP.** They can report progress and
+  request attention. The host can also register existing project tasks without
+  waking them, release individual slots, or release all slots.
+- **Stable task identity with movable placement.** Each allocation has a slot ID,
+  ownership token and identity color. Its displayed page/F-key is a separate
+  mapping, so rearranging the keyboard does not assign an agent another task's slot.
+- **Notifications and conversation pickup.** Incoming calls appear without first
+  selecting an agent. Pickup opens its registered Codex task; mute quiets the call.
+  The Codex observer can detect pending native questions and their replies.
+- **Paged navigation and attention controls.** Twelve positions per page, optional
+  knob browsing, number-row page indicators, selected-slot lighting, ten-minute
+  individual mutes and an “only this agent” mode are implemented.
+- **Manual gap closing.** Hold an empty F-key in active Agent Mode: the whole gap
+  brightens and flashes, then later agents compact forward across pages while
+  retaining their identities and state.
+- **Bounded cleanup and recovery.** Backend shutdown releases volatile bindings
+  and attempts to restore the saved RGB scene. A surviving verified MCP bridge
+  can restore allocations after a backend restart with fresh tokens. Host-only
+  registrations must be repopulated after restart.
 
-```text
-Firmware and device protocol          Implemented
-Desktop RGB and interaction APIs      Implemented
-Shared HID and standby coordination   Implemented
-Agent/session broker                  Next milestone
-First coding-agent integration        Not yet implemented
-Trusted physical action loop          Not yet implemented
-Agent-callable semantic skill/API      Not yet implemented
-Polished end-to-end application        Final milestone
+The Codex notification/pickup workflow and selected navigation/lighting behaviors
+have been exercised on reference hardware, including whole-gap closing and
+selected-slot brightness breathing. Automated checks cover ownership, retries,
+paging, input routing, rendering, recovery, project setup and real STDIO MCP clients.
+
+**Optional extensions:** native question-panel focus and keyboard execution of
+answers/approvals are not required for the notification, navigation and attention
+workflow. They are not currently implemented; answer questions in Codex's native
+UI. A settings GUI, autostart and other harness adapters are separate future
+enhancements. The numbered keys used for page navigation are not answer shortcuts.
+Codex session observation currently depends
+on local client data formats and needs compatibility checks when the client changes.
+
+## Try the backend
+
+From the repository root, using Python 3.11+:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -e 'abralia/desktop[backend]'
+.venv/bin/abralia-backend enable-project --project /path/to/project
+.venv/bin/abralia-backend serve --project /path/to/project \
+  --profile builtin:keychron-v3-8k-ansi-encoder-effect25 --mode simulated
 ```
+
+Use the same existing project path in each command. Enablement installs only
+Abralia's project-local MCP configuration and skill; Codex must trust the project
+and load its MCP tools. Simulated mode does not access the keyboard or open tasks.
+
+For a physical keyboard, install the matching
+[Host Interaction firmware](abralia/firmware/qmk-userspace/README.md), select RGB
+effect 25, and start the backend with `--mode hardware`. The backend does not
+flash firmware. See the [backend guide](abralia/desktop/BACKEND.md) for setup,
+host registration/release commands, appearance settings, recovery and limitations.
+
+## Reference keyboard controls
+
+These labels refer to physical positions on the V3 8K profile, independently of
+their VIA keycode mappings. Task controls operate while Agent Mode is active.
+
+| Gesture | Action |
+| --- | --- |
+| Double-tap Pause | Enter or leave Agent Mode |
+| Occupied F-key | Select and open that task; a pending call is picked up |
+| Green Print Screen / red Scroll Lock | Pick up / mute the incoming call |
+| Hold Pause | Toggle the temporary navigation-key layer |
+| Knob press, when available | Switch between agent and page browsing; Enter confirms a preview |
+| Number-row keys in agent-selection mode | Jump to occupied pages |
+| Delete / Insert in keyboard navigation | Toggle an individual ten-minute mute / “only this agent” |
+| Hold Delete in keyboard navigation | Clear individual mutes |
+| Hold an empty F-key | Close that gap across later pages |
+| Escape while focused | Leave task focus and restore the background |
+
+The [backend guide](abralia/desktop/BACKEND.md#physical-interaction) describes
+the complete key mapping, timers and lighting codes. Inactive typing retains
+ordinary input. The backend preserves the keyboard's own brightness limit.
 
 ## Find the right documentation
 
@@ -65,50 +119,35 @@ For building or flashing firmware, using the desktop APIs, looking up default
 key mappings, or reproducing an experiment, go to the
 [documentation navigation page](docs/README.md).
 
-> **Compatibility status:** Preserving normal keyboard behavior is a project
-> requirement, not an optional feature. Both firmware variants build
-> successfully and have been exercised on the reference keyboard. Maintainer
-> testing confirmed all physical keys and Fn layers, normal encoder behavior,
-> existing RGB modes and controls, VIA remapping, Keychron Launcher
-> configuration, reconnect and sleep/wake behavior, DFU flashing, and normal
-> recovery. Host Interaction testing also confirmed double-Pause entry and
-> exit, CAPTURE/MIRROR routing, one-shot and session bindings, both encoder
-> directions, and heartbeat recovery to normal input. On both variants,
-> Launcher selected, persisted, and read back the 8K setting after reconnect.
-> On the currently connected variant, direct Raw HID readback reports the 8K
-> divider and the live keyboard enumerates as high-speed USB with a 125 μs
-> interrupt interval. Only packet-level cadence for continuously changing
-> reports remains independently unmeasured.
+## Keyboard support
 
-**Keyboard support and contributors.** Abralia currently implements and
-validates only the Keychron V3 8K ANSI encoder. We welcome developers who want
-to port the firmware and device profile to other keyboards. TKL is not an
-Abralia requirement: compatibility work for compact keyboards and even split
-layouts is equally welcome. Another TKL target is simply the most
-straightforward first port because the current firmware assumptions, semantic
-regions, device profile, and validation fixtures were built around the V3 8K.
-The V3 family can reasonably be viewed as Keychron's value-oriented,
-plastic-case counterpart to the premium aluminum Q3 TKL family: they share the
-broad 80% layout and customization concept, but they are not electronically
-identical. In the pinned QMK source, a promising next port is the Q3 Max ANSI
-encoder in wired mode because it also has a 6×17 matrix shape, 87-key RGB
-arrangement, encoder, Keychron RGB/VIA/Launcher path, and SNLED27351 SPI driver
-family. The Q3 Max still uses STM32F401 with `stm32-dfu`, operates at 1K rather
-than 8K, and adds wireless, battery, and transport logic, so it requires its
-own build target, profile review, and hardware testing rather than a V3 8K
-firmware binary.
+| Keyboard | Status |
+| --- | --- |
+| Keychron V3 8K ANSI encoder | Reference hardware; firmware and desktop interaction exercised physically |
+| Original Keychron V3 ANSI / ANSI encoder | Experimental firmware targets and bundled profiles; hardware validation pending |
+| Other keyboards | Require a matching firmware port, profile and hardware validation |
+
+The reference firmware retains Keychron RGB effects 0–24, VIA/Launcher, normal
+encoder behavior and the 8K report-rate setting. Configuration/readback and
+compatibility testing do not constitute a measurement of continuous report cadence.
+Firmware images are model-specific; follow the [build guide](abralia/firmware/qmk-userspace/README.md).
+
+Contributions for other keyboards and layouts are welcome. The device profile
+describes physical controls and RGB geometry; a knob is optional. Additional
+harness adapters and a desktop settings interface are also future contribution areas.
 
 <details open>
-<summary><strong>What the Abralia firmware adds to a Keychron keyboard</summary>
+<summary><strong>What the Abralia firmware adds to a Keychron keyboard</strong></summary>
 
 ![Host-driven fog-orb animation moving across the Keychron V3 8K](./docs/fog-orb-animation-demo.gif)
 
 *The fog orb is a host-driven effect-25 scene rendered through Abralia's
 desktop RGB API, not a permanently stored keyboard effect.*
 
-- **True independent per-key brightness.** Effect 25 renders each key's full
-  HSV value, so individual keys can be bright, dim, or completely off while
-  the global brightness remains a master ceiling.
+- **Independent relative per-key brightness.** Keys can be bright, dim or off
+  relative to each other while the keyboard brightness remains a master ceiling.
+  The current firmware normalizes a frame against its brightest key; a uniformly
+  dim host frame is not a guaranteed absolute percentage of hardware brightness.
 - **Host-driven full-keyboard scenes and animation.** The desktop API can send
   complete 87-key frames for smooth gradients, status surfaces, progress,
   notifications, game layouts, and visual experiments such as the animation
@@ -142,8 +181,8 @@ desktop RGB API, not a permanently stored keyboard effect.*
 ## Repository layout
 
 - `abralia/firmware/` contains the QMK External Userspace firmware.
-- `abralia/desktop/` contains the Python 3.11+ generalized RGB developer API
-  and CLI, with a macOS-first Keychron effect-25 adapter.
+- `abralia/desktop/` contains the Python 3.11+ RGB/input APIs, terminal backend,
+  project-local MCP integration and macOS-first Keychron effect-25 adapter.
 - `experiments/` contains bounded hardware and protocol experiments.
 
 <details>

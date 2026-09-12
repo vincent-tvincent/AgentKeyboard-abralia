@@ -1,14 +1,19 @@
 # Abralia documentation
 
-Use this page to find the right document for a specific task. Abralia is
-currently pre-alpha, so each guide distinguishes documented design, offline
-verification, and physical-keyboard validation where that distinction matters.
+Use this page to find the right document for a specific task. Each guide
+distinguishes supported behavior, offline verification and physical-keyboard
+validation where that distinction matters.
 
 ## I want to...
 
 | Goal | Go to |
 | --- | --- |
 | Understand what Abralia does and what is currently supported | [Project overview](../README.md) |
+| Run the terminal backend with Codex | [Agent backend guide](../abralia/desktop/BACKEND.md) |
+| Enable or disable Abralia for a selected project | [Project-local MCP and skill setup](../abralia/desktop/BACKEND.md#enable-only-a-selected-project) |
+| Register or release existing task slots without waking agents | [Host registration and release](../abralia/desktop/BACKEND.md#host-registration-and-release) |
+| Learn current keyboard controls, page navigation and attention gestures | [Physical interaction](../abralia/desktop/BACKEND.md#physical-interaction) |
+| Check the agent-callable operations and ownership rules | [Agent tools](../abralia/desktop/BACKEND.md#agent-tools) |
 | Install or use the desktop RGB API and CLI | [Desktop RGB API guide](../abralia/desktop/README.md) |
 | Bind keys or encoder actions through Host Interaction Mode | [Host Interaction desktop API](../abralia/desktop/HOST_INTERACTION_API.md) |
 | Choose a keyboard profile or supply device metadata | [Shared profile catalog](../abralia/desktop/src/abralia/resources/profiles/README.md) |
@@ -30,6 +35,7 @@ verification, and physical-keyboard validation where that distinction matters.
 ### Project and component guides
 
 - [Project overview and current status](../README.md)
+- [Agent backend, project-local MCP, task slots and physical controls](../abralia/desktop/BACKEND.md)
 - [Desktop RGB API and CLI](../abralia/desktop/README.md)
 - [Host Interaction desktop API](../abralia/desktop/HOST_INTERACTION_API.md)
 - [User compatibility layouts](../abralia/desktop/COMPATIBILITY_LAYOUTS.md)
