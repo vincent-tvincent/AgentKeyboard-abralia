@@ -53,6 +53,7 @@ class FakeFirmwareTransport:
         self.incoming: deque[bytes] = deque()
         self.closed = False
         self.protocol_version = 2
+        self.feature_flags = 0
 
     def _common_response(self, request: bytes) -> bytearray:
         response = bytearray(32)
@@ -140,6 +141,7 @@ class FakeFirmwareTransport:
             )
             response[24] = 7
             response[25] = 7
+            response[26] = self.feature_flags
         if not response_matches(bytes(response)):
             raise AssertionError("Fake firmware response did not match request.")
         return bytes(response)
@@ -187,6 +189,38 @@ class InteractionClientTests(unittest.TestCase):
     def setUp(self) -> None:
         self.transport = FakeFirmwareTransport()
         self.client = HostInteractionProtocolClient(self.transport, profile=TINY)
+
+    def test_old_firmware_rejects_toggle_capture_before_any_write(self) -> None:
+        controller = HostInteractionController(self.client)
+        before = list(self.transport.requests)
+        with self.assertRaisesRegex(ProtocolError, "does not support single-tap"):
+            controller.set_controls([controller.toggle_control], binding_id=9,
+                                    policy=BindingPolicy(emit_down=False))
+        self.assertEqual(self.transport.requests, before)
+
+    def test_toggle_capture_on_each_explicit_model_profile(self) -> None:
+        for name, expected in (("keychron-v3-8k-ansi-encoder-effect25", 0x0010),
+                               ("keychron-v3-ansi-effect25", 0x030E),
+                               ("keychron-v3-ansi-encoder-effect25", 0x030E)):
+            with self.subTest(profile=name):
+                profile = load_profile("builtin:" + name).device_profile
+                transport = FakeFirmwareTransport(profile=profile)
+                transport.feature_flags = 1
+                client = HostInteractionProtocolClient(transport, profile=profile)
+                client.claim_session(123)
+                controller = HostInteractionController(client)
+                self.assertEqual(int(controller.toggle_control), expected)
+                controller.set_controls([controller.toggle_control], binding_id=9,
+                                        policy=BindingPolicy(emit_down=False))
+                self.assertEqual(transport.bindings, [(expected, 9)])
+                before = list(transport.requests)
+                for invalid in (BindingPolicy(), BindingPolicy(routing=Routing.MIRROR, emit_down=False),
+                                BindingPolicy(lifetime=Lifetime.TTL, duration_ms=1000, emit_down=False)):
+                    with self.assertRaisesRegex(ProtocolError, "CAPTURE, SESSION"):
+                        controller.set_controls([controller.toggle_control], binding_id=10, policy=invalid)
+                with self.assertRaisesRegex(ProtocolError, "manual activation"):
+                    controller.activate_controls([controller.toggle_control])
+                self.assertEqual(transport.requests, before)
 
     def test_low_level_client_exposes_every_firmware_command_family(self) -> None:
         capabilities = self.client.get_capabilities()
@@ -325,6 +359,75 @@ class InteractionClientTests(unittest.TestCase):
         self.assertEqual(self.client.service(timeout_ms=0), ())
         self.assertEqual(self.transport.requests[-1][4], Opcode.KEEPALIVE)
         self.assertEqual(self.transport.heartbeat_sequence, 1)
+
+    def test_retried_events_are_acknowledged_but_delivered_once(self) -> None:
+        self.client.claim_session(123)
+        first = event_packet(123)
+        following = bytearray(first)
+        struct.pack_into('<H', following, 9, 10)
+        self.transport.incoming.extend([first, first, bytes(following)])
+        events = self.client.service(0)
+        self.assertEqual([event.sequence for event in events], [9, 10])
+        acknowledgments = [struct.unpack_from('<H', packet, 9)[0]
+                           for packet in self.transport.requests if packet[4] == Opcode.ACK_EVENT]
+        self.assertEqual(acknowledgments, [9, 9, 10])
+        self.assertEqual(self.client.duplicate_event_count, 1)
+
+    def test_raw_nonacknowledging_reads_keep_retry_visibility(self) -> None:
+        self.client.claim_session(123)
+        packet = event_packet(123)
+        self.transport.incoming.extend([packet, packet, packet, packet])
+        self.assertEqual(self.client.read_event(0, acknowledge=False).sequence, 9)
+        self.assertEqual(self.client.read_event(0, acknowledge=False).sequence, 9)
+        self.assertEqual(self.client.read_event(0).sequence, 9)
+        self.assertIsNone(self.client.read_event(0))
+        self.assertEqual(self.client.duplicate_event_count, 1)
+
+    def test_event_retry_window_is_bounded_and_accepts_sequence_wrap(self) -> None:
+        self.client.claim_session(123)
+        for sequence in range(1, 301):
+            packet = bytearray(event_packet(123))
+            struct.pack_into('<H', packet, 9, sequence)
+            self.transport.incoming.append(bytes(packet))
+            self.assertEqual(self.client.read_event(0).sequence, sequence)
+        self.assertEqual(len(self.client._delivered_event_ids), 256)
+        for sequence in (65535, 1, 2):
+            packet = bytearray(event_packet(123))
+            struct.pack_into('<H', packet, 9, sequence)
+            self.transport.incoming.append(bytes(packet))
+            self.assertEqual(self.client.read_event(0).sequence, sequence)
+        self.assertEqual(self.client.duplicate_event_count, 0)
+
+    def test_new_session_can_reuse_event_sequence(self) -> None:
+        self.client.claim_session(123)
+        self.transport.incoming.append(event_packet(123))
+        self.assertEqual(self.client.read_event(0).sequence, 9)
+        self.client.release_session()
+        self.client.claim_session(456)
+        self.transport.incoming.append(event_packet(456))
+        self.assertEqual(self.client.read_event(0).sequence, 9)
+
+    def test_live_knob_retry_pattern_does_not_skip_a_page(self) -> None:
+        from abralia.backend.core import Broker, Caller
+        from abralia.backend.device import dispatch_event, routes_for
+
+        profile = load_profile('builtin:keychron-v3-8k-ansi-encoder-effect25')
+        firmware = FakeFirmwareTransport(profile=profile.device_profile)
+        client = HostInteractionProtocolClient(firmware, profile=profile.device_profile)
+        client.claim_session(123)
+        broker = Broker()
+        for i in range(25):
+            broker.call(Caller(str(i)), 'acquire_slot', {'label': str(i), 'idempotency_key': 'acquire'})
+        broker.set_active(True)
+        packet = bytearray(event_packet(123))
+        struct.pack_into('<HHHH', packet, 9, 42, 1, 21, int(ControlId.encoder_clockwise(0)))
+        packet[17] = Edge.UP
+        firmware.incoming.extend([bytes(packet), bytes(packet)])
+        routes = routes_for(broker, profile)
+        for event in client.service(0):
+            dispatch_event(broker, event, routes, 1)
+        self.assertEqual(broker.page, 1)  # Page 1 -> 2, not 1 -> 2 -> 3.
+        self.assertEqual(client.duplicate_event_count, 1)
 
 
 if __name__ == "__main__":

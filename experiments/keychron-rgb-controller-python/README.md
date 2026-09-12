@@ -198,11 +198,11 @@ reduced-saturation palette color: coral red, mint green, soft azure, or warm
 amber. Keys outside the halo radius remain exactly black throughout the
 animation.
 
-Run until interrupted, using ten seconds per breath and a brightness ceiling
-of 112:
+Run until interrupted, using ten seconds per breath and the current maximum
+default brightness ceiling:
 
 ```sh
-python keychron_rgb_idle_halo.py --duration 10 --brightness 112
+python keychron_rgb_idle_halo.py --duration 10 --brightness 255
 ```
 
 Use `--cycles 3` for a bounded demonstration. Halo radius, center-weighted

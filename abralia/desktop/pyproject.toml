@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "abralia-desktop"
-version = "0.2.0"
+version = "0.3.0"
 description = "Diagram-aligned generalized RGB host library and CLI for Abralia"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,9 +14,14 @@ dependencies = [
   "jsonschema>=4.20,<5",
 ]
 
+[project.optional-dependencies]
+backend = ["mcp==2.2.0"]
+
 [project.scripts]
 abralia-rgb = "abralia.rgb.cli:main"
 abralia-layout = "abralia.layout_cli:main"
+abralia-backend = "abralia.backend.cli:main"
+abralia-mcp = "abralia.backend.mcp:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -30,4 +35,5 @@ where = ["src"]
   "resources/profiles/*.json",
   "resources/profiles/README.md",
   "resources/schemas/*.json",
+  "resources/skills/abralia/SKILL.md",
 ]

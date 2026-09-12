@@ -19,6 +19,11 @@ Coverage includes:
 - rejection of protocol v1, out-of-range controls, and reserved bindings;
 - immediate ordinary input without a session or enabled effect 25;
 - single-tap replay at the configured matrix address and double-tap activation;
+- optional captured single action at that physical position, with no ordinary
+  key leakage for short taps or holds;
+- double-tap precedence and boundary timing, stale generation cancellation,
+  intervening input, reset during each press phase, and watchdog priority;
+- unchanged Print Screen input and manual-only activation of toggle capture;
 - capture, held-key release across disarm, encoder capture, and heartbeat reset;
 - effect-change event ordering, no automatic reactivation, force rejection,
   event retry, and acknowledgement;

@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--color", type=parse_hex_color, default=Srgb8(255, 255, 255))
     parser.add_argument("--seconds", type=float, default=15.0)
     parser.add_argument("--refresh-interval", type=float, default=1.0)
-    parser.add_argument("--brightness", type=int, default=160)
+    parser.add_argument("--brightness", type=int, default=255)
     parser.add_argument("--device-index", type=int)
     parser.add_argument(
         "--verbose-map",

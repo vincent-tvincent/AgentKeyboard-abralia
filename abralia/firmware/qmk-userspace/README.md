@@ -73,7 +73,7 @@ reuse the reference Abralia RGB/interaction sources through small include
 wrappers. They do not duplicate the state machines or change QMK common files.
 Keep the complete userspace tree when building them.
 
-**Original V3 toggle:** Host Interaction reserves the top-right physical key at
+**Original V3 toggle:** Host Interaction uses the top-right physical key at
 matrix `[3,14]` (Control ID `0x030E`), rather than the 8K's `[0,16]`. Its stock
 mapping is RGB effect cycling (`UG_NEXT`), not `KC_PAUS`. The port preserves
 that mapping: double-tap toggles interaction while a host session and effect 25
@@ -81,6 +81,15 @@ are active; an unmatched tap replays the actual key mapping after the gesture
 window. Outside that state the key passes through immediately. Consequently a
 single stock-mapped tap can leave effect 25 and disarm interaction normally.
 No VIA remapping is performed by this port.
+
+**Optional captured single action:** Host Interaction firmware advertises
+`TOGGLE_SINGLE_TAP` in capability byte 26 bit 0. A trusted host can bind the
+configured physical toggle as CAPTURE, SESSION, UP-only. It is effective only
+after manual activation. Single taps and holds are suppressed from ordinary
+input while captured; the action is emitted once after the gesture is resolved.
+Double tap still changes mode without the single action. Without an effective
+capture, the original single/held behavior above is preserved. The same source
+logic follows each target's configured position; Print Screen is not repurposed.
 
 **Desktop support:** desktop API 0.2 consumes an explicit profile for each
 variant. Select the matching original V3 JSON from the

@@ -75,7 +75,7 @@ def parse_args() -> argparse.Namespace:
         help="maximum seconds to wait for activation; 0 waits indefinitely",
     )
     parser.add_argument("--pause-fps", type=float, default=20.0)
-    parser.add_argument("--brightness", type=int, default=160)
+    parser.add_argument("--brightness", type=int, default=255)
     parser.add_argument(
         "--routing",
         choices=("capture", "mirror"),

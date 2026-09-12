@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
         default=8.0,
         help="seconds to keep the controller open without refreshing",
     )
-    parser.add_argument("--brightness", type=int, default=200)
+    parser.add_argument("--brightness", type=int, default=255)
     parser.add_argument("--device-index", type=int)
     return parser.parse_args()
 

@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--black-seconds", type=float, default=2.5)
     parser.add_argument("--timeout-observation-seconds", type=float, default=3.0)
     parser.add_argument("--fps", type=float, default=20.0)
-    parser.add_argument("--brightness", type=int, default=160)
+    parser.add_argument("--brightness", type=int, default=255)
     parser.add_argument("--device-index", type=int)
     return parser.parse_args()
 

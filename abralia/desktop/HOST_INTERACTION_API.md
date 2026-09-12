@@ -12,8 +12,9 @@ Every client requires a supplied `DeviceProfile`, loaded with
 The metadata reader does not require RGB elements or regions. Profile-based
 opening matches only its USB identity; it never chooses a keyboard model or
 profile. Protocol v2 and reported matrix/encoder counts are validated before
-claiming a session. The selected `interaction.toggle_matrix` is reserved and
-exposed as `HostInteractionController.toggle_control`.
+claiming a session. The selected `interaction.toggle_matrix` is exposed as
+`HostInteractionController.toggle_control`. Double tap remains reserved for
+mode control; optional captured single-action support is described below.
 
 The original V3 toggle is its stock top-right lighting key at `[3,14]`; V3 8K
 uses `[0,16]`. Neither the desktop nor compatibility overlays infer or relocate
@@ -21,6 +22,38 @@ this control from a keycode. See the
 [shared profile catalog](src/abralia/resources/profiles/README.md).
 
 ## Control lookup
+
+### Physical toggle single action
+
+Check `client.get_capabilities().supports_toggle_single_tap` before binding the
+physical mode key. Protocol-v2 capability byte 26 bit 0 advertises support.
+Older v2 firmware reports zero; the desktop rejects the request before staging.
+
+```python
+from abralia.interaction import BindingPolicy, Lifetime, Routing
+
+controller.set_controls(
+    [controller.toggle_control],
+    binding_id=101,
+    policy=BindingPolicy(
+        routing=Routing.CAPTURE,
+        lifetime=Lifetime.SESSION,
+        emit_down=False,
+        emit_up=True,
+    ),
+)
+```
+
+Only CAPTURE, SESSION, and UP-only policy is supported for the toggle. Manual
+activation is required; force scopes cannot arm this callback. Firmware delays
+the single action while distinguishing a double tap, then emits one UP callback.
+Double tap changes mode without that action. A captured hold is also suppressed
+from ordinary input and resolves on release. Stale bindings/effects/sessions
+cancel the callback without retargeting it. Unbound/inactive taps and holds keep
+their original behavior. The profile's physical position is used on every model;
+the single action does not depend on what QMK keycode is mapped there.
+
+### Physical IDs and live keycodes
 
 Two explicit lookup paths produce the same `ControlId` type:
 
@@ -160,6 +193,14 @@ responses raise `FirmwareRejectedError` and remain available as
 The broker must call `service()` regularly. It sends the required one-second
 keepalive, receives and acknowledges firmware events, and preserves the
 firmware's four-second fail-safe behavior if the broker stops.
+
+With automatic acknowledgement (the default), `read_event()` and `service()`
+deliver each session/sequence identity once within a 256-event history. Repeated
+packets are still acknowledged, but do not repeat the caller's action. The bounded
+history permits sequence wraparound and is cleared when a session is released or
+replaced. `duplicate_event_count` reports filtered retries over the client's
+lifetime. Diagnostic reads with `acknowledge=False` retain raw delivery and leave
+acknowledgement and duplicate handling to the caller.
 
 ## Effect-aware producer coordination
 

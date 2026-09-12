@@ -31,9 +31,11 @@ from .protocol import (
     ControlKind,
     DeviceEvent,
     ForceScope,
+    Lifetime,
     Opcode,
     Response,
     Result,
+    Routing,
     ack_event_packet,
     begin_binding_replace_packet,
     begin_force_scope_packet,
@@ -110,6 +112,9 @@ class HostInteractionProtocolClient:
         self._next_heartbeat_at = 0.0
         self._events: deque[DeviceEvent] = deque()
         self._unexpected_reports: deque[bytes] = deque(maxlen=64)
+        self._delivered_events: deque[tuple[int, int]] = deque(maxlen=256)
+        self._delivered_event_ids: set[tuple[int, int]] = set()
+        self.duplicate_event_count = 0
 
     @classmethod
     def open_profile(
@@ -183,6 +188,9 @@ class HostInteractionProtocolClient:
         response = self._transact(claim_session_packet(claimed), Opcode.CLAIM_SESSION)
         if response.session_token != claimed:
             raise ProtocolError("Firmware acknowledged a different session token.")
+        if self.session_token != claimed:
+            self._delivered_events.clear()
+            self._delivered_event_ids.clear()
         self.session_token = claimed
         self._heartbeat_sequence = response.heartbeat_sequence
         self._next_heartbeat_at = time.monotonic() + 1.0
@@ -210,6 +218,8 @@ class HostInteractionProtocolClient:
         self._heartbeat_sequence = 0
         self._next_heartbeat_at = 0.0
         self._events.clear()
+        self._delivered_events.clear()
+        self._delivered_event_ids.clear()
         return response
 
     def begin_binding_replace(self, generation: int) -> Response:
@@ -291,17 +301,39 @@ class HostInteractionProtocolClient:
     def read_event(
         self, timeout_ms: int = 0, *, acknowledge: bool = True
     ) -> DeviceEvent | None:
-        self._capture_unmatched()
-        if not self._events:
-            report = self.transport.read(timeout_ms)
-            if report:
-                self._capture_report(report)
-        if not self._events:
-            return None
-        event = self._events.popleft()
-        if acknowledge:
+        """Read a device event, ACKing retries without redelivering their action.
+
+        acknowledge=False deliberately retains raw delivery for diagnostics and
+        caller-managed acknowledgment. Only automatically ACKed reads participate
+        in duplicate filtering. The bounded window permits sequence wraparound.
+        """
+        if timeout_ms < 0:
+            raise ProtocolError("Event timeout cannot be negative.")
+        deadline = time.monotonic() + timeout_ms / 1000
+        while True:
+            self._capture_unmatched()
+            if not self._events:
+                remaining = max(0, int((deadline - time.monotonic()) * 1000))
+                report = self.transport.read(remaining)
+                if report:
+                    self._capture_report(report)
+            if not self._events:
+                return None
+            event = self._events.popleft()
+            if not acknowledge:
+                return event
             self.ack_event(event.sequence)
-        return event
+            identity = (event.session_token, event.sequence)
+            if identity in self._delivered_event_ids:
+                self.duplicate_event_count += 1
+                if timeout_ms > 0 and time.monotonic() >= deadline:
+                    return None
+                continue
+            if len(self._delivered_events) == self._delivered_events.maxlen:
+                self._delivered_event_ids.remove(self._delivered_events.popleft())
+            self._delivered_events.append(identity)
+            self._delivered_event_ids.add(identity)
+            return event
 
     def service(
         self, timeout_ms: int = 0, *, acknowledge: bool = True
@@ -408,9 +440,9 @@ class HostInteractionController:
         return self.resolve_region(region_id).controls
 
     def _validate_control(self, control_id: ControlId) -> None:
-        if control_id == self.toggle_control:
+        if control_id == self.toggle_control and not self.capabilities.supports_toggle_single_tap:
             raise ProtocolError(
-                "The physical interaction toggle is reserved by firmware."
+                "Firmware does not support single-tap capture at the physical toggle."
             )
         if control_id.kind is ControlKind.KEY:
             if (
@@ -427,7 +459,22 @@ class HostInteractionController:
                 f"Encoder control {control_id} is outside capabilities."
             )
 
+    def _validate_binding(self, configured: ConfiguredBinding) -> None:
+        self._validate_control(configured.entry.control_id)
+        policy = configured.policy
+        if configured.entry.control_id == self.toggle_control and (
+            policy.routing is not Routing.CAPTURE
+            or policy.lifetime is not Lifetime.SESSION
+            or policy.emit_down
+            or not policy.emit_up
+        ):
+            raise ProtocolError(
+                "Single-tap toggle capture requires CAPTURE, SESSION, and UP-only events."
+            )
+
     def _replace(self, desired: dict[ControlId, ConfiguredBinding]) -> BindingUpdate:
+        for configured in desired.values():
+            self._validate_binding(configured)
         status = self.client.get_status()
         generation = _next_generation(status.binding_generation)
         if not desired:
@@ -481,6 +528,7 @@ class HostInteractionController:
             desired[control_id] = ConfiguredBinding(
                 BindingEntry(control_id, binding_id), policy
             )
+            self._validate_binding(desired[control_id])
         update = self._replace(desired)
         return BindingUpdate(resolved, update.binding_generation, update.response)
 
@@ -503,7 +551,7 @@ class HostInteractionController:
         desired: dict[ControlId, ConfiguredBinding] = {}
         for binding in bindings:
             control_id = binding.entry.control_id
-            self._validate_control(control_id)
+            self._validate_binding(binding)
             if control_id in desired:
                 raise ProtocolError(f"Duplicate control {control_id} in replacement.")
             desired[control_id] = binding
@@ -626,6 +674,8 @@ class HostInteractionController:
         )
         for control in resolved:
             self._validate_control(control)
+            if control == self.toggle_control:
+                raise ProtocolError("Single-tap toggle capture requires manual activation.")
         return self._activate(ForceScope.SELECTED, resolved, lease_ms)
 
     def activate_region(

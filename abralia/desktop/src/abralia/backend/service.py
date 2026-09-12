@@ -1,0 +1,538 @@
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
+"""Persistent backend: bounded IPC queue feeding exactly one device worker."""
+
+from __future__ import annotations
+
+from concurrent.futures import Future, TimeoutError
+from copy import copy
+from dataclasses import replace
+import fcntl
+import json
+import logging
+import os
+from pathlib import Path
+import queue
+import socket
+import socketserver
+import stat
+import threading
+import time
+from uuid import UUID, uuid4
+
+from .core import Broker, BrokerConfig, Caller, text_argument
+from .device import DeviceDriver
+from .ipc import MAX_REQUEST, socket_path
+from .recovery import AllocationRecovery, proof_digest, MAX_RECORDS
+from .task_catalog import codex_project_tasks, requested_task_ids
+
+LOG = logging.getLogger(__name__)
+
+
+class BrokerService:
+    def __init__(self, project: str | Path, profile: str, *, mode="simulated",
+                 config: BrokerConfig | None = None, endpoint: str | Path | None = None,
+                 registered_thread_id: str | None = None, desktop_thread_ids=(),
+                 observe_codex=False, codex_home=None, codex_hook_journal=None, recovery_owner_check=None):
+        self.project = str(Path(project).resolve())
+        if not Path(self.project).is_dir() or mode not in ("simulated", "hardware"):
+            raise ValueError("existing project directory and hardware/simulated mode required")
+        self.profile = profile
+        self.mode = mode
+        self.config = config or BrokerConfig()
+        self.codex_home = codex_home
+        self.endpoint = Path(endpoint or socket_path(project))
+        self.registered_thread_id = str(UUID(registered_thread_id)) if registered_thread_id else None
+        self.desktop_threads = {str(UUID(value)) for value in desktop_thread_ids}
+        self.broker = Broker(self.config)
+        self.recovery = AllocationRecovery(self.broker, self.project, self.endpoint.with_suffix('.slots.json'),
+                                           grace_seconds=self.config.recovery_grace_seconds,
+                                           owner_check=recovery_owner_check)
+        self.connection_proofs = {}
+        self.connection_owners = {}
+        self.commands = queue.Queue(maxsize=256)
+        self.stop_event = threading.Event()
+        self.started = Future()
+        self.listener_ready = threading.Event()
+        self.connections: dict[str, set[str]] = {}
+        self.last_seen: dict[str, float] = {}
+        self.driver = None
+        self.server = None
+        self.worker = None
+        self.listener = None
+        self.lock_file = None
+        self.cleanup_error = None
+        self.worker_error = None
+        self.observer = None
+        if observe_codex:
+            from .codex_observer import CodexObserver
+            self.observer = CodexObserver(self, codex_home=codex_home, hook_journal=codex_hook_journal)
+
+    def submit(self, command: dict) -> dict:
+        if self.stop_event.is_set():
+            return {"status": "skipped", "reason": "backend_stopping"}
+        future = Future()
+        try:
+            self.commands.put_nowait((command, future))
+        except queue.Full:
+            return {"status": "skipped", "reason": "backend_busy"}
+        try:
+            return future.result(timeout=6)
+        except TimeoutError:
+            future.cancel()
+            return {"status": "skipped", "reason": "backend_timeout", "retry": "reuse_idempotency_key"}
+
+    def _recovery_checkpoint(self):
+        state = {key:copy(value) for key,value in vars(self.broker).items()}
+        state['slots'] = {number:copy(slot) for number,slot in self.broker.slots.items()}
+        return state, self.recovery.pending.copy(), {k:v.copy() for k,v in self.recovery.proofs.items()}, self.recovery.restored
+
+    def _rollback_recovery(self, checkpoint):
+        state, pending, proofs, restored = checkpoint
+        vars(self.broker).clear()
+        vars(self.broker).update(state)
+        self.recovery.pending, self.recovery.proofs, self.recovery.restored = pending, proofs, restored
+        self.broker.event('recovery_commit_failed')
+        return {'status':'rejected','reason':'recovery_storage_unavailable','backend_epoch':self.broker.epoch}
+
+    def _commit_gap(self, gap):
+        checkpoint = self._recovery_checkpoint()
+        if not self.broker.close_gap(gap):
+            return False
+        self.recovery.save()
+        if self.recovery.error:
+            self._rollback_recovery(checkpoint)
+            self.broker.cancel_gap_hold('recovery_storage_unavailable')
+            return False
+        # The confirmation flash starts after durable commit, even on slow storage.
+        now = self.broker.clock()
+        self.broker.gap_feedback.update(started_at=now, until=now + self.config.gap_close_flash_seconds)
+        return True
+
+    def _caller(self, message: dict, connection: str, role: str, fallback: str | None) -> Caller:
+        if role == "admin":
+            raise ValueError("admin_connections_cannot_impersonate_model_calls")
+        metadata = message.get("metadata", {})
+        if not isinstance(metadata, dict):
+            raise ValueError("invalid_metadata")
+        thread_id = metadata.get("thread_id")
+        if thread_id:
+            if not isinstance(thread_id, str):
+                raise ValueError("invalid_thread_id")
+            thread_id = str(UUID(thread_id))
+            source = "codex_metadata"
+        elif fallback and fallback == self.registered_thread_id:
+            thread_id, source = fallback, "registered_test_connection"
+        else:
+            raise ValueError("caller_identity_unavailable")
+        desktop_registered = thread_id in self.desktop_threads
+        caller = Caller("codex:" + thread_id, thread_id, source,
+                        "codex_desktop" if desktop_registered else "unknown",
+                        "registered_by_host" if desktop_registered else "unknown")
+        allocation = self.broker.slots.get(self.broker.owners.get(caller.caller_id, -1))
+        if allocation:
+            if not desktop_registered and allocation.caller.surface_source in ("agent_reported", "registered_by_host"):
+                caller = replace(caller, surface=allocation.caller.surface,
+                                 surface_source=allocation.caller.surface_source)
+            allocation.caller = caller
+        self.connections.setdefault(connection, set()).add(caller.caller_id)
+        self.broker.connected(caller.caller_id)
+        return caller
+
+    def _drop_connection(self, connection: str):
+        self.connection_proofs.pop(connection, None)
+        self.connection_owners.pop(connection, None)
+        owners = self.connections.pop(connection, set())
+        self.last_seen.pop(connection, None)
+        remaining = set().union(*self.connections.values()) if self.connections else set()
+        for owner in owners - remaining:
+            self.broker.disconnected_at(owner)
+
+    def _handle(self, command: dict) -> dict:
+        connection = command["connection"]
+        message = command["message"]
+        kind = message.get("type")
+        if command.get('handshake'):
+            key = message.get('recovery_key')
+            claims = message.get('resume_callers', [])
+            if not isinstance(claims, list) or len(claims) > MAX_RECORDS:
+                raise ValueError('invalid_resume_callers')
+            for caller_id in claims:
+                if not isinstance(caller_id, str) or not caller_id.startswith('codex:') or caller_id != 'codex:' + str(UUID(caller_id[6:])):
+                    raise ValueError('invalid_resume_caller')
+            restored = {}
+            if key is not None:
+                if command['role'] != 'agent':
+                    raise ValueError('admin_cannot_resume_slots')
+                proof = proof_digest(key)
+                owner = message.get('recovery_owner')
+                if self.recovery.owner_check(owner):
+                    self.connection_proofs[connection] = proof
+                    self.connection_owners[connection] = owner
+                    checkpoint = self._recovery_checkpoint()
+                    restored = self.recovery.resume(claims, proof)
+                    self.recovery.save()
+                    if restored and self.recovery.error:
+                        return self._rollback_recovery(checkpoint)
+            elif claims:
+                raise ValueError('resume_requires_live_bridge_proof')
+            self.connections.setdefault(connection, set()).update(restored)
+            self.last_seen[connection] = time.monotonic()
+            for owner in restored:
+                self.broker.connected(owner)
+            self.recovery.save()
+            return {'status':'accepted','backend_epoch':self.broker.epoch,'restored_tokens':restored}
+        if command.get('role') == 'observer':
+            if kind == 'codex_observation_targets':
+                return {'status':'accepted','targets':[
+                    {'token':s.slot_token,'thread_id':s.caller.thread_id}
+                    for s in self.broker.slots.values() if s.caller.thread_id and s.caller.caller_id.startswith('codex:')]}
+            if kind == 'codex_observation':
+                accepted = self.broker.observe_codex(message['token'], message['observation'])
+                return {'status':'accepted' if accepted else 'skipped'}
+            return {'status':'rejected','reason':'unsupported_observer_message'}
+        if kind == "disconnect":
+            self._drop_connection(connection)
+            return {"status": "accepted"}
+        self.last_seen[connection] = time.monotonic()
+        self.connections.setdefault(connection, set())
+        if kind == "ping":
+            for owner in self.connections[connection]:
+                self.broker.connected(owner)
+            return {"status": "accepted", "backend_epoch": self.broker.epoch}
+        if kind == "call":
+            stable = message.get('operation') in ('acquire_slot', 'release_slot')
+            checkpoint = self._recovery_checkpoint() if stable else None
+            caller = self._caller(message, connection, command["role"], command.get("fallback"))
+            self.recovery.expire()
+            result = self.broker.call(caller, message.get("operation"), message.get("arguments"))
+            if result.get('status') == 'accepted':
+                if caller.caller_id in self.broker.owners:
+                    self.recovery.forget_reservation(caller.caller_id)
+                    if message.get('operation') == 'acquire_slot':
+                        self.recovery.attach(caller.caller_id, self.connection_proofs.get(connection), self.connection_owners.get(connection))
+                self.recovery.save()  # Record allocation/release before acknowledging it.
+                if stable and self.recovery.error and connection in self.connection_proofs:
+                    result = self._rollback_recovery(checkpoint)
+            result['slot_recovery'] = {'client_verified':connection in self.connection_proofs, **self.recovery.status()}
+            if 'allocation' in result:
+                slot = self.broker.slots.get(result['allocation']['slot_id'])
+                result['allocation']['agent_connected'] = bool(slot and slot.agent_attached and
+                    any(slot.caller.caller_id in owners for owners in self.connections.values()))
+            return result
+        if kind != "admin" or command["role"] != "admin":
+            return {"status": "rejected", "reason": "unsupported_message"}
+        action = message.get("action")
+        if action in ('register_tasks', 'release_tasks'):
+            if message.get('expected_epoch') != self.broker.epoch:
+                raise ValueError('stale_backend_epoch')
+            key = text_argument(message.get('idempotency_key'), 'idempotency_key', 128)
+            ids = requested_task_ids(message.get('thread_ids'), message.get('all_project', False))
+            cache_key = ('host-admin', key)
+            fingerprint = json.dumps([action, sorted(ids) if ids is not None else None])
+            cached = self.broker.idempotency.get(cache_key)
+            if cached:
+                if cached[0] != fingerprint:
+                    raise ValueError('idempotency_conflict')
+                return {**cached[1], 'replayed':True}
+            # Validate the complete registration batch before touching any slot.
+            tasks = codex_project_tasks(self.project, codex_home=self.codex_home, thread_ids=ids) if action == 'register_tasks' else None
+            checkpoint = self._recovery_checkpoint()
+            results = []
+            if tasks is not None:
+                for task in tasks:
+                    slot, created = self.broker.register_host_task(task['thread_id'], task['label'])
+                    pending = self.recovery.pending.get(slot.caller.caller_id)
+                    if pending:
+                        self.recovery.proofs[slot.caller.caller_id] = {p['proof']:p['owner'] for p in pending['leases']}
+                        self.recovery.forget_reservation(slot.caller.caller_id)
+                    results.append({'thread_id': task['thread_id'], 'slot_id':slot.slot_id,
+                                    **self.broker.location(slot),
+                                    'identity_color':slot.identity_color, 'label':slot.label,
+                                    'registration_source':'host' if slot.host_registered else 'agent',
+                                    'agent_attached':slot.agent_attached, 'created':created})
+            else:
+                owners = (list(dict.fromkeys([*self.broker.owners, *self.recovery.pending])) if ids is None
+                          else ['codex:' + task_id for task_id in ids])
+                for owner in owners:
+                    slot = self.broker.slots.get(self.broker.owners.get(owner))
+                    pending = owner in self.recovery.pending
+                    results.append({'thread_id':slot.caller.thread_id if slot else owner.removeprefix('codex:'),
+                                    'slot_id':slot.slot_id if slot else None, 'released':bool(slot or pending)})
+                    if slot:
+                        self.broker._release(slot)
+                    self.recovery.forget_reservation(owner)
+                    self.recovery.proofs.pop(owner, None)
+            self.recovery.save()
+            if self.recovery.error:
+                return self._rollback_recovery(checkpoint)
+            result = {'status':'accepted', 'backend_epoch':self.broker.epoch,
+                    'delivery':'queued' if self.mode == 'hardware' else 'simulated',
+                    'tasks':results, 'allocated_slots':len(self.broker.slots),
+                    'page_count':self.broker.page_count}
+            self.broker.idempotency[cache_key] = (fingerprint, result)
+            while len(self.broker.idempotency) > self.config.idempotency_capacity:
+                self.broker.idempotency.popitem(last=False)
+            return result
+        if action == "set_background":
+            self.broker.set_background_brightness(message.get("percent"))
+            return {"status": "accepted", "background_brightness_percent": self.broker.config.background_brightness_percent,
+                    "delivery": "queued" if self.mode == "hardware" else "simulated"}
+        if action == "register_desktop":
+            thread_id = str(UUID(message.get("thread_id", "")))
+            self.desktop_threads.add(thread_id)
+            return {"status": "accepted", "thread_id": thread_id, "surface_source": "registered_by_host"}
+        if action == "status":
+            result = self.broker.admin_snapshot()
+            result['admin_operations'] = ['register_tasks', 'release_tasks']
+            result['codex_observer'] = {'enabled':self.observer is not None,
+                                        'error':self.observer.error if self.observer else None}
+            result['navigation_input'] = self.driver.navigation_input_status()
+            result['slot_recovery'] = self.recovery.status()
+            connected = set().union(*self.connections.values()) if self.connections else set()
+            for item in result['slots']:
+                item['agent_connected'] = item['agent_attached'] and item['caller_id'] in connected
+            if self.driver.last_payload:
+                result["rendered_keys"] = {key: color.to_json() for key, color in self.driver.last_payload.colors.items()}
+            return {"status": "accepted", **result}
+        if action == "seed_fixtures":
+            count = message.get("count", 0)
+            if type(count) is not int or not 1 <= count <= 120:
+                raise ValueError("fixture count must be in 1...120")
+            for i in range(count):
+                caller = Caller(f"fixture:{i}", surface="simulated")
+                r = self.broker.call(caller, "acquire_slot", {"label": f"SIMULATED agent {i + 1}", "idempotency_key": "fixture-acquire"})
+                token = r["allocation"]["slot_token"]
+                self.broker.call(caller, "set_slot_state", {"slot_token": token, "state": "progressing", "idempotency_key": "fixture-progress"})
+            return {"status": "accepted", "fixtures": count}
+        if action == "clear_fixtures":
+            for slot in list(self.broker.slots.values()):
+                if slot.caller.caller_id.startswith("fixture:"):
+                    self.broker._release(slot)
+            return {"status": "accepted"}
+        if action == "input" and self.mode == "simulated":
+            event = message.get("event")
+            if event == "toggle":
+                self.broker.set_active(not self.broker.active)
+            elif event == 'navigation_hold':
+                self.broker.toggle_navigation()
+            elif event in ('page_previous', 'page_next', 'first_agent', 'last_agent', 'slot_previous', 'slot_next'):
+                self.broker.navigate(event)
+            elif event == 'confirm':
+                candidate = self.broker.overview_candidate()
+                if candidate:
+                    self.broker.confirm_candidate(candidate.slot_token, self.broker.cursor_revision)
+            elif event in ("next_page", "previous_page"):
+                self.broker.turn_page(1 if event == "next_page" else -1)
+            elif event == "select":
+                position = message.get("position")
+                if type(position) is not int or not 1 <= position <= 12:
+                    raise ValueError("position must be in 1...12")
+                slot = self.broker.slots.get(self.broker.page * 12 + position)
+                if slot:
+                    self.broker.select_slot(slot.slot_token)
+            elif event in ("mute", "pickup"):
+                slot = self.broker.pending_target()
+                if slot:
+                    self.broker.act_on_call(event, slot.slot_token, slot.notification.notification_id)
+            else:
+                raise ValueError("unknown simulated input")
+            self.broker.step()
+            return {"status": "accepted", "simulation": True}
+        return {"status": "rejected", "reason": "unsupported_admin_action"}
+
+    def _run_worker(self):
+        last_sequence = 0
+        try:
+            self.driver = DeviceDriver(self.broker, self.profile, self.mode, gap_committer=self._commit_gap)
+            self.driver.start()
+            self.started.set_result(True)
+            while not self.stop_event.is_set():
+                if self.listener_ready.is_set() and not self.recovery.window_started:
+                    self.recovery.begin_window()
+                # Bound command work between HID service calls; no socket handler touches HID.
+                for _ in range(16):
+                    try:
+                        command, future = self.commands.get_nowait()
+                    except queue.Empty:
+                        break
+                    if not future.set_running_or_notify_cancel():
+                        continue
+                    try:
+                        result = self._handle(command)
+                    except (ValueError, TypeError, KeyError) as error:
+                        result = {"status": "rejected", "reason": str(error)}
+                    future.set_result(result)
+                now = time.monotonic()
+                for connection, seen in list(self.last_seen.items()):
+                    if now - seen > 20:
+                        self._drop_connection(connection)
+                self.broker.step()
+                self.recovery.expire()
+                self.recovery.save()
+                self.driver.tick()
+                for event in self.broker.events:
+                    if event["sequence"] > last_sequence:
+                        # Event records exclude tokens, summaries and question text.
+                        LOG.info("%s", json.dumps(event))
+                        last_sequence = event["sequence"]
+                self.stop_event.wait(.003)
+        except Exception as error:
+            self.worker_error = str(error)
+            self.broker.delivery = "failed"
+            self.broker.device_error = self.worker_error
+            if not self.started.done():
+                self.started.set_exception(error)
+            else:
+                LOG.exception("Backend worker stopped")
+            self.stop_event.set()
+        finally:
+            if self.driver:
+                try:
+                    self.driver.close()
+                except Exception as error:
+                    self.cleanup_error = str(error)
+                    LOG.error("Device cleanup failed: %s", error)
+            while not self.commands.empty():
+                _, future = self.commands.get_nowait()
+                if not future.done():
+                    future.set_result({"status": "skipped", "reason": "backend_stopped"})
+
+    def start(self):
+        parent = self.endpoint.parent
+        parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if parent.is_symlink() or parent.stat().st_uid != os.getuid() or parent.stat().st_mode & 0o077:
+            raise ValueError("socket directory must be private and owned by the current user")
+        if len(os.fsencode(self.endpoint)) >= 104:
+            raise ValueError("Unix socket path is too long for macOS")
+        lock_path = self.endpoint.with_suffix(".lock")
+        self.lock_file = os.fdopen(os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600), "w")
+        try:
+            fcntl.flock(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if self.endpoint.exists() or self.endpoint.is_symlink():
+                info = self.endpoint.lstat()
+                if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
+                    raise ValueError("refusing to remove an unexpected socket-path entry")
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+                    probe.settimeout(.2)
+                    try:
+                        probe.connect(str(self.endpoint))
+                    except ConnectionRefusedError:
+                        self.endpoint.unlink()
+                    else:
+                        raise RuntimeError("backend already running")
+            self.recovery.load()
+            self.worker = threading.Thread(target=self._run_worker, name="abralia-device-worker")
+            self.worker.start()
+            self.started.result(timeout=15)
+            service = self
+
+            class Handler(socketserver.StreamRequestHandler):
+                def handle(self):
+                    connection = str(uuid4())
+                    role, fallback = "agent", None
+                    self.request.settimeout(20)
+                    try:
+                        line = self.rfile.readline(MAX_REQUEST + 1)
+                        hello = json.loads(line)
+                        if len(line) > MAX_REQUEST or not isinstance(hello, dict) or hello.get("type") != "hello" or hello.get("project") != service.project:
+                            raise ValueError("project_registration_mismatch")
+                        role = hello.get("role", "agent")
+                        if role not in ("agent", "admin"):
+                            raise ValueError("invalid_connection_role")
+                        fallback = hello.get("registered_thread_id")
+                        if fallback is not None and fallback != service.registered_thread_id:
+                            raise ValueError("unregistered_test_connection")
+                        accepted = service.submit({'connection':connection, 'role':role,
+                                                   'message':hello, 'handshake':True})
+                        self.wfile.write(json.dumps(accepted).encode() + b"\n")
+                        self.wfile.flush()
+                        if accepted.get('status') != 'accepted':
+                            return
+                        while not service.stop_event.is_set():
+                            line = self.rfile.readline(MAX_REQUEST + 1)
+                            if not line:
+                                break
+                            if len(line) > MAX_REQUEST or not line.endswith(b"\n"):
+                                raise ValueError("request_too_large")
+                            message = json.loads(line)
+                            if not isinstance(message, dict):
+                                raise ValueError("message_must_be_object")
+                            result = service.submit({"connection": connection, "role": role,
+                                                     "fallback": fallback, "message": message})
+                            self.wfile.write(json.dumps(result, allow_nan=False).encode() + b"\n")
+                            self.wfile.flush()
+                    except (ValueError, OSError) as error:
+                        try:
+                            self.wfile.write(json.dumps({"status": "rejected", "reason": str(error)}).encode() + b"\n")
+                        except OSError:
+                            pass
+                    finally:
+                        service.submit({"connection": connection, "message": {"type": "disconnect"}})
+
+            class Server(socketserver.ThreadingUnixStreamServer):
+                daemon_threads = True
+                block_on_close = False
+                request_queue_size = 32
+
+                def __init__(self, *args):
+                    self.connection_limit = threading.BoundedSemaphore(64)
+                    super().__init__(*args)
+
+                def process_request(self, request, client_address):
+                    if not self.connection_limit.acquire(blocking=False):
+                        self.shutdown_request(request)
+                        return
+                    try:
+                        super().process_request(request, client_address)
+                    except Exception:
+                        self.connection_limit.release()
+                        raise
+
+                def process_request_thread(self, request, client_address):
+                    try:
+                        super().process_request_thread(request, client_address)
+                    finally:
+                        self.connection_limit.release()
+
+            self.server = Server(str(self.endpoint), Handler)
+            os.chmod(self.endpoint, 0o600)
+            self.listener = threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": .05}, daemon=True)
+            self.listener.start()
+            self.listener_ready.set()
+            if self.observer:
+                self.observer.start()
+            return self
+        except Exception:
+            self.close()
+            raise
+
+    def close(self):
+        self.stop_event.set()
+        observer_error = None
+        if self.observer:
+            try:
+                self.observer.close()
+            except Exception as error:
+                observer_error = error
+        if self.server:
+            self.server.shutdown()
+            self.server.server_close()
+            self.server = None
+            self.endpoint.unlink(missing_ok=True)
+        if self.worker:
+            self.worker.join(timeout=12)
+            if self.worker.is_alive():
+                raise RuntimeError("device worker did not stop; cleanup remains unverified")
+        if self.lock_file:
+            self.lock_file.close()
+            self.lock_file = None
+        if observer_error:
+            raise observer_error
+
+    def __enter__(self):
+        return self.start()
+
+    def __exit__(self, *_):
+        self.close()

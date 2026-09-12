@@ -27,6 +27,8 @@ typedef enum {
   PAUSE_GESTURE_WAIT_SECOND,
   PAUSE_GESTURE_SECOND_DOWN,
   PAUSE_GESTURE_PASSTHROUGH_HELD,
+  PAUSE_GESTURE_CAPTURED_HELD,
+  PAUSE_GESTURE_SUPPRESSED_HELD,
 } pause_gesture_state_t;
 
 typedef struct {
@@ -39,6 +41,7 @@ static host_interaction_press_latch_t
 static pause_gesture_state_t pause_gesture_state;
 static uint32_t pause_gesture_started_at;
 static bool pause_replay_bypass;
+static host_interaction_press_latch_t pause_single_tap;
 
 static bool control_id_from_record(const keyrecord_t *record,
                                    uint16_t *control_id) {
@@ -101,26 +104,77 @@ static void replay_pause_tap(void) {
   replay_pause_event(false);
 }
 
+static void start_pause_gesture(uint32_t now) {
+  pause_single_tap.active = host_interaction_protocol_resolve_binding(
+      HOST_INTERACTION_PAUSE_CONTROL, &pause_single_tap.binding);
+  pause_gesture_state = PAUSE_GESTURE_FIRST_DOWN;
+  pause_gesture_started_at = now;
+}
+
+static void complete_pause_single_tap(void) {
+  host_interaction_press_latch_t captured = pause_single_tap;
+  pause_single_tap.active = false;
+  pause_gesture_state = PAUSE_GESTURE_IDLE;
+  if (!captured.active) {
+    replay_pause_tap();
+    return;
+  }
+
+  // Expiry wins over dispatch, even if intervening input completed this tap.
+  // Never retarget it to a notification installed after the original DOWN.
+  host_interaction_protocol_housekeeping();
+  host_interaction_resolved_binding_t current;
+  if (host_interaction_protocol_rgb_effect25_selected() &&
+      host_interaction_protocol_resolve_binding(HOST_INTERACTION_PAUSE_CONTROL,
+                                                &current) &&
+      current.binding_id == captured.binding.binding_id &&
+      current.generation == captured.binding.generation) {
+    host_interaction_protocol_enqueue_control_edge(
+        HOST_INTERACTION_PAUSE_CONTROL, &captured.binding, false, false);
+  }
+}
+
+static void resolve_pause_hold(void) {
+  if (pause_single_tap.active) {
+    pause_gesture_state = PAUSE_GESTURE_CAPTURED_HELD;
+  } else {
+    replay_pause_event(true);
+    pause_gesture_state = PAUSE_GESTURE_PASSTHROUGH_HELD;
+  }
+}
+
 static void flush_pause_before_intervening_event(void) {
   switch (pause_gesture_state) {
   case PAUSE_GESTURE_FIRST_DOWN:
-    replay_pause_event(true);
-    pause_gesture_state = PAUSE_GESTURE_PASSTHROUGH_HELD;
+    resolve_pause_hold();
     break;
 
   case PAUSE_GESTURE_WAIT_SECOND:
-    replay_pause_tap();
-    pause_gesture_state = PAUSE_GESTURE_IDLE;
+    complete_pause_single_tap();
     break;
 
   case PAUSE_GESTURE_IDLE:
   case PAUSE_GESTURE_SECOND_DOWN:
   case PAUSE_GESTURE_PASSTHROUGH_HELD:
+  case PAUSE_GESTURE_CAPTURED_HELD:
+  case PAUSE_GESTURE_SUPPRESSED_HELD:
     break;
   }
 }
 
 static bool handle_pause_gesture(const keyrecord_t *record) {
+  if (pause_gesture_state == PAUSE_GESTURE_CAPTURED_HELD) {
+    if (!record->event.pressed) {
+      complete_pause_single_tap();
+    }
+    return false;
+  }
+  if (pause_gesture_state == PAUSE_GESTURE_SUPPRESSED_HELD) {
+    if (!record->event.pressed) {
+      pause_gesture_state = PAUSE_GESTURE_IDLE;
+    }
+    return false;
+  }
   if (pause_gesture_state == PAUSE_GESTURE_PASSTHROUGH_HELD) {
     if (!record->event.pressed) {
       pause_gesture_state = PAUSE_GESTURE_IDLE;
@@ -141,12 +195,16 @@ static bool handle_pause_gesture(const keyrecord_t *record) {
     if (!record->event.pressed) {
       return true;
     }
-    pause_gesture_state = PAUSE_GESTURE_FIRST_DOWN;
-    pause_gesture_started_at = now;
+    start_pause_gesture(now);
     return false;
 
   case PAUSE_GESTURE_FIRST_DOWN:
     if (!record->event.pressed) {
+      if (timer_elapsed32(pause_gesture_started_at) >=
+          HOST_INTERACTION_DOUBLE_TAP_TERM_MS) {
+        complete_pause_single_tap();
+        return false;
+      }
       pause_gesture_state = PAUSE_GESTURE_WAIT_SECOND;
       pause_gesture_started_at = now;
     }
@@ -156,19 +214,23 @@ static bool handle_pause_gesture(const keyrecord_t *record) {
     if (!record->event.pressed) {
       return false;
     }
-    if (timer_elapsed32(pause_gesture_started_at) <=
+    if (timer_elapsed32(pause_gesture_started_at) <
         HOST_INTERACTION_DOUBLE_TAP_TERM_MS) {
       pause_gesture_state = PAUSE_GESTURE_SECOND_DOWN;
       return false;
     }
 
-    replay_pause_tap();
-    pause_gesture_state = PAUSE_GESTURE_FIRST_DOWN;
-    pause_gesture_started_at = now;
+    complete_pause_single_tap();
+    if (!host_interaction_protocol_session_alive() ||
+        !host_interaction_protocol_rgb_effect25_selected()) {
+      return true;
+    }
+    start_pause_gesture(now);
     return false;
 
   case PAUSE_GESTURE_SECOND_DOWN:
     if (!record->event.pressed) {
+      pause_single_tap.active = false;
       pause_gesture_state = PAUSE_GESTURE_IDLE;
       host_interaction_protocol_toggle_manual_mode();
     }
@@ -176,6 +238,9 @@ static bool handle_pause_gesture(const keyrecord_t *record) {
 
   case PAUSE_GESTURE_PASSTHROUGH_HELD:
     return true;
+  case PAUSE_GESTURE_CAPTURED_HELD:
+  case PAUSE_GESTURE_SUPPRESSED_HELD:
+    return false;
   }
 
   return true;
@@ -252,6 +317,15 @@ bool host_interaction_pre_process_record(uint16_t keycode,
 }
 
 static void replay_pending_pause_gesture(void) {
+  if (pause_single_tap.active) {
+    pause_single_tap.active = false;
+    bool held = pause_gesture_state == PAUSE_GESTURE_FIRST_DOWN ||
+                pause_gesture_state == PAUSE_GESTURE_SECOND_DOWN ||
+                pause_gesture_state == PAUSE_GESTURE_CAPTURED_HELD;
+    pause_gesture_state = held ? PAUSE_GESTURE_SUPPRESSED_HELD
+                               : PAUSE_GESTURE_IDLE;
+    return;
+  }
   switch (pause_gesture_state) {
   case PAUSE_GESTURE_FIRST_DOWN:
     replay_pause_event(true);
@@ -271,6 +345,8 @@ static void replay_pending_pause_gesture(void) {
 
   case PAUSE_GESTURE_IDLE:
   case PAUSE_GESTURE_PASSTHROUGH_HELD:
+  case PAUSE_GESTURE_CAPTURED_HELD:
+  case PAUSE_GESTURE_SUPPRESSED_HELD:
     break;
   }
 }
@@ -285,17 +361,15 @@ void host_interaction_on_rgb_effect_changed(bool selected) {
 }
 
 void host_interaction_housekeeping(void) {
+  host_interaction_protocol_housekeeping();
   if (pause_gesture_state == PAUSE_GESTURE_FIRST_DOWN &&
       timer_elapsed32(pause_gesture_started_at) >=
           HOST_INTERACTION_DOUBLE_TAP_TERM_MS) {
-    replay_pause_event(true);
-    pause_gesture_state = PAUSE_GESTURE_PASSTHROUGH_HELD;
+    resolve_pause_hold();
   } else if (pause_gesture_state == PAUSE_GESTURE_WAIT_SECOND &&
              timer_elapsed32(pause_gesture_started_at) >=
                  HOST_INTERACTION_DOUBLE_TAP_TERM_MS) {
-    replay_pause_tap();
-    pause_gesture_state = PAUSE_GESTURE_IDLE;
+    complete_pause_single_tap();
   }
 
-  host_interaction_protocol_housekeeping();
 }

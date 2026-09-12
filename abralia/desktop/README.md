@@ -1,10 +1,15 @@
 # Abralia desktop RGB API
 
 This directory contains Abralia's Python 3.11+ desktop developer API and CLI
-for profile-driven keyboard RGB control. Version 0.2 requires an explicit JSON profile and supports the Keychron
+for profile-driven keyboard RGB control. Version 0.3 requires an explicit JSON profile and supports the Keychron
 effect-25 protocol family. Bundled profiles cover V3 8K ANSI encoder and the
 experimental original V3 ANSI / ANSI encoder ports; original V3 hardware has
 not been physically validated. macOS remains the primary desktop platform.
+
+The optional [agent backend](BACKEND.md) adds a terminal-running broker,
+project-local MCP and skill setup, paged F-key allocations, notifications, and
+pickup-gated native question highlights. Install `abralia-desktop[backend]` to
+use its additional commands. The RGB library remains usable without MCP.
 
 The implementation follows this fixed data flow:
 
@@ -20,9 +25,9 @@ physical/canvas/semantic scene builders
 -> firmware RGB endpoint
 ```
 
-The semantic scene builder and temporary-binding overlay are extension
-boundaries only. Version 0.2 intentionally defines no agent-specific slot
-vocabulary or priority policy.
+The semantic scene builder and temporary-binding overlay remain generic RGB
+extension boundaries. Agent-specific slot vocabulary and scene policy live in
+the optional backend rather than the RGB library.
 
 ## Profiles and migration to 0.2
 

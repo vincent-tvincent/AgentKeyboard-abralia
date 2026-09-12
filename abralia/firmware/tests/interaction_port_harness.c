@@ -98,6 +98,183 @@ static void expect_event(uint8_t type, uint8_t edge, uint16_t control) {
     put16(&packet[9], sequence);
     submit(HOST_INTERACTION_RESULT_OK);
 }
+
+static void bind_tap(uint16_t generation, uint16_t id) {
+    request(HOST_INTERACTION_BEGIN_BINDING_REPLACE, false);
+    put16(&packet[9], generation);
+    submit(HOST_INTERACTION_RESULT_OK);
+    request(HOST_INTERACTION_WRITE_BINDINGS, false);
+    put16(&packet[9], generation);
+    packet[11] = HOST_INTERACTION_BINDING_EVENT_UP;
+    packet[12] = HOST_INTERACTION_LIFETIME_SESSION;
+    packet[17] = 1;
+    put16(&packet[18], HOST_INTERACTION_PAUSE_CONTROL);
+    put16(&packet[20], id);
+    submit(HOST_INTERACTION_RESULT_OK);
+    request(HOST_INTERACTION_COMMIT_BINDINGS, false);
+    put16(&packet[9], generation);
+    submit(HOST_INTERACTION_RESULT_OK);
+}
+
+static void setup_tap(bool active) {
+    if (host_interaction_protocol_session_alive()) {
+        request(HOST_INTERACTION_RELEASE_SESSION, false);
+        submit(HOST_INTERACTION_RESULT_OK);
+    }
+    host_interaction_on_rgb_effect_changed(true);
+    request(HOST_INTERACTION_CLAIM_SESSION, false);
+    submit(HOST_INTERACTION_RESULT_OK);
+    bind_tap(1, 91);
+    replayed = 0;
+    if (active) {
+        double_tap();
+        expect_event(HOST_INTERACTION_EVENT_MODE_CHANGED, 1, HOST_INTERACTION_PAUSE_CONTROL);
+    }
+}
+
+static void expect_no_events(void) {
+    request(HOST_INTERACTION_GET_STATUS, true);
+    submit(HOST_INTERACTION_RESULT_OK);
+    assert(packet[15] == 0);
+}
+
+static void expect_tap(void) {
+    expect_event(HOST_INTERACTION_EVENT_CONTROL_EDGE, HOST_INTERACTION_EDGE_UP, HOST_INTERACTION_PAUSE_CONTROL);
+    assert(read16(&event_report[13]) == 91);
+    assert(event_report[18] & HOST_INTERACTION_EVENT_CAPTURED);
+    assert(replayed == 0);
+    expect_no_events();
+}
+
+static void single_tap_capture_tests(void) {
+    setup_tap(true);
+    assert(!toggle(true) && !toggle(false));
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS - 1;
+    host_interaction_housekeeping();
+    expect_no_events();
+    assert(replayed == 0);
+    now++;
+    host_interaction_housekeeping();
+    expect_tap();
+    assert(key(0, 14, true) && key(0, 14, false)); // Print Screen is still ordinary.
+
+    double_tap(); // A bound double tap exits without single-tap delivery.
+    expect_event(HOST_INTERACTION_EVENT_MODE_CHANGED, 0, HOST_INTERACTION_PAUSE_CONTROL);
+    expect_no_events();
+    assert(replayed == 0);
+    assert(!toggle(true) && !toggle(false)); // Inactive single tap is ordinary.
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+    host_interaction_housekeeping();
+    assert(replayed == 2);
+
+    // Below the deadline is double tap; exactly at it is two captured singles.
+    setup_tap(true);
+    assert(!toggle(true) && !toggle(false));
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS - 1;
+    assert(!toggle(true) && !toggle(false));
+    expect_event(HOST_INTERACTION_EVENT_MODE_CHANGED, 0, HOST_INTERACTION_PAUSE_CONTROL);
+    expect_no_events();
+    assert(replayed == 0);
+    setup_tap(true);
+    assert(!toggle(true) && !toggle(false));
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+    assert(!toggle(true) && !toggle(false));
+    expect_tap();
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+    host_interaction_housekeeping();
+    expect_tap();
+
+    // A new table generation cannot acquire a tap already in flight.
+    setup_tap(true);
+    assert(!toggle(true) && !toggle(false));
+    bind_tap(2, 91);
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+    host_interaction_housekeeping();
+    expect_no_events();
+    assert(replayed == 0);
+
+    // Held captures never leak a DOWN/UP to ordinary QMK input.
+    setup_tap(true);
+    assert(!toggle(true));
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+    host_interaction_housekeeping();
+    assert(replayed == 0);
+    now += 500;
+    assert(!toggle(false));
+    expect_tap();
+    setup_tap(true);
+    assert(!toggle(true));
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS; // No housekeeping before UP.
+    assert(!toggle(false));
+    expect_tap();
+
+    // Intervening input resolves the gesture, preserving suppression when held.
+    setup_tap(true);
+    assert(!toggle(true));
+    assert(key(4, 0, true) && key(4, 0, false));
+    assert(!toggle(false));
+    expect_tap();
+    setup_tap(true);
+    assert(!toggle(true) && !toggle(false));
+    assert(key(4, 0, true) && key(4, 0, false));
+    expect_tap();
+
+    // Effect loss cancels the deferred callback.
+    setup_tap(true);
+    assert(!toggle(true) && !toggle(false));
+    host_interaction_on_rgb_effect_changed(false);
+    expect_event(HOST_INTERACTION_EVENT_RGB_EFFECT_CHANGED, 0, 0);
+    expect_event(HOST_INTERACTION_EVENT_MODE_CHANGED, 0, HOST_INTERACTION_PAUSE_CONTROL);
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+    host_interaction_housekeeping();
+    expect_no_events();
+    assert(replayed == 0);
+
+    // Reset during FIRST_DOWN, CAPTURED_HELD or SECOND_DOWN swallows matching UP.
+    for (unsigned phase = 0; phase < 3; phase++) {
+        setup_tap(true);
+        assert(!toggle(true));
+        if (phase == 1) {
+            now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+            host_interaction_housekeeping();
+        } else if (phase == 2) {
+            assert(!toggle(false));
+            now += 50;
+            assert(!toggle(true));
+        }
+        request(HOST_INTERACTION_RELEASE_SESSION, false);
+        submit(HOST_INTERACTION_RESULT_OK);
+        assert(!toggle(false));
+        assert(replayed == 0);
+        assert(toggle(true) && toggle(false));
+    }
+
+    // Watchdog wins over a due callback.
+    setup_tap(true);
+    request(HOST_INTERACTION_KEEPALIVE, false);
+    submit(HOST_INTERACTION_RESULT_OK);
+    now += HOST_INTERACTION_HEARTBEAT_TIMEOUT_MS - 100;
+    assert(!toggle(true) && !toggle(false));
+    now += HOST_INTERACTION_DOUBLE_TAP_TERM_MS;
+    host_interaction_housekeeping();
+    assert(!host_interaction_protocol_session_alive() && replayed == 0);
+
+    // Host-force scopes cannot arm the single-tap callback.
+    setup_tap(false);
+    request(HOST_INTERACTION_BEGIN_FORCE_SCOPE, false);
+    put16(&packet[9], 1);
+    put16(&packet[11], 1);
+    packet[13] = HOST_INTERACTION_FORCE_ALL_CONFIGURED;
+    put16(&packet[14], 2000);
+    submit(HOST_INTERACTION_RESULT_OK);
+    request(HOST_INTERACTION_COMMIT_FORCE_SCOPE, false);
+    put16(&packet[9], 1);
+    submit(HOST_INTERACTION_RESULT_OK);
+    host_interaction_resolved_binding_t binding;
+    assert(!host_interaction_protocol_resolve_binding(HOST_INTERACTION_PAUSE_CONTROL, &binding));
+    request(HOST_INTERACTION_RELEASE_SESSION, false);
+    submit(HOST_INTERACTION_RESULT_OK);
+}
 int main(void) {
     const uint16_t ordinary = HOST_INTERACTION_CONTROL_ID(HOST_INTERACTION_CONTROL_KEY, 1, 15);
     const uint16_t encoder = HOST_INTERACTION_CONTROL_ID(HOST_INTERACTION_CONTROL_ENCODER_CW, 0, 0);
@@ -109,6 +286,7 @@ int main(void) {
     assert(packet[12] == MATRIX_ROWS && packet[13] == MATRIX_COLS);
     assert(packet[14] == EXPECTED_ENCODERS);
     assert(read16(&packet[16]) == MATRIX_ROWS * MATRIX_COLS + EXPECTED_ENCODERS * 2);
+    assert(packet[26] & HOST_INTERACTION_FEATURE_TOGGLE_SINGLE_TAP);
     request(HOST_INTERACTION_GET_CAPABILITIES, true);
     packet[3] = 1;
     submit(HOST_INTERACTION_RESULT_UNSUPPORTED_VERSION);
@@ -182,6 +360,7 @@ int main(void) {
     assert(!host_interaction_protocol_session_alive());
     assert(key(1, 15, true) && key(1, 15, false));
     assert(toggle(true) && toggle(false));
+    single_tap_capture_tests();
     printf("PASS: %dx%d, %d encoder(s), toggle [%d,%d]\n",
            MATRIX_ROWS, MATRIX_COLS, EXPECTED_ENCODERS,
            HOST_INTERACTION_PAUSE_ROW, HOST_INTERACTION_PAUSE_COL);

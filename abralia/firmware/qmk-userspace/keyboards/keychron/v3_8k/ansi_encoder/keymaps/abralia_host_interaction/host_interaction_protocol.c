@@ -165,6 +165,10 @@ static bool binding_exists(uint16_t index) {
 }
 
 static bool activation_scope_contains(uint16_t index) {
+  if (index == HOST_INTERACTION_PAUSE_ROW * MATRIX_COLS +
+                   HOST_INTERACTION_PAUSE_COL) {
+    return manual_global_mode;
+  }
   return manual_global_mode || force_all || force_mask[index];
 }
 
@@ -419,6 +423,7 @@ static void write_capabilities(uint8_t *data) {
   data[25] = (1 << HOST_INTERACTION_LIFETIME_SESSION) |
              (1 << HOST_INTERACTION_LIFETIME_TTL) |
              (1 << HOST_INTERACTION_LIFETIME_ONE_SHOT);
+  data[26] = HOST_INTERACTION_FEATURE_TOGGLE_SINGLE_TAP;
 }
 
 static uint8_t claim_session(uint32_t token) {
@@ -526,7 +531,11 @@ static uint8_t write_bindings(const uint8_t *data, uint8_t length,
     if (!control_index(control_id, &index)) {
       return HOST_INTERACTION_RESULT_OUT_OF_RANGE;
     }
-    if (control_id == HOST_INTERACTION_PAUSE_CONTROL) {
+    // The fixed mode key supports a narrow single-action callback; the
+    // double-tap gesture always remains firmware-owned.
+    if (control_id == HOST_INTERACTION_PAUSE_CONTROL &&
+        (flags != HOST_INTERACTION_BINDING_EVENT_UP ||
+         lifetime != HOST_INTERACTION_LIFETIME_SESSION)) {
       return HOST_INTERACTION_RESULT_RESERVED_CONTROL;
     }
     if (binding_id == 0) {

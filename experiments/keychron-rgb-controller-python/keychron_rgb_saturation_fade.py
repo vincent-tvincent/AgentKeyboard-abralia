@@ -247,8 +247,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--brightness",
         type=int,
-        default=96,
-        help="temporary global brightness in 0...255 (default: 96)",
+        default=255,
+        help="temporary global brightness in 0...255 (default: 255)",
     )
     parser.add_argument(
         "--final-hold-seconds",

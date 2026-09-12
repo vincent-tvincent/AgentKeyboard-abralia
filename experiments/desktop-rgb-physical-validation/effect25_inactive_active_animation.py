@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--seconds", type=float, default=45.0)
     parser.add_argument("--fps", type=float, default=20.0)
-    parser.add_argument("--brightness", type=int, default=160)
+    parser.add_argument("--brightness", type=int, default=255)
     parser.add_argument("--routing", choices=("mirror", "capture"), default="mirror")
     parser.add_argument("--device-index", type=int)
     parser.add_argument(

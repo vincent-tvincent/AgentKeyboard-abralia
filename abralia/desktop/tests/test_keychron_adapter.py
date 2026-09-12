@@ -8,6 +8,7 @@ from collections.abc import Callable, Sequence
 
 from abralia.rgb.adapters.keychron_effect25 import (
     EFFECT_25,
+    BrightnessPolicy,
     EffectSelectionPolicy,
     FrameFlags,
     FrameOperation,
@@ -237,6 +238,51 @@ class KeychronAdapterTests(unittest.TestCase):
         adapter.capabilities()
 
         self.assertEqual(sum(request == [0xA0] for request in transport.requests), 1)
+
+    def test_preserve_keyboard_policy_never_writes_global_brightness(self) -> None:
+        transport = FakeTransport(profile=REFERENCE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE,
+                                         brightness_policy=BrightnessPolicy.PRESERVE_KEYBOARD)
+        before = adapter.snapshot()
+        adapter.submit_frame(self._frame(), brightness_ceiling=255)
+        self.assertEqual(transport.brightness, 77)
+        adapter.refresh()
+        for keyboard_value in (23, 120, 0):
+            transport.brightness = keyboard_value  # A physical keyboard adjustment.
+            adapter.submit_frame(self._frame(), brightness_ceiling=255)
+            self.assertEqual(transport.brightness, keyboard_value)
+        adapter.clear()
+        self.assertEqual(transport.brightness, 0)
+        transport.brightness = 53
+        adapter.restore(before)
+        self.assertEqual(transport.brightness, 53)  # Do not restore the old upper bound.
+        writes = [r for r in transport.requests if r[:3] == [0x07, 0x03, 0x01]]
+        self.assertEqual(writes, [])
+
+    def test_preserve_keyboard_policy_handoff_retains_changed_brightness(self) -> None:
+        transport = FakeTransport(profile=REFERENCE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE,
+            brightness_policy=BrightnessPolicy.PRESERVE_KEYBOARD,
+            effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED)
+        before = adapter.snapshot()
+        adapter.submit_frame(self._frame(), brightness_ceiling=255)
+        transport.effect = 23
+        transport.frame_state = FrameState.AWAITING
+        transport.brightness = 31
+        after = adapter.restore_preserving_effect(before)
+        self.assertEqual(after.payload.brightness, 31)
+        self.assertEqual(after.payload.effect, 23)
+        self.assertEqual(transport.brightness, 31)
+        self.assertFalse(any(r[:3] == [0x07, 0x03, 0x01] for r in transport.requests))
+
+    def test_preserved_limit_does_not_promise_an_unenforceable_host_ceiling(self) -> None:
+        transport = FakeTransport(profile=REFERENCE)
+        adapter = KeychronEffect25Adapter(transport, DEVICE, profile=REFERENCE,
+                                         brightness_policy=BrightnessPolicy.PRESERVE_KEYBOARD)
+        with self.assertRaises(CapabilityError):
+            adapter.submit_frame(self._frame(), brightness_ceiling=128)
+        self.assertEqual(transport.brightness, 77)
+        self.assertEqual(transport.frame_state, FrameState.DIRECT)
 
     def test_effect_selection_policies_preserve_standalone_auto_select(self) -> None:
         strict_transport = FakeTransport(profile=REFERENCE)

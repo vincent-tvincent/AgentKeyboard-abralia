@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import IntEnum, IntFlag
 
 from ...device_profile import DeviceProfile, DeviceProfileError
@@ -33,6 +33,11 @@ MAX_KEYMAP_BYTES_PER_PACKET = 28
 class EffectSelectionPolicy(IntEnum):
     AUTO_SELECT = 0
     REQUIRE_SELECTED = 1
+
+
+class BrightnessPolicy(IntEnum):
+    HOST_CONTROLLED = 0
+    PRESERVE_KEYBOARD = 1
 
 
 class FrameOperation(IntEnum):
@@ -81,6 +86,7 @@ class KeychronEffect25Adapter:
         *,
         profile: DeviceProfile,
         effect_selection_policy: EffectSelectionPolicy = EffectSelectionPolicy.AUTO_SELECT,
+        brightness_policy: BrightnessPolicy = BrightnessPolicy.HOST_CONTROLLED,
     ):
         self._validate_profile(profile)
         if not profile.device_match.matches(device):
@@ -91,6 +97,7 @@ class KeychronEffect25Adapter:
         self.transport = transport
         self.device = device
         self.effect_selection_policy = effect_selection_policy
+        self.brightness_policy = BrightnessPolicy(brightness_policy)
         self._sequence = 0
         self._last_frame: DeviceFrame | None = None
         self._brightness_ceiling = 255
@@ -406,6 +413,11 @@ class KeychronEffect25Adapter:
         self.capabilities()
         if not 0 <= brightness_ceiling <= 255:
             raise ValueError("brightness_ceiling must be in 0...255.")
+        if self.brightness_policy is BrightnessPolicy.PRESERVE_KEYBOARD and brightness_ceiling != 255:
+            raise CapabilityError(
+                "Legacy effect 25 normalizes frame values; preserving keyboard brightness "
+                "cannot enforce a separate host brightness_ceiling. Use 255 and the keyboard's limit."
+            )
         if [item.address for item in frame.leds] != list(
             range(self.profile.expected_led_count)
         ):
@@ -430,7 +442,8 @@ class KeychronEffect25Adapter:
             global_brightness = (
                 brightness_ceiling if maximum == 0 else min(maximum, brightness_ceiling)
             )
-            self._via_set(0x01, global_brightness)
+            if self.brightness_policy is BrightnessPolicy.HOST_CONTROLLED:
+                self._via_set(0x01, global_brightness)
         except TransportError as error:
             self._raise_effect_aware(error)
         self._sequence = (self._sequence + 1) & 0xFF
@@ -486,7 +499,8 @@ class KeychronEffect25Adapter:
             raise CapabilityError(
                 "Snapshot LED count does not match the supplied profile."
             )
-        self._via_set(0x01, 0)
+        if self.brightness_policy is BrightnessPolicy.HOST_CONTROLLED:
+            self._via_set(0x01, 0)
         current_frame_state = self._frame_status()[0]
         if current_frame_state is not FrameState.AWAITING:
             self._frame_control(FrameOperation.AWAIT)
@@ -501,9 +515,13 @@ class KeychronEffect25Adapter:
             self._wait_for(
                 lambda item: item[0] is FrameState.DIRECT, "DIRECT restore state"
             )
-        self._via_set(0x01, state.brightness)
+        if self.brightness_policy is BrightnessPolicy.HOST_CONTROLLED:
+            self._via_set(0x01, state.brightness)
         restored = self.snapshot()
-        if restored != snapshot:
+        checked = restored
+        if self.brightness_policy is BrightnessPolicy.PRESERVE_KEYBOARD:
+            checked = DeviceSnapshot(self.adapter_id, replace(restored.payload, brightness=state.brightness))
+        if checked != snapshot:
             raise TransportError("Restoration readback differs from the snapshot.")
         self._last_frame = None
 
@@ -521,7 +539,8 @@ class KeychronEffect25Adapter:
                 "Snapshot LED count does not match the supplied profile."
             )
         selected_effect = self._effect()
-        self._via_set(0x01, 0)
+        if self.brightness_policy is BrightnessPolicy.HOST_CONTROLLED:
+            self._via_set(0x01, 0)
         current_frame_state = self._frame_status()[0]
         if current_frame_state is not FrameState.AWAITING:
             if selected_effect != EFFECT_25:
@@ -535,18 +554,20 @@ class KeychronEffect25Adapter:
             )
         self._write_colors(state.colors)
         self._set_per_key_type(state.per_key_type)
-        self._via_set(0x01, state.brightness)
+        if self.brightness_policy is BrightnessPolicy.HOST_CONTROLLED:
+            self._via_set(0x01, state.brightness)
+        restored = self.snapshot()
         expected = DeviceSnapshot(
             self.adapter_id,
             KeychronEffect25Snapshot(
                 selected_effect,
-                state.brightness,
+                (restored.payload.brightness if self.brightness_policy is BrightnessPolicy.PRESERVE_KEYBOARD
+                 else state.brightness),
                 state.per_key_type,
                 state.colors,
                 FrameState.AWAITING,
             ),
         )
-        restored = self.snapshot()
         if restored != expected:
             raise TransportError(
                 "Effect-preserving restoration readback differs from the snapshot."
@@ -571,7 +592,8 @@ class KeychronEffect25Adapter:
             self.adapter_id,
             KeychronEffect25Snapshot(
                 self._effect(),
-                state.brightness,
+                (self._brightness() if self.brightness_policy is BrightnessPolicy.PRESERVE_KEYBOARD
+                 else state.brightness),
                 state.per_key_type,
                 state.colors,
                 FrameState.AWAITING,

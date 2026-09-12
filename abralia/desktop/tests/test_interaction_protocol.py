@@ -125,6 +125,11 @@ class InteractionProtocolTests(unittest.TestCase):
             capabilities.supported_lifetimes,
             frozenset({Lifetime.SESSION, Lifetime.TTL, Lifetime.ONE_SHOT}),
         )
+        self.assertFalse(capabilities.supports_toggle_single_tap)
+        report[26] = 1
+        self.assertTrue(parse_capabilities(bytes(report)).supports_toggle_single_tap)
+        report[26] = 2
+        self.assertFalse(parse_capabilities(bytes(report)).supports_toggle_single_tap)
 
     def test_every_device_event_payload_is_decoded(self) -> None:
         for event_type, edge_or_state in (

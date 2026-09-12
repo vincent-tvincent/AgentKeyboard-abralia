@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile", required=True)
     parser.add_argument("--seconds", type=float, default=15.0)
     parser.add_argument("--refresh-interval", type=float, default=0.5)
-    parser.add_argument("--brightness", type=int, default=160)
+    parser.add_argument("--brightness", type=int, default=255)
     parser.add_argument("--device-index", type=int)
     return parser.parse_args()
 

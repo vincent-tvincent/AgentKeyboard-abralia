@@ -165,6 +165,10 @@ class StatusFlags(IntFlag):
     RGB_EFFECT_25_SELECTED = 1 << 7
 
 
+class CapabilityFlags(IntFlag):
+    TOGGLE_SINGLE_TAP = 1 << 0
+
+
 class ResetReason(IntEnum):
     NONE = 0x00
     SESSION_REPLACED = 0x01
@@ -241,6 +245,11 @@ class Capabilities:
     maximum_force_lease_ms: int
     supported_binding_flags: BindingFlags
     supported_lifetimes: frozenset[Lifetime]
+    feature_flags: CapabilityFlags = CapabilityFlags(0)
+
+    @property
+    def supports_toggle_single_tap(self) -> bool:
+        return bool(self.feature_flags & CapabilityFlags.TOGGLE_SINGLE_TAP)
 
 
 @dataclass(frozen=True, slots=True)
@@ -542,6 +551,7 @@ def parse_capabilities(report: bytes) -> Capabilities:
         supported_lifetimes=frozenset(
             lifetime for lifetime in Lifetime if lifetime_mask & (1 << int(lifetime))
         ),
+        feature_flags=CapabilityFlags(report[26]),
     )
 
 

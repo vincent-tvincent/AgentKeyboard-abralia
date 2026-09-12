@@ -35,7 +35,7 @@ CHEVRON_LEDS = (4, 21, 38, 54, 66)
 UNDERSCORE_KEYS = ("N", "M", "Comma", "Dot")
 UNDERSCORE_LEDS = (69, 70, 71, 72)
 
-DEFAULT_BRIGHTNESS = 220
+DEFAULT_BRIGHTNESS = 255
 CHEVRON = HSV(92, 210, 255)
 UNDERSCORE = HSV(155, 48, 255)
 
@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
         "--brightness",
         type=int,
         default=DEFAULT_BRIGHTNESS,
-        help="Temporary global brightness in 1...255 (default: 220).",
+        help="Temporary global brightness in 1...255 (default: 255).",
     )
     parser.add_argument(
         "--seconds",
