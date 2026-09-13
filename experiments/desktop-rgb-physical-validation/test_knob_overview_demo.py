@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from abralia.backend.core import BrokerConfig, Caller
-from abralia.backend.render import ATTENTION, blend, hex_color, within_frame_peak
+from abralia.backend.render import ATTENTION
 from abralia.interaction import ControlId, DeviceEvent, Edge, EventFlags, EventType
 from abralia.rgb import Srgb8
 from knob_overview_demo import DEFAULT_ENTER_COLOR, OverviewDriver, OverviewTrace, main, prepare, run
@@ -152,11 +152,18 @@ class OverviewDemoTests(unittest.TestCase):
         self.assertEqual(selection.background, page.background)
         self.assertEqual(selection.colors["F4"], Srgb8(18, 17, 20))
         self.assertEqual(selection.colors["ENTER"], Srgb8(40, 64, 0))
-        self.assertEqual(selection.colors["F1"], within_frame_peak(blend(hex_color(self.broker.slots[1].identity_color), ATTENTION, .85), 64))
-        self.assertEqual(selection.colors["F2"], page.colors['F2'])
+        # The shared renderer now adds the accepted selection whitening and
+        # value emphasis, dimming neighbours when the frame has no headroom.
+        peak = lambda color: max(color.red, color.green, color.blue)
+        candidate = selection.colors['F1']
+        self.assertGreater(candidate.green, candidate.red)
+        self.assertGreater(candidate.red, candidate.blue)
+        self.assertLessEqual(peak(candidate), 64)
+        self.assertGreaterEqual(peak(candidate), peak(selection.colors['F2']) * 1.3)
         self.send(21)
         moved = self.driver.renderer.frame(self.broker).payload
-        self.assertEqual(moved.colors["F1"], page.colors['F1'])
+        self.assertGreater(moved.colors['F1'].blue, moved.colors['F1'].green)
+        self.assertLess(peak(moved.colors['F1']), peak(moved.colors['F2']))
         self.send(32)
         confirmed = self.driver.renderer.frame(self.broker).payload.colors
         self.assertEqual(confirmed["ENTER"], confirmed["A"])

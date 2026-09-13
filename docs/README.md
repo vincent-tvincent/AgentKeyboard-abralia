@@ -13,6 +13,7 @@ validation where that distinction matters.
 | Enable or disable Abralia for a selected project | [Project-local MCP and skill setup](../abralia/desktop/BACKEND.md#enable-only-a-selected-project) |
 | Register or release existing task slots without waking agents | [Host registration and release](../abralia/desktop/BACKEND.md#host-registration-and-release) |
 | Learn current keyboard controls, page navigation and attention gestures | [Physical interaction](../abralia/desktop/BACKEND.md#physical-interaction) |
+| Understand multi-agent notification fog, pickup, mute and fading | [Notification fog](../abralia/desktop/BACKEND.md#notification-fog) |
 | Check the agent-callable operations and ownership rules | [Agent tools](../abralia/desktop/BACKEND.md#agent-tools) |
 | Install or use the desktop RGB API and CLI | [Desktop RGB API guide](../abralia/desktop/README.md) |
 | Bind keys or encoder actions through Host Interaction Mode | [Host Interaction desktop API](../abralia/desktop/HOST_INTERACTION_API.md) |

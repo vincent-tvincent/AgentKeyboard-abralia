@@ -624,12 +624,57 @@ Its hue stays the same across status changes, paging, and release/rejoin within
 the backend session. Assignment uses spaced hues; exact physical appearance is
 still subject to visual validation. Live-client recovery preserves the assigned
 color across backend restarts. Explicit notification requests drive the existing expand/fill/breathe
-effect, which blends toward the task's color. A status update alone stays quiet.
+effect, which blends toward the task's color, then condenses into a drifting fog
+orb if it remains unacknowledged. A status update alone stays quiet.
 The older `colors` setting remains for native answer hints and the isolated
 page-marker demo; it no longer determines production task identity colors.
 The per-owner notification cooldown defaults to 5 seconds;
 there are at most 256 queued/pending calls and 4096 remembered idempotency results.
 Logical slot allocation is not restricted to twelve.
+
+### Notification fog
+
+Arrival animations run sequentially, independently of the pending-call queue.
+After the yellow-green onset, the host spends eight seconds transitioning and
+breathing in the task color, then two seconds forming an orb. Each task has one
+orb covering its outstanding notifications. Distinct new notifications refresh
+it after presentation; retries do not duplicate it or restart its age.
+
+Orbs drift across the typing area, navigation cluster and arrows. Smaller
+collision cores deflect one another while the fog envelopes overlap. Colors mix
+in linear RGB within the existing frame brightness reference. F-slot, mode,
+action, page and question cues retain precedence. Moving orbs do not change
+bindings or the keyboard's global brightness setting.
+
+Pickup and direct F-key/Enter selection acknowledge the task's existing visual
+reminders. New arrivals after that action remain eligible. Call mute leaves a
+quiet orb; timed agent mutes hide the affected orbs while their age advances.
+Held questions defer foreground animations. Viewing a task directly in another
+application is not automatically detected; URL dispatch is not focus proof.
+
+Default orbs hold for 120 seconds and fade for 60 seconds. Visual expiry never
+answers a question or marks it viewed. Cancellation, native resolution and slot
+release remove the corresponding coverage. Orbs are not restored after backend
+restart. Host-only settings are `notification_breath_seconds` (8),
+`orb_formation_seconds` (2), `orb_hold_seconds` (120), `orb_fade_seconds` (60),
+and `orb_dismiss_seconds` (0.5). The notification's existing lifetime remains an
+upper limit, independently of pending-question lifetime.
+
+From the repository root, a bounded fixture trial uses the production renderer:
+
+```sh
+python experiments/desktop-rgb-physical-validation/notification_fog_demo.py --fast
+```
+
+It simulates three tasks and uses shortened hold/fade timings. For a physical
+trial, stop the backend and replace `--fast` with `--mode hardware`; Ctrl-C or
+the 75-second deadline requests RGB restoration. These fixtures do not open
+conversations. Generate color-mixing images and a keyboard animation without
+hardware using Pillow in the chosen Python environment:
+
+```sh
+python experiments/desktop-rgb-physical-validation/notification_fog_preview.py --output /path/to/previews
+```
 
 ```sh
 abralia-backend status --project /path/to/project --compact

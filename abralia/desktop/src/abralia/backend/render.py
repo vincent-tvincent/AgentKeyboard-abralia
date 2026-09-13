@@ -10,6 +10,7 @@ import math
 from abralia.rgb import PhysicalSceneBuilder, Srgb8
 from abralia.rgb.colors import LinearRgb, linear_to_srgb8, to_linear_rgb
 from .core import Allocation, Broker
+from .fog import FogField
 from .navigation import NAVIGATION_KEYS, NAVIGATION_COLOR_ROLES, PICKUP_KEY, MUTE_KEY, PAGE_KEYS
 
 WHITE = Srgb8(255, 255, 255)
@@ -88,6 +89,22 @@ class Renderer:
         points = [(key, math.hypot((x - (left + right) / 2) / max((right - left) / 2, .5),
                                   (y - (top + bottom) / 2) / max((bottom - top) / 2, .5))) for key, x, y in raw]
         self.points, self.fps = points, fps
+        fog_keys = dict.fromkeys(self.region)
+        for name in ('navigation_cluster', 'arrows'):
+            if name in profile.regions:
+                fog_keys.update(dict.fromkeys(profile.regions[name].elements))
+        reserved = set((*self.f_keys, self.toggle, self.pickup, self.mute, 'ESC'))
+        self.fog_points = {}
+        for key in sorted(fog_keys.keys() - reserved):
+            element = profile.element_by_id[key]
+            if element.rgb_capable:
+                point = element.led_point
+                self.fog_points[key] = (point.x if point else element.geometry.x + element.geometry.width / 2,
+                                        point.y if point else element.geometry.y + element.geometry.height / 2)
+        self.fog = FogField(bounds=(min(x for x, _ in self.fog_points.values()),
+                                    min(y for _, y in self.fog_points.values()),
+                                    max(x for x, _ in self.fog_points.values()),
+                                    max(y for _, y in self.fog_points.values())))
         self.background_percent = None
         self._set_background(50)
 
@@ -165,17 +182,25 @@ class Renderer:
         if not broker.active:
             colors = {key: saturation(color, broker.config.inactive_saturation_percent / 100) for key, color in colors.items()}
         # Notification output is composed after routine whitening so its colors are exempt.
-        slot = broker.slots.get(broker.current_call)
-        if slot and slot.notification and slot.notification.status == "active" and background is None:
-            elapsed = max(0, now - slot.notification.started_at)
-            for seconds, frames in self.onset:
-                if elapsed < seconds:
-                    colors.update(frames[min(len(frames) - 1, int(elapsed / seconds * len(frames)))])
-                    break
-                elapsed -= seconds
+        visuals = broker.notification_visuals()
+        presentation = visuals['presentation']
+        records = [dict(record, opacity=0) if record.get('presenting') and record.get('formed_at') is None
+                   and (presentation is None or record['orb_key'] != presentation['orb_key']) else record
+                   for record in visuals['orbs']]
+        self.fog.update(records, now)
+        foreground = presentation is not None and (background is None or return_fraction >= 1)
+        if foreground:
+            elapsed = presentation['elapsed']
+            if presentation['phase'] == 'onset':
+                for seconds, frames in self.onset:
+                    if elapsed < seconds:
+                        colors.update(frames[min(len(frames) - 1, int(elapsed / seconds * len(frames)))])
+                        break
+                    elapsed -= seconds
             else:
-                color = self.state_color(broker, slot, now, animate=False)
-                colors.update(dict.fromkeys(self.region, breathing_status(color, elapsed)))
+                elapsed = elapsed if presentation['phase'] == 'breathing' else broker.config.notification_breath_seconds
+                color = breathing_status(hex_color(presentation['identity_color']), elapsed)
+                colors.update(dict.fromkeys(self.region, color))
         # Paint valid overview controls after notification frames so Enter's
         # cue stays visible. Picked-up questions disable overview capture.
         scene_background = self._render_overview(broker, colors)
@@ -279,6 +304,38 @@ class Renderer:
                     saturation(colors[key], broker.config.muted_saturation_percent / 100),
                     round(255 * broker.config.muted_brightness_percent / 100))
 
+        # Fog is sampled only after the existing scene has established its
+        # peak. Moving/overlapping bodies may not raise it and dim other keys
+        # through effect 25's relative-V normalization. UI cues win per key.
+        protected = scaled_controls | question_highlights
+        forming = presentation['orb_key'] if presentation else None
+        for key, (x, y) in self.fog_points.items():
+            if key in protected:
+                continue
+            base = colors.get(key, scene_background)
+            if foreground:
+                if presentation['phase'] != 'condensing' and key in self.region:
+                    continue
+                if presentation['phase'] == 'condensing':
+                    target = self.fog.sample(x, y, scene_background, spread_key=forming,
+                                            ceiling=global_reference_v or 255,
+                                            spread=1 + 3 * (1 - presentation['progress']) ** 2)
+                    origin = base if key in self.region else self.fog.sample(
+                        x, y, base, exclude_key=forming, ceiling=global_reference_v or 255)
+                    progress = presentation['progress']
+                    progress = progress * progress * (3 - 2 * progress)
+                    a, b = to_linear_rgb(origin), to_linear_rgb(target)
+                    result = linear_to_srgb8(LinearRgb(*(u + (v - u) * progress
+                        for u, v in zip((a.red, a.green, a.blue), (b.red, b.green, b.blue)))))
+                else:
+                    result = self.fog.sample(x, y, base, exclude_key=forming,
+                                            ceiling=global_reference_v or 255)
+            else:
+                result = self.fog.sample(x, y, base, exclude_key=forming,
+                                        ceiling=global_reference_v or 255)
+            if result != base:
+                colors[key] = result
+
         if background and return_fraction < 1:
             # Fit the selected-color overlay to the already established scene
             # maximum. Its fade must not change other keys' brightness through
@@ -287,8 +344,7 @@ class Renderer:
                                       global_reference_v or 255)
             if not broker.active:
                 color = saturation(color, broker.config.inactive_saturation_percent / 100)
-            color = blend(color, scene_background, return_fraction)
-            colors.update({key: color for key in self.region
+            colors.update({key: blend(color, colors.get(key, scene_background), return_fraction) for key in self.region
                            if key not in question_highlights and key not in scaled_controls})
 
         gap = broker.gap_snapshot()

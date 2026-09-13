@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections import OrderedDict, deque
 import colorsys
-from copy import deepcopy
+from copy import copy, deepcopy
 from dataclasses import asdict, dataclass, field, replace
 import json
 import math
@@ -16,6 +16,7 @@ import time
 from typing import Callable
 from uuid import UUID
 from .navigation import PAGE_KEYS
+from .notification_visuals import NotificationVisualState
 
 
 STATES = ("idle", "progressing", "error", "action_requested", "completed")
@@ -28,6 +29,11 @@ PENDING = ("queued", "active", "muted")
 @dataclass(frozen=True)
 class BrokerConfig:
     notification_seconds: float = 300
+    notification_breath_seconds: float = 8
+    orb_formation_seconds: float = 2
+    orb_hold_seconds: float = 120
+    orb_fade_seconds: float = 60
+    orb_dismiss_seconds: float = .5
     question_seconds: float = 600
     disconnect_grace_seconds: float = 30
     background_seconds: float = 15
@@ -74,6 +80,9 @@ class BrokerConfig:
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} must be a boolean")
         limits = {"notification_seconds": (1, 3600), "question_seconds": (1, 86400),
+                  "notification_breath_seconds": (4, 120), "orb_formation_seconds": (.1, 30),
+                  "orb_hold_seconds": (0, 3600), "orb_fade_seconds": (.1, 600),
+                  "orb_dismiss_seconds": (.05, 5),
                   "disconnect_grace_seconds": (1, 600), "background_seconds": (1, 600),
                   "fade_seconds": (.05, 5), "inactive_saturation_percent": (0, 100),
                   "navigation_hold_seconds": (.4, 3), "navigation_timeout_seconds": (1, 120),
@@ -243,6 +252,32 @@ class Broker:
         self.events: deque[dict] = deque(maxlen=512)
         self.sequence = 0
         self.focus_requests: deque[tuple[str, str]] = deque()
+        self._notification_visual_state = NotificationVisualState()
+
+    def notification_visuals(self) -> dict:
+        """Read the worker-owned visual lifecycle without advancing it."""
+        return self._notification_visual_state.snapshot(self)
+
+    def _sync_notification_visuals(self):
+        self._notification_visual_state = copy(self._notification_visual_state)
+        self._notification_visual_state.sync(self)
+
+    def acknowledge_notification_visuals(self, token: str, notice_ids=None) -> bool:
+        """Acknowledge visual attention at a verified user-action boundary.
+
+        An asynchronous view adapter must pass the notice IDs captured with its
+        view evidence, so a delayed acknowledgement cannot clear later arrivals.
+        This does not answer, cancel, or otherwise complete native questions.
+        """
+        slot = next((s for s in self.slots.values() if s.slot_token == token), None)
+        if slot is None:
+            return False
+        current = {notice.notification_id for notice in self._notices(slot)}
+        covered = current if notice_ids is None else current.intersection(notice_ids)
+        self._notification_visual_state = copy(self._notification_visual_state)
+        self._notification_visual_state.acknowledge(token, covered)
+        self._sync_notification_visuals()
+        return bool(covered)
 
     @property
     def page_count(self) -> int:
@@ -819,6 +854,7 @@ class Broker:
             self._set_cursor(None)
         if self.navigation_active and self.candidate() is None and self.visible_slots():
             self._set_cursor(self.visible_slots()[0].slot_token)
+        self._sync_notification_visuals()
 
     def visible_slots(self) -> list[Allocation]:
         return sorted((s for s in self.slots.values() if self.page * 12 < s.position <= (self.page + 1) * 12),
@@ -1111,6 +1147,7 @@ class Broker:
         self.hold_until = self.clock() + self.config.background_seconds
         self.focus_requests = deque(r for r in self.focus_requests if r[0] != token)
         self.event("focus_exited", slot)
+        self._sync_notification_visuals()
         return True
 
     def pending_target(self) -> Allocation | None:
@@ -1140,6 +1177,10 @@ class Broker:
                    for slot in self.slots.values() if not self.attention_muted(slot) for notice in self._notices(slot))
 
     def _promote(self):
+        self._promote_call()
+        self._sync_notification_visuals()
+
+    def _promote_call(self):
         # Quiet policies park automatic attention without dismissing/answering it.
         for slot in self.slots.values():
             if self.attention_muted(slot):
@@ -1249,6 +1290,7 @@ class Broker:
         slot = next((s for s in self.visible_slots() if s.slot_token == token), None)
         if not slot:
             return
+        self.acknowledge_notification_visuals(slot.slot_token)
         self._clear_knob_preview()
         self._select_notice(slot)
         if self.navigation_active:
@@ -1276,9 +1318,11 @@ class Broker:
         self.hold_until = self.clock() + self.config.background_seconds
         can_focus = self._request_focus(slot)
         self.event("slot_selected", slot, focus="requested" if can_focus else "unavailable")
+        self._sync_notification_visuals()
 
     def _pickup_slot(self, slot: Allocation):
         """Shared physical pickup behavior for the pickup key and direct selection."""
+        self.acknowledge_notification_visuals(slot.slot_token)
         self._clear_knob_preview()
         if self.navigation_active:
             self._set_cursor(slot.slot_token)
@@ -1301,6 +1345,7 @@ class Broker:
         can_focus = self._request_focus(slot)
         self.event("call_picked_up", slot, page=self.page + 1,
                    focus="requested" if can_focus else "unavailable")
+        self._sync_notification_visuals()
 
     def _request_focus(self, slot: Allocation) -> bool:
         # Only the latest user-selected destination may be dispatched. Rapid
