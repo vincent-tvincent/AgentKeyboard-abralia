@@ -226,7 +226,7 @@ class BackendServiceTests(unittest.TestCase):
             two = {'x-codex-turn-metadata':{'thread_id':str(UUID(int=2))}}
             async with Client(parameters) as client:
                 inventory = await client.list_tools()
-                self.assertEqual({t.name for t in inventory.tools},set(OPERATIONS))
+                self.assertEqual({t.name for t in inventory.tools},set(OPERATIONS) | {'enable_self'})
                 for tool in inventory.tools:
                     schema = tool.input_schema
                     self.assertNotIn('ctx',schema.get('properties',{}))
@@ -281,6 +281,57 @@ class BackendServiceTests(unittest.TestCase):
     def test_missing_backend_is_bounded_skipped(self):
         with BrokerClient(self.root,endpoint=self.root/'missing.sock') as client:
             self.assertEqual(client.request({'type':'ping'})['reason'],'backend_unavailable')
+
+    def test_real_stdio_optional_animation_and_static_guide(self):
+        from mcp import Client, StdioServerParameters
+
+        async def scenario():
+            params=StdioServerParameters(command=sys.executable,
+                args=['-B','-m','abralia.backend.mcp','--project',str(self.root),'--socket',str(self.socket)],
+                env={'PATH':os.environ.get('PATH',''),'PYTHONDONTWRITEBYTECODE':'1'})
+            meta={'x-codex-turn-metadata':{'thread_id':str(UUID(int=404))}}
+            async with Client(params) as client:
+                r=await client.call_tool('acquire_slot',{'label':'Visual fixture','harness':'codex_desktop','idempotency_key':'a'},meta=meta)
+                token=r.structured_content['allocation']['slot_token']
+                animation={'duration_ms':3000,'layers':[{'shape':'ring','center':[.5,.5],'radius':[.05,.6]}]}
+                r=await client.call_tool('set_notification_animation',{'slot_token':token,'animation':animation,'idempotency_key':'style'},meta=meta)
+                self.assertEqual(r.structured_content['animation']['mode'],'custom')
+                self.assertIsNone(r.structured_content['allocation']['notification'])
+                r=await client.call_tool('show_keyboard_frame',{'slot_token':token,'colors':{'W':'positive','A':'20A0FF'},'idempotency_key':'guide'},meta=meta)
+                frame=r.structured_content['allocation']['keyboard_frame']
+                self.assertEqual(frame['status'],'pending')
+                self.assertEqual(r.structured_content['allocation']['notification']['animation']['mode'],'custom')
+                with self.client('admin') as admin:
+                    admin.request({'type':'admin','action':'input','event':'toggle'})
+                    admin.request({'type':'admin','action':'input','event':'pickup'})
+                r=await client.call_tool('get_status',{},meta=meta)
+                self.assertEqual(r.structured_content['allocation']['keyboard_frame']['status'],'visible')
+                self.assertIn('ESC',r.structured_content['keyboard_frame_capabilities']['keys'])
+                r=await client.call_tool('clear_keyboard_frame',{'slot_token':token,'frame_id':frame['id'],'idempotency_key':'clear'},meta=meta)
+                self.assertEqual(r.structured_content['allocation']['keyboard_frame']['status'],'dismissed')
+                r=await client.call_tool('set_notification_animation',{'slot_token':token,'animation':None,'idempotency_key':'reset'},meta=meta)
+                self.assertEqual(r.structured_content['animation']['mode'],'default')
+                await client.call_tool('release_slot',{'slot_token':token,'idempotency_key':'release'},meta=meta)
+        asyncio.run(scenario())
+
+    def test_failed_durable_release_preserves_visible_keyboard_guide(self):
+        metadata={'thread_id':str(UUID(int=405))}
+        with self.client() as agent, self.client('admin') as admin:
+            def call(operation, **arguments):
+                return agent.request({'type':'call','metadata':metadata,'operation':operation,'arguments':arguments})
+            result=call('acquire_slot',label='Guide',idempotency_key='a')
+            token=result['allocation']['slot_token']
+            call('show_keyboard_frame',slot_token=token,colors={'W':'positive'},idempotency_key='guide')
+            admin.request({'type':'admin','action':'input','event':'toggle'})
+            admin.request({'type':'admin','action':'input','event':'pickup'})
+            with patch.object(self.service.recovery,'save',side_effect=lambda: setattr(self.service.recovery,'error','fixture disk error')):
+                result=admin.request({'type':'admin','action':'release_tasks','thread_ids':[metadata['thread_id']],
+                                      'idempotency_key':'release'})
+            self.assertEqual(result['reason'],'recovery_storage_unavailable')
+            self.service.recovery.error=None
+            state=call('get_status')
+            self.assertEqual(state['allocation']['keyboard_frame']['status'],'visible')
+            self.assertIsNotNone(self.service.broker.visible_keyboard_frame())
 
 
 if __name__ == '__main__':

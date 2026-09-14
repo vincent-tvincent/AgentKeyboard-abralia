@@ -23,9 +23,12 @@ Agents occupy colored slots, request attention through the keyboard, and let
 you pick up a task, mute interruptions, or browse tasks using physical controls.
 
 **Current application: a Codex keyboard interface on macOS.** The repository
-includes a terminal backend, project-local MCP tools and skill, automatic Codex
-session observation, and keyboard interaction. Setup and administration currently
-use terminal commands.
+includes a Python backend, Codex plugin, automatic session observation and
+keyboard interaction. The
+[macOS control panel](abralia/desktop/gui/README.md) scans supported keyboards,
+remembers your choice, starts one shared backend and lets you enable or mute
+projects. **Connect Codex** installs the bundled skill, MCP tools and named hooks;
+Codex's hook-trust review remains a separate user step.
 
 Abralia is compatibility-first and additive by design. Its native firmware
 keeps Keychron RGB effects 0–24 and keeps VIA/Keychron Launcher, encoder, and
@@ -128,6 +131,10 @@ project setup and real STDIO MCP clients.
 
 Agents use semantic operations: `acquire_slot`, `release_slot`, `set_slot_state`,
 `set_notification`, `report_question`, `clear_question`, and `get_status`.
+Optional `set_notification_animation` adds a short effect over the task color;
+agents without an immediate idea simply keep the default. `show_keyboard_frame`
+can explain a keymap after pickup, with Escape to close it and
+`clear_keyboard_frame` for explicit withdrawal. Highlighting does not remap keys.
 The backend owns animation, input bindings and policy. See the
 [agent tool contract](abralia/desktop/BACKEND.md#agent-tools) for ownership and
 retry rules; agents do not receive raw HID or native approval execution.
@@ -135,12 +142,20 @@ retry rules; agents do not receive raw HID or native approval execution.
 **Optional extensions:** native question-panel focus and keyboard execution of
 answers/approvals are not required for the notification, navigation and attention
 workflow. They are not currently implemented; answer questions in Codex's native
-UI. A settings GUI, autostart and other harness adapters are separate future
-enhancements. The numbered keys used for page navigation are not answer shortcuts.
+UI. Broader GUI settings, launch at login and other harness
+adapters are separate future enhancements. The numbered keys used for page
+navigation are not answer shortcuts.
 Codex session observation currently depends
 on local client data formats and needs compatibility checks when the client changes.
 
 ## Try the backend
+
+For the packaged macOS workflow, open Abralia, choose your keyboard, use
+**Integrations → Connect Codex**, review its hooks in Codex, then add your project
+folders. See the [app setup guide](abralia/desktop/gui/README.md) and the
+[standalone plugin bundle](abralia/desktop/plugin-bundle/README.md).
+
+The separate terminal workflow remains available for development:
 
 From the repository root, using Python 3.11+:
 

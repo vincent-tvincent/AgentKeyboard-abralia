@@ -1,0 +1,5 @@
+interface:
+  display_name: "Abralia"
+  short_description: "Enable this task's keyboard signals when asked"
+policy:
+  allow_implicit_invocation: false

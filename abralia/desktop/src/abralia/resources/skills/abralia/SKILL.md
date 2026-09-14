@@ -1,17 +1,30 @@
 ---
 name: abralia
-description: Register yourself with this project's Abralia keyboard, report meaningful progress and attention requests, and prepare native question highlights. Use while working in this project when abralia_experiment MCP tools are available.
+description: Use this project's Abralia keyboard after the user explicitly asks to enable it for this task; report progress and attention through the available Abralia tools.
 ---
 
 # Abralia keyboard
+
+Activate only after the user explicitly asks to use Abralia for this task.
+Plugin/tool availability, project enablement and ordinary coding requests are
+not activation requests. Once authorized, keep the allocation through follow-up
+questions. If the user disables the project or releases your slot, do not
+re-enable it without a new explicit request. The installed plugin's `enable_self`
+can enroll the verified current project and acquire a slot; this legacy
+project-local setup uses `acquire_slot` in an already configured project.
 
 Use the `abralia_experiment` MCP tools for this project's keyboard. The backend
 owns appearance, paging, input mode and cleanup. The user physically picks up
 calls; an agent cannot synthesize pickup, mute, or an answer.
 
+**Default notification effects are enough.** If you do not already have a clear,
+useful animation idea, omit customization and continue your main task. Do not
+spend extra reasoning, research, tool calls or iterations designing a decorative
+effect. Custom animation is optional, not part of completing ordinary work.
+
 ## Own one slot
 
-- At the start of work, call `acquire_slot` with a concise task label, unique
+- After the explicit activation request, call `acquire_slot` with a concise task label, unique
   idempotency key, and your actual `harness`: `codex_desktop` when running in the
   desktop app, `codex_cli` in the terminal client, or `unknown` if unclear.
   This registers you and allocates your slot in one call. Desktop registration
@@ -24,8 +37,8 @@ calls; an agent cannot synthesize pickup, mute, or an answer.
   call `acquire_slot` normally to adopt that existing slot. It keeps its position
   and identity color; the ownership token is returned only after acquisition.
   Host registration does not prove that your model was running. Admin release
-  can invalidate your allocation; use a new acquisition key only if a new display
-  is still needed. Ordinary MCP tools never register or release another task.
+  can invalidate your allocation. If the user released it, wait for a new explicit
+  activation request. Ordinary MCP tools never register or release another task.
 - If an existing allocation has an unknown harness, repeat `acquire_slot` with
   the known harness and a new idempotency key; it keeps the same slot/token.
   A different known harness requires release and reacquisition. After cleanup,
@@ -55,6 +68,63 @@ calls; an agent cannot synthesize pickup, mute, or an answer.
 - Call `release_slot` when its display and calls are no longer needed. Releasing
   also withdraws pending calls, so do not immediately release an unread completion
   call you intend the user to pick up.
+
+## Terminal and editor pickup
+
+Report `codex_cli` when you run in a terminal, including an editor's integrated
+terminal. In a VS Code extension without a terminal, report `unknown`; native
+editor process context may still support window pickup. The bridge collects its
+own native process and terminal context; never
+invent or supply a terminal ID, PID, socket path, window title, command, or URL.
+A supported adapter may focus an exact terminal or only its owning window.
+Window focus does not prove a particular pane, conversation, or question is
+visible. Inspect the returned pickup result and report that distinction honestly.
+Missing or stale routing metadata leaves status and notifications available;
+never repair it by sending keystrokes or opening a guessed task location.
+
+## Optional notification animation
+
+Only use this when an idea comes readily to mind, or the user specifically asks
+for animation design. Otherwise keep the default; do not invent an effect just
+because the tools support it. If an animation falls back or the capability is
+unavailable, accept the default and continue instead of entering a repair loop.
+
+For a single call, `set_notification` accepts optional `animation`. Omission uses
+the slot's saved default (ordinary breathing unless you deliberately changed it);
+`animation="default"` explicitly uses ordinary breathing for this call.
+`set_notification_animation(animation=...)` saves a default for future calls,
+including automatically observed questions, without triggering a notification.
+Passing `null` to that setter restores ordinary breathing. Existing calls are
+immutable: changing the default or retrying does not replay or unmute them.
+
+Descriptions contain `duration_ms` (1000–4000, within host limits) and 1–4 layers.
+Each layer has `shape`, optional `color`, `opacity` (0–0.7 or a start/end pair),
+and optional `start_ms`/`end_ms` inside the clip. Coordinates are normalized 0–1:
+`ring` uses `center`, `radius` (value or pair), `width`; `spot` uses `from`, `to`,
+`radius`; `sweep` uses `axis` (`x`/`y`), scalar `from`/`to`, `width`; `pulse` uses
+`center`, `radius`, `pulses` (1–3). Radius is .02–1, width .02–.25, and each layer
+lasts at least 300 ms. Backend easing, opacity limits and reserved keys are fixed.
+
+Use `slot`, `slot_highlight` or `slot_shadow` to retain task identity. `positive`
+is yellow-green for confirmation/readiness; `negative` is red for a concern or
+cancel-style message. Pick a semantic accent only when its meaning fits. Do not
+invent RGB values, imply a user approved anything, or imitate pickup/mute keys.
+The background stays the slot color and the existing controls remain visible.
+
+## Static keymap guides
+
+When a visual keymap would help the user, inspect
+`get_status.keyboard_frame_capabilities.keys` for valid physical key IDs, then
+call `show_keyboard_frame(colors={...}, summary=...)`. Colors can use the palette
+above, `white`, `off`, or six-digit RGB for a clearly explained keymap legend.
+This creates its own call; do not send a separate notification for the guide.
+It appears only after pickup in active Agent Mode. While visible, highlighted
+keys keep ordinary input behavior; Escape is reserved red and dismisses the
+guide. The physical mode key keeps its normal cue and double-tap gesture. The guide stays
+until Escape, replacement, withdrawal or allocation cleanup; it does not use the
+fog/background fade timer. Use `clear_keyboard_frame` with the returned frame ID
+when your guide is no longer relevant. Do not describe it as a key remapping or
+a native question/approval answer. Missing support should not block the main task.
 
 ## Ask one native question
 

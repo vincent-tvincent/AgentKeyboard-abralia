@@ -8,7 +8,13 @@ from __future__ import annotations
 from contextlib import ExitStack
 from collections.abc import Callable
 from dataclasses import dataclass
+import json
+import os
+import signal
 import subprocess
+import sys
+import tempfile
+import time
 from uuid import UUID
 
 from abralia import SharedRawHidSession
@@ -20,6 +26,7 @@ from abralia.interaction.matrix_state import ViaMatrixReader
 from .navigation import ModeKeyHold, NAVIGATION_KEYS, PICKUP_KEY, MUTE_KEY, PAGE_KEYS
 from .render import Renderer
 from .core import GapSelection
+from .gui_devices import device_fingerprint, device_id as physical_device_id, resolve_device, validate_fingerprint
 
 
 @dataclass(frozen=True)
@@ -39,6 +46,7 @@ class Route:
     selection_revision: int = 0
     display_position: int = 0
     layout_revision: int = 0
+    frame_id: str = ''
 
 
 @dataclass
@@ -63,6 +71,11 @@ class GapPress:
 
 
 def routes_for(broker, profile, *, hold_enabled=False) -> dict[int, Route]:
+    guide = broker.visible_keyboard_frame()
+    if guide:
+        slot, frame = guide
+        return {41: Route(ControlId.key(*profile.element_by_id['ESC'].matrix), 'dismiss_keyboard_frame',
+                          slot.slot_token, frame_id=frame.frame_id)}
     routes = {}
     for slot in broker.visible_slots():
         position = (slot.position - 1) % 12 + 1
@@ -129,6 +142,8 @@ def dispatch_event(broker, event, routes: dict[int, Route], generation: int):
     route = routes.get(event.binding_id)
     if not route or route.control != event.control_id:
         return
+    if broker.visible_keyboard_frame() and route.action != 'dismiss_keyboard_frame':
+        return
     # Paging controls retain the same meaning across table revisions. Drain every
     # detent rather than dropping a burst after the first detent changes the page.
     if route.action in ("next_page", "previous_page"):
@@ -138,6 +153,9 @@ def dispatch_event(broker, event, routes: dict[int, Route], generation: int):
         broker.cycle_knob()
         return
     if event.binding_generation != generation:
+        return
+    if route.action == 'dismiss_keyboard_frame':
+        broker.dismiss_keyboard_frame(route.token, route.frame_id)
         return
     if route.action == 'jump_page':
         broker.jump_to_page(route.page_target, route.page_bank, route.selection_revision)
@@ -172,6 +190,13 @@ class DeviceDriver:
                  gap_committer: Callable[[GapSelection], bool] | None = None):
         self.broker = broker
         self.profile = load_profile(profile_id)
+        self.profile_id = profile_id
+        self.selected_device_id = None
+        self.selected_device_fingerprint = None
+        escape = self.profile.element_by_id.get('ESC')
+        broker.keyboard_frame_keys = (frozenset(e.element_id for e in self.profile.rgb_elements)
+                                      if escape and escape.rgb_capable and escape.matrix is not None else frozenset())
+        broker.keyboard_frame_mode_key = self.profile.interaction_toggle_element_id()
         required = ('ENTER', 'INSERT', 'DELETE', *NAVIGATION_KEYS, *PAGE_KEYS) if broker.config.keyboard_navigation_enabled else ('ENTER', *PAGE_KEYS)
         for name in required:
             element = self.profile.element_by_id.get(name)
@@ -189,6 +214,7 @@ class DeviceDriver:
         self.next_frame = 0.0
         self.refresh_at = 0.0
         self.focus_processes = []
+        self.terminal_focus_job = None
         self.protocol = None
         self.rgb = None
         self.mode_key = ControlId.key(*self.profile.device_profile.require_interaction().toggle_matrix)
@@ -207,7 +233,12 @@ class DeviceDriver:
             self.broker.delivery = "simulated"
             return
         try:
-            session = self.stack.enter_context(SharedRawHidSession.open_profile(self.profile.device_profile))
+            if self.selected_device_fingerprint is None:
+                opened = SharedRawHidSession.open_profile(self.profile.device_profile)
+            else:
+                selected = resolve_device(self.selected_device_fingerprint, self.profile.device_profile)
+                opened = SharedRawHidSession.open_path(selected.path, selected)
+            session = self.stack.enter_context(opened)
             protocol = HostInteractionProtocolClient(session.interaction_transport(), profile=self.profile.device_profile)
             caps = protocol.get_capabilities()
             status = protocol.get_status()
@@ -217,6 +248,8 @@ class DeviceDriver:
                 raise RuntimeError("another host owns a firmware session; stop that host before starting the backend")
             if not status.status_flags & StatusFlags.RGB_EFFECT_25_SELECTED:
                 raise RuntimeError("select enabled effect 25 before starting the backend")
+            self.selected_device_fingerprint = device_fingerprint(session.device_info)
+            self.selected_device_id = physical_device_id(self.selected_device_fingerprint)
             adapter = KeychronEffect25Adapter(session.rgb_transport(), session.device_info,
                 profile=self.profile.device_profile, effect_selection_policy=EffectSelectionPolicy.REQUIRE_SELECTED,
                 brightness_policy=BrightnessPolicy.PRESERVE_KEYBOARD)
@@ -227,9 +260,61 @@ class DeviceDriver:
                 matrix = self.profile.device_profile.keymap
                 self.matrix_reader = ViaMatrixReader(session.interaction_transport(), matrix.matrix_rows, matrix.matrix_columns)
             self.broker.delivery = "ready"
+            self.broker.device_error = None
         except Exception:
             self.stack.close()
             raise
+
+    def select_device(self, fingerprint, device_id: str, profile_id: str):
+        """Apply an explicit GUI choice on the existing serialized worker only.
+
+        Descriptor validation precedes releasing the old device. No selection
+        index survives discovery, and failure never falls back to another board.
+        Geometry/profile switching requires a separately configured backend.
+        """
+        if not isinstance(profile_id, str) or profile_id.removeprefix('builtin:') != self.profile.device_profile.profile_id:
+            raise ValueError('device_profile_mismatch')
+        fingerprint = validate_fingerprint(fingerprint)
+        if physical_device_id(fingerprint) != device_id:
+            raise ValueError('device_identity_mismatch')
+        if self.mode != 'hardware':
+            return {'status': 'rejected', 'reason': 'simulated_backend_has_no_physical_device'}
+        selected = resolve_device(fingerprint, self.profile.device_profile)
+        fresh = device_fingerprint(selected)
+        if (self.selected_device_id == device_id and self.selected_device_fingerprint == fresh
+                and self.protocol is not None and self.broker.delivery not in ('suspended', 'failed')):
+            return {'status': 'accepted', 'device_id': device_id, 'changed': False,
+                    'delivery': self.broker.delivery}
+        self.broker.set_active(False)
+        self.broker.delivery = 'suspended'
+        self.broker.focus_requests.clear()
+        try:
+            self.close()
+        except Exception as error:
+            self.broker.device_error = 'previous_device_cleanup_failed'
+            return {'status': 'rejected', 'reason': 'previous_device_cleanup_failed',
+                    'detail': str(error)}
+        finally:
+            self.stack = ExitStack()
+            self.lease = self.protocol = self.rgb = self.matrix_reader = None
+            self.routes, self.route_history = {}, {}
+            self.generation = 0
+            self.last_payload = None
+            self.next_frame = self.refresh_at = 0.
+            self.focus_processes = []
+            self.delete_press = self.gap_press = None
+            self.hold_tracker.reset()
+            self.navigation_input_error = None
+        self.selected_device_id, self.selected_device_fingerprint = device_id, fresh
+        try:
+            self.start()
+        except Exception as error:
+            self.broker.delivery = 'suspended'
+            self.broker.device_error = str(error)
+            return {'status': 'rejected', 'reason': 'selected_device_open_failed', 'detail': str(error)}
+        self.broker.event('device_selected', device_id=device_id)
+        return {'status': 'accepted', 'device_id': device_id, 'changed': True,
+                'delivery': self.broker.delivery}
 
     def suspend(self, reason: str):
         if self.lease:
@@ -341,7 +426,7 @@ class DeviceDriver:
         self.broker._navigation_activity()
 
     def poll_mode_key(self, now):
-        if not self.broker.active:
+        if not self.broker.active or self.broker.visible_keyboard_frame():
             self.hold_tracker.reset()
             return
         if self.matrix_reader is None or self.navigation_input_error or now < self.next_matrix_poll:
@@ -370,7 +455,76 @@ class DeviceDriver:
                 'mode_key_observed':self.navigation_hold_observed,
                 'error':self.navigation_input_error}
 
+    def _cancel_terminal_focus(self):
+        job, self.terminal_focus_job = self.terminal_focus_job, None
+        if job is None:
+            return
+        process = job['process']
+        if process.poll() is None:
+            try:
+                if os.name == 'posix':
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+            except ProcessLookupError:
+                pass
+        if process.stdout:
+            process.stdout.close()
+        # Reap on a daemon thread so process teardown never blocks HID service.
+        import threading
+        threading.Thread(target=process.wait, daemon=True, name='abralia-focus-reap').start()
+
+    def _service_terminal_focus(self):
+        job = self.terminal_focus_job
+        if job is None:
+            return
+        slot = next((s for s in self.broker.slots.values() if s.slot_token == job['token']), None)
+        attachment = self.broker.terminal_attachments.get(slot.caller.caller_id) if slot else None
+        valid = (slot and self.broker.active and self.broker.selected == slot.slot_id
+                 and self.broker.focus_revision == job['revision'] and attachment
+                 and attachment['generation'] == job['generation'])
+        if not valid:
+            self._cancel_terminal_focus()
+            return
+        process = job['process']
+        if process.poll() is None:
+            if time.monotonic() >= job['deadline']:
+                self.broker.navigation_results[slot.slot_token] = {'status': 'failed', 'reason': 'focus_timeout'}
+                self.broker.event('focus_failed', slot, reason='focus_timeout')
+                self._cancel_terminal_focus()
+            return
+        from .terminal_focus import public_result
+        try:
+            result = public_result(json.loads(process.stdout.read(4097))) if process.returncode == 0 else {
+                'status': 'failed', 'reason': 'focus_helper_failed'}
+        except (ValueError, OSError):
+            result = {'status': 'failed', 'reason': 'invalid_focus_result'}
+        process.stdout.close()
+        self.terminal_focus_job = None
+        self.broker.navigation_results[slot.slot_token] = result
+        self.broker.event('terminal_focus_result', slot, **result)
+
+    def _start_terminal_focus(self, slot, attachment):
+        self._cancel_terminal_focus()
+        command = ([sys.executable, 'terminal-focus'] if getattr(sys, 'frozen', False)
+                   else [sys.executable, '-m', 'abralia.backend.terminal_focus'])
+        try:
+            # A private anonymous file avoids blocking the HID loop on a pipe
+            # write and keeps native endpoint metadata out of process arguments.
+            with tempfile.TemporaryFile() as context_file:
+                context_file.write(json.dumps(attachment['context']).encode())
+                context_file.seek(0)
+                process = subprocess.Popen(command, stdin=context_file, stdout=subprocess.PIPE,
+                                           stderr=subprocess.DEVNULL, start_new_session=os.name == 'posix')
+            self.terminal_focus_job = {'process': process, 'token': slot.slot_token,
+                                       'revision': self.broker.focus_revision,
+                                       'generation': attachment['generation'],
+                                       'deadline': time.monotonic() + 12}
+        except OSError:
+            self.broker.event('focus_failed', slot, reason='focus_helper_unavailable')
+
     def tick(self):
+        self._service_terminal_focus()
         now = self.broker.clock()
         if self.mode == "hardware" and self.broker.delivery not in ("suspended", "failed"):
             try:
@@ -431,7 +585,12 @@ class DeviceDriver:
                 continue
             if self.mode == "simulated":
                 self.broker.event("focus_simulated", slot)
+            elif slot.caller.surface != 'codex_desktop':
+                attachment = self.broker.terminal_attachments.get(slot.caller.caller_id)
+                if attachment and attachment['slot_token'] == token:
+                    self._start_terminal_focus(slot, attachment)
             else:
+                self._cancel_terminal_focus()
                 try:
                     process = subprocess.Popen(["/usr/bin/open", f"codex://threads/{UUID(thread_id)}"],
                                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -445,6 +604,7 @@ class DeviceDriver:
                 self.focus_processes.remove((process, token))
 
     def close(self):
+        self._cancel_terminal_focus()
         try:
             if self.lease:
                 self.lease.close()

@@ -4,6 +4,14 @@ The optional Python backend owns one effect-25 keyboard, receives semantic agent
 reports through a local MCP bridge, and displays stable logical slots on paged
 F1–F12 controls. It uses the [Apache-2.0 license](../../LICENSE.md).
 
+The [macOS app](gui/README.md) runs a shared backend for explicitly enabled
+project folders and installs the [Abralia Codex plugin](plugin-bundle/README.md).
+Its plugin uses the bundled runtime, validates native task/project context and
+routes all projects to one keyboard worker. Project mute and allocation ownership
+are isolated per project. The terminal commands below retain the earlier
+single-project workflow for development; do not run both integration routes
+for the same task.
+
 ## Install and start
 
 From the repository root, install into your chosen Python 3.11+ environment:
@@ -67,10 +75,14 @@ ownership; an ID reused afterward has a fresh token and cannot accept old calls.
 
 | Tool | Purpose |
 | --- | --- |
-| `acquire_slot(label, idempotency_key, harness?)` | Register the caller's harness and claim or recover its stable logical slot. |
+| `enable_self(label, idempotency_key, harness?)` | After an explicit user request, enroll the verified native current project if needed and acquire only this task's slot. No project-path argument. |
+| `acquire_slot(label, idempotency_key, harness?)` | After an explicit user request, register the caller's harness and claim or recover its stable logical slot in an enabled project. |
 | `release_slot(slot_token, idempotency_key)` | Clear that allocation, including its notification and question. |
 | `set_slot_state(slot_token, state, idempotency_key, summary?, progress?)` | Report idle, progressing, error, action_requested, or completed without notifying automatically. |
-| `set_notification(slot_token, enabled, idempotency_key, summary?)` | Request/withdraw one call. An update does not override mute or replay an existing onset. |
+| `set_notification(slot_token, enabled, idempotency_key, summary?, animation?)` | Request/withdraw one call, optionally with a short overlay. An update does not override mute or replay an existing onset. |
+| `set_notification_animation(slot_token, animation, idempotency_key)` | Save an optional default for future calls, including observed questions. Null restores normal breathing; does not notify. |
+| `show_keyboard_frame(slot_token, colors, idempotency_key, summary?)` | Request a static keymap guide through its own notification; pickup reveals it and Escape closes it. |
+| `clear_keyboard_frame(slot_token, frame_id, idempotency_key)` | Withdraw the caller's exact pending or visible guide without affecting native questions. |
 | `report_question(slot_token, question_id, kind, idempotency_key, options?, allow_other?)` | Prepare a call and native answer-key hints. Call before asking the native question. |
 | `clear_question(slot_token, question_id, idempotency_key, outcome?)` | Restore question lighting/controls after answered, cancelled, withdrawn, skipped, or expired. |
 | `get_status(slot_token?)` | Inspect readiness, identity, and only the caller's own allocation/feedback. |
@@ -82,7 +94,17 @@ The tested client profile is Codex desktop; one native question is reported at
 a time. Neither the MCP bridge nor the backend presents or answers it.
 Native approvals, multi-select, and arbitrary UI focus monitoring are not exposed.
 
-The agent registers itself through `acquire_slot`, reporting `harness` as
+Activation requires an explicit user request to use Abralia for the task.
+The plugin skill disables implicit invocation. `enable_self` can enroll the
+verified current project and claim a slot; normal tools and hooks never enroll.
+It reuses an enabled parent project, accepts no arbitrary project path, and
+reports `project_enabled` separately from `slot_acquired` if the app is offline.
+Enable retries are scoped to the caller, arguments and enrollment generation
+within the bridge lifetime; an old request cannot silently re-enable a disabled
+project. A new explicit activation request uses a fresh key. User intent is an
+instruction policy, not an agent-supplied boolean presented as proof.
+
+Within an enabled project, the agent can register through `acquire_slot`, reporting `harness` as
 `codex_desktop`, `codex_cli`, or `unknown`. The bridge reads its own task identity
 from Codex's `_meta.x-codex-turn-metadata.thread_id`; task IDs and target URLs are
 never model arguments. A desktop agent can then use task pickup and native
@@ -94,11 +116,45 @@ question hints without a per-task host command. For example:
 
 Acquisition returns the allocation and caller registration. Harness information
 is explicitly `surface_source=agent_reported`; it does not prove current UI focus.
-`codex_cli` and `unknown` registrations retain status and notifications without
-desktop question hints or task opening. Omitted harness preserves an existing
+CLI registrations can navigate through a host-verified terminal attachment;
+they do not receive desktop question hints. Omitted harness preserves an existing
 registration; a new caller without it remains unknown. An unknown allocation
 can be upgraded by acquiring with a harness and a new idempotency key. Changing
 between known harnesses requires release and reacquisition.
+
+### CLI terminals and VS Code windows
+
+Direct F-key selection and incoming-call pickup use the same navigation route.
+The bridge supplies native client process lifetime and allowlisted terminal
+metadata, separately from model arguments. The backend attaches only the CLI
+root task; subagents sharing its MCP process do not inherit its terminal pane.
+Closed clients, reused process IDs, conflicting live clients, and stale
+attachments cannot redirect another task's slot. A restart restores the slot's
+placement, then establishes navigation again from the live bridge.
+
+| Environment | Navigation capability |
+| --- | --- |
+| Terminal.app, iTerm2 (macOS) | Native tab/session matched to the CLI's terminal device. |
+| Ghostty (macOS) | Exact terminal device matching when the installed AppleScript API exposes `tty`. Older versions can use an unambiguous single-terminal instance; multiple panes require the newer API. |
+| WezTerm | Native pane selection through its existing local CLI/mux connection. |
+| kitty | Native window selection through an already configured local remote-control socket. |
+| Windows Terminal | Window-only targeting when the captured application process owns exactly one eligible native window. This does not select a tab. |
+| VS Code | Window-only targeting when the captured application process owns exactly one eligible native window: macOS Accessibility, Windows native window APIs, or Linux X11. This does not select an integrated terminal or agent conversation. |
+
+The routing layer includes macOS, Windows and Linux paths; the packaged Abralia
+app is currently macOS-only. Windows/Linux native behavior needs testing on
+those operating systems. Linux Wayland window activation, remote/multiplexed
+sessions without an exact local association, and older Ghostty builds lacking a
+usable target report unavailable. Abralia does not enable remote control,
+change terminal settings, send keystrokes, or create replacement windows.
+macOS Automation/Accessibility permissions and an emulator's own control settings
+must already permit the chosen operation.
+
+Inspect `allocation.navigation_target` for the provider, target specificity and
+last pickup result. A dispatched request, a verified terminal surface, and a
+verified conversation are distinct results. Native focus runs in a bounded
+helper process so terminal delays do not stall keyboard rendering or heartbeat.
+Rapid selection supersedes pending native requests and discards stale results.
 
 Registration belongs to the allocation: bridge reconnects preserve it during
 the existing cleanup grace period. A surviving bridge can also recover it after
@@ -609,7 +665,8 @@ Timed attention settings are `agent_mute_seconds` (600),
 `muted_saturation_percent` (50). They are host settings, not model arguments.
 Each allocation's `attention_policy` reports its effective mute source and time
 remaining. Overview status includes `only_agent_slot` and
-`only_agent_remaining_seconds`. The agent-callable operation set is unchanged.
+`only_agent_remaining_seconds`. These attention policies do not grant agents
+permission to synthesize user input.
 `navigation_colors` is a host setting with all three keys:
 `{"page":"00BFFF","slot":"FF9000","boundary":"A060FF"}`. It changes assigned
 navigation keys only, independently of `overview_tint` and the strong call colors.
@@ -659,6 +716,80 @@ restart. Host-only settings are `notification_breath_seconds` (8),
 `orb_formation_seconds` (2), `orb_hold_seconds` (120), `orb_fade_seconds` (60),
 and `orb_dismiss_seconds` (0.5). The notification's existing lifetime remains an
 upper limit, independently of pending-question lifetime.
+
+### Optional custom notification animation
+
+Customization is optional. Agents should use the default unless a useful effect
+comes readily to mind; ordinary work should not spend extra reasoning, research
+or iterations on decoration. `set_notification` omission uses the saved slot
+default, while `animation="default"` explicitly selects normal breathing.
+`set_notification_animation(animation=null)` clears a saved default. Defaults
+belong to the allocation and are not restored after a backend restart.
+
+A custom description contains `duration_ms` (1000–4000) and up to four layers:
+
+```json
+{"duration_ms":3000,"layers":[{"shape":"ring","center":[0.5,0.5],"radius":[0.05,0.6],"color":"slot_highlight","opacity":[0.7,0]}]}
+```
+
+Shapes are `ring` (`center`, `radius`, `width`), `spot` (`from`, `to`, `radius`),
+`sweep` (`axis`, scalar `from`/`to`, `width`), and `pulse` (`center`, `radius`,
+`pulses`). Coordinates use 0–1 within the main typing region. Radius may be a
+constant or start/end pair in .02–1; width is .02–.25. Layers may set `start_ms`
+and `end_ms` within the clip, spanning at least 300 ms. Opacity is a constant or
+start/end pair in 0–0.7; pulses are limited to 1–3. Endpoints are eased by the
+renderer, and combined opacity never exceeds 0.7.
+
+The approved animation palette is `slot`, `slot_highlight`, `slot_shadow`,
+`positive` (yellow-green) and `negative` (red). The skill describes their meaning;
+the backend enforces the palette, shape and resource limits. No executable code,
+files, arbitrary RGB, physical LED indices or input operations are accepted.
+
+The normal four-second transition remains, followed by the custom clip over a
+steady slot-colored background. A short clip leaves that background steady for
+the rest of the existing breathing window, then the usual fog formation follows.
+No queue time is added. The default eight-second window allows at most four
+custom seconds; a shorter host window reduces that allowance. Controls remain
+visible above the overlay and the keyboard brightness ceiling stays authoritative.
+Pickup/mute immediately ends the presentation. Each new notice snapshots its
+animation; retries or later default changes cannot alter an existing call.
+
+`agent_animations_enabled=false` disables custom clips through host settings.
+`get_status.animation_capabilities` reports limits. Unsupported descriptions fall
+back to normal breathing with feedback in `notification.animation`; an invalid
+outer MCP request can still be rejected normally. Fallback never requires a
+model repair loop and must not cause a duplicate notification.
+
+### Static keyboard guides
+
+`show_keyboard_frame` takes a `colors` mapping from physical key IDs (for example,
+`W`, `A`, `S`, `D`, `SPACE`) to the palette above, `white`, `off`, or six-digit RGB.
+Use `get_status.keyboard_frame_capabilities.keys` for the selected profile's
+renderable keys. Unspecified keys use the idle white background. Escape is
+reserved red; the physical mode key retains its normal cue.
+
+The tool creates a separate, owned notification. It never takes over lighting
+until the user picks up that call in Agent Mode. Direct F-key selection can also
+open the guide, including after mute or attention expiry. During the guide,
+only Escape is captured by the backend; F-keys, arrows, Enter and the knob revert
+to ordinary input, so the guide does not remap the highlighted keys. Firmware's
+double-tap mode gesture remains available. Inactive mode hides the guide until
+Agent Mode resumes. Escape dismisses the guide and restores normal Abralia
+lighting/bindings; other queued calls can then continue.
+
+A guide has no independent fade timer. It ends on Escape, exact-ID withdrawal,
+replacement, slot release or normal disconnected-owner cleanup. It never answers
+a native question. A replacement needs a new pickup, and old Escape releases
+cannot dismiss it. Repeated identical guides retain their ID and do not re-notify.
+The normal notification cooldown limits distinct replacements. A saved animation
+default applies to the guide's arrival; do not request a second call separately.
+
+Generate offline examples of the four clip primitives and the guide's pickup/
+Escape sequence with Pillow installed in the chosen development environment:
+
+```sh
+python experiments/desktop-rgb-physical-validation/custom_visuals_preview.py --output /path/to/previews
+```
 
 From the repository root, a bounded fixture trial uses the production renderer:
 

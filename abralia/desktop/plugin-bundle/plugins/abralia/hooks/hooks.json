@@ -1,0 +1,76 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/abralia-launch\" codex-hook",
+            "timeout": 2,
+            "statusMessage": "Abralia: tool activity"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/abralia-launch\" codex-hook",
+            "timeout": 2,
+            "statusMessage": "Abralia: tool results"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/abralia-launch\" codex-hook",
+            "timeout": 2,
+            "statusMessage": "Abralia: turn activity"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/abralia-launch\" codex-hook",
+            "timeout": 2,
+            "statusMessage": "Abralia: turn finished"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/abralia-launch\" codex-hook",
+            "timeout": 2,
+            "statusMessage": "Abralia: session tracking"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh \"${PLUGIN_ROOT}/scripts/abralia-launch\" codex-hook",
+            "timeout": 2,
+            "statusMessage": "Abralia: session cleanup"
+          }
+        ]
+      }
+    ]
+  }
+}

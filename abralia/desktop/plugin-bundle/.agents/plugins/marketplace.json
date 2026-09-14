@@ -1,0 +1,20 @@
+{
+  "name": "abralia",
+  "interface": {
+    "displayName": "Abralia"
+  },
+  "plugins": [
+    {
+      "name": "abralia",
+      "source": {
+        "source": "local",
+        "path": "./plugins/abralia"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -10,6 +10,7 @@ validation where that distinction matters.
 | --- | --- |
 | Understand what Abralia does and what is currently supported | [Project overview](../README.md) |
 | Run the terminal backend with Codex | [Agent backend guide](../abralia/desktop/BACKEND.md) |
+| Choose a keyboard and mute projects from the macOS GUI | [macOS control panel](../abralia/desktop/gui/README.md) |
 | Enable or disable Abralia for a selected project | [Project-local MCP and skill setup](../abralia/desktop/BACKEND.md#enable-only-a-selected-project) |
 | Register or release existing task slots without waking agents | [Host registration and release](../abralia/desktop/BACKEND.md#host-registration-and-release) |
 | Learn current keyboard controls, page navigation and attention gestures | [Physical interaction](../abralia/desktop/BACKEND.md#physical-interaction) |

@@ -13,10 +13,16 @@ import socket
 import threading
 import secrets
 from uuid import UUID
-from .client_lifetime import capture_client_owner
+from .client_lifetime import capture_client_owner, capture_terminal_context
 
 MAX_REQUEST = 65536
 MAX_RESPONSE = 4 * 1024 * 1024
+
+
+def shared_socket_path(runtime_dir: str | Path | None = None) -> Path:
+    """The app's one keyboard broker; independent of project enrollment."""
+    root = runtime_dir or os.environ.get('ABRALIA_RUNTIME_DIR') or f'/tmp/abralia-{os.getuid()}'
+    return Path(root) / 'shared.sock'
 
 
 def socket_path(project: str | Path) -> Path:
@@ -28,10 +34,12 @@ def socket_path(project: str | Path) -> Path:
 class BrokerClient:
     def __init__(self, project: str | Path, *, endpoint: str | Path | None = None,
                  role: str = "agent", registered_thread_id: str | None = None, recover_slots: bool = False,
-                 recovery_owner=None):
+                 recovery_owner=None, timeout: float = 8, project_generation: str | None = None):
         self.project = str(Path(project).resolve())
         self.endpoint = str(endpoint or socket_path(project))
         self.role = role
+        self.timeout = timeout
+        self.project_generation = project_generation
         self.registered_thread_id = registered_thread_id
         self.lock = threading.Lock()
         self.socket = None
@@ -39,20 +47,25 @@ class BrokerClient:
         self.epoch = None
         self.recovery_key = secrets.token_hex(32) if recover_slots and role == 'agent' else None
         self.recovery_owner = (recovery_owner if recovery_owner is not None else capture_client_owner()) if self.recovery_key else None
+        self.terminal_context = capture_terminal_context(self.recovery_owner) if self.recovery_owner else None
         self.resume_claims = {}
         self.pending_releases = {}
         self.pending_acquires = set()
 
     def _connect(self):
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.socket.settimeout(8)
+        self.socket.settimeout(self.timeout)
         self.socket.connect(self.endpoint)
         self.reader = self.socket.makefile("rb")
         hello = {"type": "hello", "project": self.project, "role": self.role,
                  "registered_thread_id": self.registered_thread_id}
+        if self.project_generation is not None:
+            hello['project_generation'] = self.project_generation
         if self.recovery_key:
             hello.update(recovery_key=self.recovery_key, recovery_owner=self.recovery_owner,
                          resume_callers=sorted((set(self.resume_claims) | self.pending_acquires) - set(self.pending_releases)))
+            if self.terminal_context is not None:
+                hello['terminal_context'] = self.terminal_context
         response = self._exchange(hello)
         if response.get("status") != "accepted":
             raise OSError(response.get("reason", "registration rejected"))

@@ -11,6 +11,7 @@ valid. Renderer snapshots never contain allocation ownership tokens.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from copy import deepcopy
 import secrets
 
 
@@ -35,6 +36,7 @@ class Presentation:
     notice_ids: tuple[str, ...]
     started_at: float
     paused_at: float | None = None
+    animation: dict | None = None
 
 
 def _smooth(value: float) -> float:
@@ -146,7 +148,7 @@ class NotificationVisualState:
             if waiting:
                 token, _ = min(waiting, key=lambda key: (source[key].created_at, slots[key[0]].slot_id, key[1]))
                 ids = tuple(key[1] for key in covered(token, {'waiting'}))
-                presentation = Presentation(token, ids, now)
+                presentation = Presentation(token, ids, now, animation=deepcopy(source[(token, ids[0])].animation))
                 for notice_id in ids:
                     notices[(token, notice_id)] = 'presenting'
                 orb = orbs.setdefault(token, Orb(secrets.token_hex(12)))
@@ -208,7 +210,7 @@ class NotificationVisualState:
                     result = {'slot_id': slot.slot_id, 'identity_color': slot.identity_color,
                               'notice_id': presentation.notice_ids[0], 'phase': phase,
                               'elapsed': min(elapsed, seconds), 'progress': min(1.0, elapsed / seconds),
-                              'orb_key': orb.key}
+                              'orb_key': orb.key, 'animation': deepcopy(presentation.animation)}
                     break
                 elapsed -= seconds
         orbs = []

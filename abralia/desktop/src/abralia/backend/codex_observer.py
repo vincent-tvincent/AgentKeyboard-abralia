@@ -112,7 +112,7 @@ class CodexObserver:
         self.service = service
         self.home = Path(codex_home or os.environ.get('CODEX_HOME') or Path.home()/'.codex')
         self.project = Path(service.project)
-        journal = Path(hook_journal) if hook_journal else configured_hook_journal(self.project)
+        journal = Path(hook_journal) if hook_journal else (None if getattr(service, 'shared', False) else configured_hook_journal(self.project))
         self.hook_cursor = JsonlCursor(journal) if journal else None
         self.hooks = OrderedDict()
         self.tails = {}
@@ -177,7 +177,7 @@ class CodexObserver:
                     paths = list((self.home/'sessions').glob(f'*/*/*/rollout-*-{thread_id}.jsonl'))
                     if paths:
                         path = max(paths, key=lambda p:p.stat().st_mtime_ns)
-                        self.tails[token] = RolloutTail(path, self.project, thread_id)
+                        self.tails[token] = RolloutTail(path, target.get('project', self.project), thread_id)
                     self.retry_at[token] = time.monotonic() + 5
                 tail = self.tails.get(token)
                 snapshot = tail.poll() if tail else None

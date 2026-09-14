@@ -1,0 +1,20 @@
+{
+  "name": "abralia",
+  "version": "0.1.0+codex.20260914031112",
+  "description": "Connect Codex tasks to the Abralia desktop keyboard app.",
+  "author": {
+    "name": "blue_lobster"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Abralia",
+    "shortDescription": "Agent status and attention on your keyboard.",
+    "longDescription": "Connect enrolled Codex projects to one Abralia keyboard backend, with named lifecycle hooks, task slots and agent-requested notifications.",
+    "developerName": "blue_lobster",
+    "category": "Productivity",
+    "defaultPrompt": "Use Abralia for this task.",
+    "capabilities": []
+  },
+  "mcpServers": "./.mcp.json",
+  "license": "Apache-2.0"
+}

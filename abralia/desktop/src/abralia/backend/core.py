@@ -17,11 +17,13 @@ from typing import Callable
 from uuid import UUID
 from .navigation import PAGE_KEYS
 from .notification_visuals import NotificationVisualState
+from .notification_animation import validate_animation, COLORS, SHAPES, TRANSITION_SECONDS
 
 
 STATES = ("idle", "progressing", "error", "action_requested", "completed")
 HARNESSES = ("codex_desktop", "codex_cli", "unknown")
 OPERATIONS = ("acquire_slot", "release_slot", "set_slot_state", "set_notification",
+              "set_notification_animation", "show_keyboard_frame", "clear_keyboard_frame",
               "report_question", "clear_question", "get_status")
 PENDING = ("queued", "active", "muted")
 
@@ -30,6 +32,7 @@ PENDING = ("queued", "active", "muted")
 class BrokerConfig:
     notification_seconds: float = 300
     notification_breath_seconds: float = 8
+    agent_animations_enabled: bool = True
     orb_formation_seconds: float = 2
     orb_hold_seconds: float = 120
     orb_fade_seconds: float = 60
@@ -76,7 +79,7 @@ class BrokerConfig:
     })
 
     def __post_init__(self):
-        for name in ('escape_exits_focus', 'keyboard_navigation_enabled'):
+        for name in ('escape_exits_focus', 'keyboard_navigation_enabled', 'agent_animations_enabled'):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} must be a boolean")
         limits = {"notification_seconds": (1, 3600), "question_seconds": (1, 86400),
@@ -121,6 +124,9 @@ class Caller:
     identity_source: str = "registered_test_connection"
     surface: str = "unknown"
     surface_source: str = "unknown"
+    project_id: str | None = None
+    project_path: str | None = None
+    project_generation: str | None = None
 
     def __post_init__(self):
         if not self.caller_id or len(self.caller_id) > 256:
@@ -139,6 +145,16 @@ class Notification:
     origin: str = "agent"
     request_id: str | None = None
     controls_dismissed: bool = False
+    animation: dict | None = None
+    animation_source: str = 'default'
+    animation_fallback: str | None = None
+
+
+@dataclass
+class KeyboardFrame:
+    frame_id: str
+    colors: dict[str, str]
+    status: str = 'pending'
 
 
 @dataclass
@@ -176,6 +192,9 @@ class Allocation:
     host_registered: bool = False
     agent_attached: bool = True
     display_position: int | None = None
+    notification_animation: dict | None = None
+    keyboard_frame: KeyboardFrame | None = None
+    frame_notification: Notification | None = None
 
     @property
     def position(self) -> int:
@@ -230,6 +249,10 @@ class Broker:
         self.navigation_deadline = None
         self.navigation_revision = 0
         self.agent_mutes: dict[str, float] = {}
+        # This broker currently serves one project. Persistence and project
+        # identity belong to the service, while attention policy stays here.
+        self.project_muted = False
+        self.project_mutes = {}
         self.only_agent_token: str | None = None
         self.only_agent_until: float | None = None
         self.attention_policy_revision = 0
@@ -252,7 +275,68 @@ class Broker:
         self.events: deque[dict] = deque(maxlen=512)
         self.sequence = 0
         self.focus_requests: deque[tuple[str, str]] = deque()
+        # Host-derived process/pane associations never enter model arguments or
+        # durable allocation identity. A reconnect must establish them again.
+        self.terminal_attachments: dict[str, dict] = {}
+        self.navigation_results: dict[str, dict] = {}
         self._notification_visual_state = NotificationVisualState()
+        self.keyboard_frame_keys: frozenset[str] = frozenset()
+        self.keyboard_frame_mode_key: str | None = None
+        self.keyboard_frame_focus: tuple[str, str] | None = None
+
+    def visible_keyboard_frame(self):
+        if not self.active or self.keyboard_frame_focus is None:
+            return None
+        token, frame_id = self.keyboard_frame_focus
+        slot = next((s for s in self.slots.values() if s.slot_token == token), None)
+        frame = slot.keyboard_frame if slot else None
+        return (slot, frame) if frame and frame.frame_id == frame_id and frame.status == 'visible' else None
+
+    def _close_keyboard_frame(self, slot, outcome):
+        frame = slot.keyboard_frame
+        if frame is None or frame.status == 'dismissed':
+            return
+        # Recovery checkpoints shallow-copy allocations. Replace nested guide
+        # records so a failed durable release can restore the visible guide.
+        slot.keyboard_frame = replace(frame, status='dismissed')
+        slot.revision += 1
+        notice = slot.frame_notification
+        if notice:
+            replacement = replace(notice, status='cancelled', controls_dismissed=True)
+            slot.frame_notification = replacement
+            if slot.notification is notice:
+                slot.notification = replacement
+            self._clear_notice_focus(slot, notice)
+            if self.current_call == slot.slot_id and slot.notification is replacement:
+                self.current_call = None
+            if self.attention_target == slot.slot_id and slot.notification is replacement:
+                self.attention_target = None
+        if self.keyboard_frame_focus == (slot.slot_token, frame.frame_id):
+            self.keyboard_frame_focus = None
+        self.event('keyboard_frame_closed', slot, frame_id=frame.frame_id, outcome=outcome)
+
+    def dismiss_keyboard_frame(self, token, frame_id):
+        visible = self.visible_keyboard_frame()
+        if visible and visible[0].slot_token == token and visible[1].frame_id == frame_id:
+            self._close_keyboard_frame(visible[0], 'escape')
+            self._promote()
+            return True
+        return False
+
+    def _animation_choice(self, slot, value=None):
+        if value == 'default':
+            return None, 'default', None
+        source = 'override' if value is not None else 'slot_default'
+        value = slot.notification_animation if value is None else value
+        if value is None:
+            return None, 'default', None
+        if not self.config.agent_animations_enabled:
+            return None, source, 'disabled_by_host'
+        try:
+            maximum = min(4000, int((self.config.notification_breath_seconds - TRANSITION_SECONDS) * 1000))
+            return validate_animation(value, max_duration_ms=maximum), source, None
+        except (TypeError, ValueError):
+            return None, source, 'unsupported_animation_using_default'
 
     def notification_visuals(self) -> dict:
         """Read the worker-owned visual lifecycle without advancing it."""
@@ -421,17 +505,21 @@ class Broker:
 
     def _owned(self, caller: Caller, token) -> Allocation:
         slot = self.slots.get(self.owners.get(caller.caller_id, -1))
+        if slot is not None and (slot.caller.project_id, slot.caller.project_generation) != (caller.project_id, caller.project_generation):
+            raise Rejected('caller_project_mismatch')
         if slot is None or not isinstance(token, str) or not secrets.compare_digest(slot.slot_token, token):
             raise Rejected("invalid_or_stale_slot_token")
         if not slot.agent_attached:
             raise Rejected('acquire_slot_required')
         return slot
 
-    def register_host_task(self, thread_id: str, label: str) -> tuple[Allocation, bool]:
+    def register_host_task(self, thread_id: str, label: str, *, project_id=None, project_path=None, project_generation=None) -> tuple[Allocation, bool]:
         caller = Caller('codex:' + thread_id, thread_id, 'registered_by_host',
-                        'codex_desktop', 'registered_by_host')
+                        'codex_desktop', 'registered_by_host', project_id, project_path, project_generation)
         existing = self.slots.get(self.owners.get(caller.caller_id))
         if existing:
+            if (existing.caller.project_id, existing.caller.project_generation) != (project_id, project_generation):
+                raise Rejected('caller_project_mismatch')
             return existing, False
         number, position = self._allocation_addresses(caller.caller_id)
         slot = Allocation(number, secrets.token_hex(24), caller, label,
@@ -453,12 +541,19 @@ class Broker:
                 "agent_attached": slot.agent_attached,
                 **self.location(slot), "state": slot.state, "revision": slot.revision,
                 "identity_color": slot.identity_color,
+                "navigation_target": self.navigation_target(slot),
+                "project_id": slot.caller.project_id, "project_path": slot.caller.project_path,
+                "notification_animation": deepcopy(slot.notification_animation),
+                "keyboard_frame": ({'id': slot.keyboard_frame.frame_id, 'status': slot.keyboard_frame.status,
+                                    'colors': dict(slot.keyboard_frame.colors)} if slot.keyboard_frame else None),
                 "attention_policy": self.attention_snapshot(slot),
                 "progress": slot.progress, "summary": slot.summary,
                 "observed": deepcopy(slot.observation),
                 "notification": ({"id": n.notification_id, "status": n.status,
                     "origin": n.origin, "request_id": n.request_id,
                     "controls_dismissed": n.controls_dismissed,
+                    "animation": {'mode': 'custom' if n.animation else 'default', 'source': n.animation_source,
+                                  'fallback': n.animation_fallback},
                     "remaining_seconds": max(0, n.expires_at - self.clock())} if n else None),
                 "question": ({"id": q.question_id, "kind": q.kind, "picked_up": q.picked_up,
                     "highlight_keys": self.question_keys(slot),
@@ -474,6 +569,13 @@ class Broker:
                   "allocated_slots": len(self.slots), "page_size": self.page_size,
                   "supported_states": STATES, "supported_question_kinds": ["single_choice", "free_text"],
                   "caller": asdict(caller), "limits": asdict(self.config)}
+        result['animation_capabilities'] = {'enabled': self.config.agent_animations_enabled,
+            'max_duration_ms': min(4000, int((self.config.notification_breath_seconds - TRANSITION_SECONDS) * 1000)),
+            'max_layers': 4, 'colors': COLORS, 'shapes': SHAPES}
+        result['keyboard_frame_capabilities'] = {'keys': sorted(self.keyboard_frame_keys),
+            'display': 'after_pickup', 'dismiss_key': 'ESC',
+            'reserved_keys': ['ESC', *([self.keyboard_frame_mode_key] if self.keyboard_frame_mode_key else [])],
+            'colors': [*COLORS, 'white', 'off', 'RRGGBB']}
         slot = self.slots.get(self.owners.get(caller.caller_id, -1)) if token is None else self._owned(caller, token)
         if slot:
             result["caller"] = asdict(slot.caller)
@@ -484,6 +586,9 @@ class Broker:
     def call(self, caller: Caller, operation: str, arguments: dict) -> dict:
         self.step()
         try:
+            existing = self.slots.get(self.owners.get(caller.caller_id))
+            if existing is not None and (existing.caller.project_id, existing.caller.project_generation) != (caller.project_id, caller.project_generation):
+                raise Rejected('caller_project_mismatch')
             if operation not in OPERATIONS or not isinstance(arguments, dict):
                 raise Rejected("unknown_operation_or_invalid_arguments")
             if operation == "get_status":
@@ -492,7 +597,8 @@ class Broker:
                 return self.status(caller, arguments.get("slot_token"))
             key = text_argument(arguments.get("idempotency_key"), "idempotency_key", 128)
             fingerprint = json.dumps([operation, arguments], sort_keys=True, allow_nan=False)
-            cache_key = (caller.caller_id, key)
+            cache_key = ((caller.caller_id, key) if caller.project_id is None
+                         else (caller.caller_id, caller.project_id, caller.project_generation, key))
             if cache_key in self.idempotency:
                 original, result = self.idempotency[cache_key]
                 if fingerprint != original:
@@ -520,7 +626,10 @@ class Broker:
         allowed = {
             "acquire_slot": {"label", "harness"}, "release_slot": {"slot_token"},
             "set_slot_state": {"slot_token", "state", "summary", "progress"},
-            "set_notification": {"slot_token", "enabled", "summary"},
+            "set_notification": {"slot_token", "enabled", "summary", "animation"},
+            "set_notification_animation": {"slot_token", "animation"},
+            "show_keyboard_frame": {"slot_token", "colors", "summary"},
+            "clear_keyboard_frame": {"slot_token", "frame_id"},
             "report_question": {"slot_token", "question_id", "kind", "options", "allow_other"},
             "clear_question": {"slot_token", "question_id", "outcome"},
         }[operation] | {"idempotency_key"}
@@ -573,7 +682,53 @@ class Broker:
             self._release(slot)
             self._promote()
             return {"status": "accepted", "slot_id": slot.slot_id}
-        if operation == "set_slot_state":
+        feedback = {}
+        if operation == 'set_notification_animation':
+            value = a.get('animation')
+            animation, _, fallback = self._animation_choice(slot, value if value is not None else 'default')
+            slot.notification_animation = deepcopy(animation)
+            feedback['animation'] = {'mode': 'custom' if animation else 'default', 'fallback': fallback}
+        elif operation == 'show_keyboard_frame':
+            colors = a.get('colors')
+            if not self.keyboard_frame_keys:
+                return {'status': 'skipped', 'reason': 'keyboard_layout_unavailable'}
+            if not isinstance(colors, dict) or not 1 <= len(colors) <= 128:
+                raise Rejected('keyboard_frame_requires_colors')
+            for key, color in colors.items():
+                if key not in self.keyboard_frame_keys or not isinstance(color, str):
+                    raise Rejected('unknown_keyboard_frame_key_or_color')
+                if color not in (*COLORS, 'white', 'off') and (len(color) != 6 or any(c not in '0123456789abcdefABCDEF' for c in color)):
+                    raise Rejected('invalid_keyboard_frame_color')
+            if a.get('summary') is not None:
+                text_argument(a['summary'], 'summary', 500)
+            if slot.keyboard_frame and slot.keyboard_frame.colors == colors and slot.keyboard_frame.status in ('pending', 'visible'):
+                return {'status': 'accepted', 'reason': 'existing_keyboard_frame', 'allocation': self.snapshot(slot)}
+            if self.clock() - slot.last_notification_at < self.config.notification_cooldown_seconds:
+                return {'status': 'skipped', 'reason': 'notification_cooldown'}
+            pending = sum(n.status in PENDING for s in self.slots.values() for n in self._notices(s)
+                          if n is not slot.frame_notification)
+            if pending >= self.config.max_pending_calls:
+                return {'status': 'skipped', 'reason': 'notification_queue_full'}
+            self._close_keyboard_frame(slot, 'replaced')
+            now = self.clock()
+            frame = KeyboardFrame(secrets.token_hex(12), dict(colors))
+            animation, source, fallback = self._animation_choice(slot)
+            slot.keyboard_frame = frame
+            slot.frame_notification = Notification(secrets.token_hex(12), now, now + self.config.notification_seconds,
+                origin='keyboard_frame', request_id=frame.frame_id, animation=animation,
+                animation_source=source, animation_fallback=fallback)
+            slot.last_notification_at = now
+            self._select_notice(slot)
+            if a.get('summary') is not None:
+                slot.summary = a['summary']
+            if not self.attention_muted(slot):
+                self.hold_until = 0
+        elif operation == 'clear_keyboard_frame':
+            text_argument(a.get('frame_id'), 'frame_id', 128)
+            if slot.keyboard_frame and slot.keyboard_frame.frame_id != a.get('frame_id'):
+                raise Rejected('stale_keyboard_frame')
+            self._close_keyboard_frame(slot, 'withdrawn')
+        elif operation == "set_slot_state":
             state = a.get("state")
             if state not in STATES:
                 raise Rejected("unsupported_state")
@@ -599,7 +754,7 @@ class Broker:
                     reason = self._notification_admission(slot)
                     if reason:
                         return {"status": "skipped", "reason": reason}
-                    self._new_notification(slot)
+                    self._new_notification(slot, a.get('animation'))
             elif manual:
                 manual.status = "cancelled"
                 if self.current_call == slot.slot_id and slot.notification is manual:
@@ -657,7 +812,7 @@ class Broker:
         slot.revision += 1
         self._promote()
         self.event(operation, slot)
-        return {"status": "accepted", "allocation": self.snapshot(slot)}
+        return {"status": "accepted", "allocation": self.snapshot(slot), **feedback}
 
     def _notification_admission(self, slot: Allocation, *, replacing=False) -> str | None:
         if (not replacing and self.clock() - slot.last_notification_at < self.config.notification_cooldown_seconds):
@@ -666,12 +821,14 @@ class Broker:
                     if not (s is slot and n is slot.agent_notification))
         return "notification_queue_full" if count >= self.config.max_pending_calls else None
 
-    def _new_notification(self, slot: Allocation):
+    def _new_notification(self, slot: Allocation, animation=None):
         now = self.clock()
         old = slot.agent_notification
         if old:
             old.status = "cancelled"
-        notice = Notification(secrets.token_hex(12), now, now + self.config.notification_seconds)
+        clip, source, fallback = self._animation_choice(slot, animation)
+        notice = Notification(secrets.token_hex(12), now, now + self.config.notification_seconds,
+                              animation=clip, animation_source=source, animation_fallback=fallback)
         slot.agent_notification = notice
         if not self._held_notice(slot) and (slot.notification is None or slot.notification is old
                                           or slot.notification.status != "active"):
@@ -685,7 +842,8 @@ class Broker:
 
     @staticmethod
     def _notices(slot: Allocation):
-        return ([slot.agent_notification] if slot.agent_notification else []) + list(slot.native_notifications.values())
+        return (([slot.agent_notification] if slot.agent_notification else []) + list(slot.native_notifications.values())
+                + ([slot.frame_notification] if slot.frame_notification else []))
 
     def _held_notice(self, slot: Allocation) -> Notification | None:
         if self.selected != slot.slot_id:
@@ -694,7 +852,8 @@ class Broker:
         if notice and (
                 (notice is slot.agent_notification and slot.question and slot.question.picked_up)
                 or (notice.origin == "codex" and notice.status == "picked_up"
-                    and notice.request_id in slot.native_requests)):
+                    and notice.request_id in slot.native_requests)
+                or (notice is slot.frame_notification and slot.keyboard_frame and slot.keyboard_frame.status == 'visible' and self.active)):
             return notice
         return None
 
@@ -734,7 +893,7 @@ class Broker:
             stage = question["stage"]
             live = (observation.get("execution") == "running" and question.get("turn_id") == observation.get("turn_id")
                     and (stage == "accepted" or (stage == "invoked" and question.get("tool") == "request_user_input"
-                         and observation.get("mode") == "plan")))
+                         and (observation.get("mode") == "plan" or observation.get('source') == 'codex_hook'))))
             notice = slot.native_notifications.get(request_id)
             if live:
                 deadline = slot.native_deadlines.setdefault(request_id, self.clock() + self.config.question_seconds)
@@ -747,8 +906,10 @@ class Broker:
                     pending = sum(n.status in PENDING for s in self.slots.values() for n in self._notices(s))
                     if pending < self.config.max_pending_calls:
                         now = self.clock()
+                        clip, source, fallback = self._animation_choice(slot)
                         notice = Notification(secrets.token_hex(12), now, now + self.config.notification_seconds,
-                                              origin="codex", request_id=request_id)
+                                              origin="codex", request_id=request_id, animation=clip,
+                                              animation_source=source, animation_fallback=fallback)
                         slot.native_notifications[request_id] = notice
                         if not self.attention_muted(slot):
                             self.hold_until = 0
@@ -821,6 +982,9 @@ class Broker:
                    question_id=question.question_id, outcome=outcome)
 
     def _release(self, slot: Allocation):
+        self.terminal_attachments.pop(slot.caller.caller_id, None)
+        self.navigation_results.pop(slot.slot_token, None)
+        self._close_keyboard_frame(slot, 'released')
         self.event("slot_released", slot)
         self.released[slot.slot_token] = slot.caller.caller_id
         while len(self.released) > self.config.idempotency_capacity:
@@ -930,12 +1094,35 @@ class Broker:
     def only_agent_active(self) -> bool:
         return self.only_agent_token is not None and self.only_agent_until is not None and self.clock() < self.only_agent_until
 
+    def set_project_muted(self, muted: bool, project_id: str | None = None) -> bool:
+        if type(muted) is not bool:
+            raise ValueError('project_muted_must_be_boolean')
+        current = self.project_muted if project_id is None else self.project_mutes.get(project_id, False)
+        if current == muted:
+            return False
+        if project_id is None:
+            self.project_muted = muted
+        else:
+            self.project_mutes = {**self.project_mutes, project_id: muted}
+        self.attention_policy_revision += 1
+        self._promote()
+        self.event('project_mute_changed', muted=muted, project_id=project_id)
+        return True
+
+    def project_attention_muted(self, slot: Allocation) -> bool:
+        return self.project_muted or self.project_mutes.get(slot.caller.project_id, False)
+
     def attention_muted(self, slot: Allocation) -> bool:
+        if self.project_attention_muted(slot):
+            return True
         if self.only_agent_active():
             return slot.slot_token != self.only_agent_token
         return self.agent_mutes.get(slot.slot_token, 0) > self.clock()
 
     def attention_snapshot(self, slot: Allocation) -> dict:
+        if self.project_attention_muted(slot):
+            return {'muted': True, 'source': 'project', 'persistent': True,
+                    'remaining_seconds': None}
         muted = self.attention_muted(slot)
         source = ('only_agent' if self.only_agent_active() else 'individual') if muted else None
         until = self.only_agent_until if source == 'only_agent' else self.agent_mutes.get(slot.slot_token, 0)
@@ -946,12 +1133,14 @@ class Broker:
         return self.overview_candidate() or self.focused_slot() or self.pending_target()
 
     def attention_controls(self) -> dict:
-        if not self.active or not self.navigation_active:
+        if not self.active or not self.navigation_active or self.project_muted:
             return {}
         target = self.attention_control_target()
         if self.only_agent_active():
             return {'INSERT': ('restore_all', '')}
         if target is None:
+            return {}
+        if self.project_attention_muted(target):
             return {}
         return {'DELETE': ('unmute_agent' if self.attention_muted(target) else 'mute_agent', target.slot_token),
                 'INSERT': ('only_agent', target.slot_token)}
@@ -1162,6 +1351,8 @@ class Broker:
     def _notice_available(slot: Allocation, notice: Notification | None) -> bool:
         if notice is None or notice.controls_dismissed:
             return False
+        if notice is slot.frame_notification and slot.keyboard_frame and slot.keyboard_frame.status == 'pending':
+            return True
         # Attention has a shorter lifetime than the question. Expiring or
         # withdrawing the notification must not strand a still-live question.
         if notice.status in PENDING or (notice is slot.agent_notification and slot.question and not slot.question.picked_up):
@@ -1293,16 +1484,19 @@ class Broker:
         self.acknowledge_notification_visuals(slot.slot_token)
         self._clear_knob_preview()
         self._select_notice(slot)
+        if slot.keyboard_frame and slot.keyboard_frame.status == 'pending' and not self._held_notice(slot):
+            slot.notification = slot.frame_notification
         if self.navigation_active:
             self._set_cursor(slot.slot_token)
             self._navigation_activity()
         notice = slot.notification
         has_question = notice and (notice.request_id in slot.native_requests or
                                     (notice is slot.agent_notification and slot.question is not None))
+        has_guide = notice is slot.frame_notification and slot.keyboard_frame and slot.keyboard_frame.status == 'pending'
         # Browsing a slot without a call does not dismiss the attention target.
         # Selecting a pending call is an explicit pickup, with the same
         # acknowledgement, question hold and control release as the pickup key.
-        if self._pickup_available(slot) or has_question:
+        if self._pickup_available(slot) or has_question or has_guide:
             old = self.slots.get(self.current_call)
             if old and old is not slot and old.notification and old.notification.status == "active":
                 old.notification.status = "queued"
@@ -1333,6 +1527,11 @@ class Broker:
         self.attention_target = None
         self.selected = self.background_slot = slot.slot_id
         self.selected_notice_id = slot.notification.notification_id
+        if slot.notification is slot.frame_notification and slot.keyboard_frame and slot.keyboard_frame.status == 'pending':
+            slot.keyboard_frame.status = 'visible'
+            self.keyboard_frame_focus = (slot.slot_token, slot.keyboard_frame.frame_id)
+            self.disarm_navigation('keyboard_frame')
+            self.event('keyboard_frame_shown', slot, frame_id=slot.keyboard_frame.frame_id)
         self.focus_revision += 1
         self.background_return_at = self.clock() + self.config.background_seconds
         self.hold_until = self.background_return_at
@@ -1351,10 +1550,28 @@ class Broker:
         # Only the latest user-selected destination may be dispatched. Rapid
         # F-key presses must not open earlier queued destinations afterward.
         self.focus_requests.clear()
-        can_focus = bool(slot.caller.thread_id and slot.caller.surface == "codex_desktop")
+        can_focus = bool(self.navigation_target(slot)['available'])
         if can_focus:
             self.focus_requests.append((slot.slot_token, slot.caller.thread_id))
         return can_focus
+
+    def navigation_target(self, slot: Allocation) -> dict:
+        if slot.caller.thread_id and slot.caller.surface == 'codex_desktop':
+            return {'available': True, 'provider': 'codex_desktop', 'specificity': 'conversation',
+                    'verification': 'dispatched_unverified'}
+        attachment = self.terminal_attachments.get(slot.caller.caller_id)
+        if attachment and attachment.get('slot_token') == slot.slot_token:
+            provider = attachment['context']['provider']
+            result = {'available': True, 'provider': provider,
+                      'specificity': 'window' if provider in ('vscode', 'windows_terminal') else 'terminal_surface',
+                      'verification': 'checked_on_pickup'}
+            last = self.navigation_results.get(slot.slot_token)
+            if last:
+                result['last_result'] = dict(last)
+            return result
+        last = self.navigation_results.get(slot.slot_token)
+        return {'available': False, 'reason': last.get('reason') if last else 'native_terminal_attachment_unavailable',
+                **({'last_result': dict(last)} if last else {})}
 
     def act_on_call(self, action: str, token: str, notification_id: str):
         slot = self.pending_target()

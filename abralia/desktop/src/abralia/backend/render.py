@@ -11,6 +11,7 @@ from abralia.rgb import PhysicalSceneBuilder, Srgb8
 from abralia.rgb.colors import LinearRgb, linear_to_srgb8, to_linear_rgb
 from .core import Allocation, Broker
 from .fog import FogField
+from .notification_animation import render_animation, palette_color, TRANSITION_SECONDS
 from .navigation import NAVIGATION_KEYS, NAVIGATION_COLOR_ROLES, PICKUP_KEY, MUTE_KEY, PAGE_KEYS
 
 WHITE = Srgb8(255, 255, 255)
@@ -89,6 +90,8 @@ class Renderer:
         points = [(key, math.hypot((x - (left + right) / 2) / max((right - left) / 2, .5),
                                   (y - (top + bottom) / 2) / max((bottom - top) / 2, .5))) for key, x, y in raw]
         self.points, self.fps = points, fps
+        self.animation_points = {key: ((x - left) / max(right - left, .5), (y - top) / max(bottom - top, .5))
+                                 for key, x, y in raw}
         fog_keys = dict.fromkeys(self.region)
         for name in ('navigation_cluster', 'arrows'):
             if name in profile.regions:
@@ -166,6 +169,20 @@ class Renderer:
 
     def frame(self, broker: Broker):
         self._set_background(broker.config.background_brightness_percent)
+        guide = broker.visible_keyboard_frame()
+        if guide:
+            slot, frame = guide
+            ceiling = self.white.red or 255
+            identity = hex_color(slot.identity_color)
+            colors = {}
+            for key, name in frame.colors.items():
+                color = (WHITE if name == 'white' else Srgb8(0, 0, 0) if name == 'off'
+                         else palette_color(name, identity) if name in ('slot', 'slot_highlight', 'slot_shadow', 'positive', 'negative')
+                         else hex_color(name))
+                colors[key] = within_frame_peak(color, ceiling)
+            colors['ESC'] = within_frame_peak(RED, ceiling)
+            colors[self.toggle] = within_frame_peak(saturation(ATTENTION, wave(broker.clock())), ceiling)
+            return PhysicalSceneBuilder().build('abralia-keyboard-frame', colors, background=self.white, owner='abralia-backend')
         now = broker.clock()
         # Routine status is steady. A varying brightest key also modulates the
         # entire background on legacy effect-25 frame normalization.
@@ -189,6 +206,8 @@ class Renderer:
                    for record in visuals['orbs']]
         self.fog.update(records, now)
         foreground = presentation is not None and (background is None or return_fraction >= 1)
+        custom = presentation.get('animation') if presentation and broker.config.agent_animations_enabled else None
+        custom_elapsed = None
         if foreground:
             elapsed = presentation['elapsed']
             if presentation['phase'] == 'onset':
@@ -199,7 +218,17 @@ class Renderer:
                     elapsed -= seconds
             else:
                 elapsed = elapsed if presentation['phase'] == 'breathing' else broker.config.notification_breath_seconds
-                color = breathing_status(hex_color(presentation['identity_color']), elapsed)
+                identity = hex_color(presentation['identity_color'])
+                if custom:
+                    fraction = min(1., elapsed / TRANSITION_SECONDS)
+                    fraction = fraction * fraction * (3 - 2 * fraction)
+                    a, b = to_linear_rgb(ATTENTION), to_linear_rgb(intensity(identity, .5))
+                    color = linear_to_srgb8(LinearRgb(*(x + (y - x) * fraction
+                        for x, y in zip((a.red, a.green, a.blue), (b.red, b.green, b.blue)))))
+                    if presentation['phase'] == 'breathing' and elapsed >= TRANSITION_SECONDS:
+                        custom_elapsed = (elapsed - TRANSITION_SECONDS) * 1000
+                else:
+                    color = breathing_status(identity, elapsed)
                 colors.update(dict.fromkeys(self.region, color))
         # Paint valid overview controls after notification frames so Enter's
         # cue stays visible. Picked-up questions disable overview capture.
@@ -308,6 +337,11 @@ class Renderer:
         # peak. Moving/overlapping bodies may not raise it and dim other keys
         # through effect 25's relative-V normalization. UI cues win per key.
         protected = scaled_controls | question_highlights
+        if custom_elapsed is not None:
+            custom_background = intensity(hex_color(presentation['identity_color']), .5)
+            points = {key: point for key, point in self.animation_points.items() if key not in protected}
+            colors.update(render_animation(custom, points, custom_elapsed,
+                hex_color(presentation['identity_color']), custom_background, global_reference_v or 255))
         forming = presentation['orb_key'] if presentation else None
         for key, (x, y) in self.fog_points.items():
             if key in protected:

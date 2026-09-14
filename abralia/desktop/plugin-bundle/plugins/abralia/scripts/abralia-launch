@@ -1,0 +1,17 @@
+#!/bin/sh
+# Copyright 2026 blue_lobster
+# SPDX-License-Identifier: Apache-2.0
+
+# Codex supplies PLUGIN_ROOT; the app owns this stable per-user launcher.
+case "${1-}" in
+    mcp|codex-hook) ;;
+    *) exit 64 ;;
+esac
+abralia_launcher="${ABRALIA_RUNTIME_LAUNCHER:-$HOME/Library/Application Support/Abralia/bin/abralia-host}"
+if [ ! -x "$abralia_launcher" ]; then
+    # Lifecycle hooks must remain silent and never block the original operation.
+    if [ "$1" = codex-hook ]; then exit 0; fi
+    echo 'Abralia runtime unavailable. Open Abralia and use Connect Codex.' >&2
+    exit 1
+fi
+exec "$abralia_launcher" "$@"

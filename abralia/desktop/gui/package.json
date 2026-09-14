@@ -1,0 +1,30 @@
+{
+  "name": "abralia-control-panel",
+  "productName": "Abralia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Abralia macOS keyboard and project control panel",
+  "author": "blue_lobster",
+  "license": "Apache-2.0",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "dev": "npm run build && electron .",
+    "test": "node --test electron/*.test.cjs",
+    "package:mac": "npm run build && node scripts/package-mac.mjs",
+    "package:plugin": "node scripts/package-plugin.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "44.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
+  }
+}

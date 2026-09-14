@@ -27,7 +27,8 @@ def proof_digest(value):
 
 
 class AllocationRecovery:
-    def __init__(self, broker, project, path, *, grace_seconds=30, owner_check=None):
+    def __init__(self, broker, project, path, *, grace_seconds=30, owner_check=None,
+                 shared=False, project_validator=None):
         self.broker = broker
         self.project = str(Path(project).resolve())
         self.path = Path(path)
@@ -40,12 +41,15 @@ class AllocationRecovery:
         self.saved = None
         self.restored = 0
         self.owner_check = owner_check or owner_alive
+        self.shared = shared
+        self.project_validator = project_validator
 
     def _validate(self, data):
         if not isinstance(data, dict):
             raise ValueError('invalid_recovery_document')
         version = data.get('version')
-        if type(version) is not int or version not in (1, 2) or data.get('project') != self.project:
+        valid_versions = (3,) if self.shared else (1, 2)
+        if type(version) is not int or version not in valid_versions or data.get('project') != self.project:
             raise ValueError('recovery_project_or_version_mismatch')
         records = data.get('allocations')
         if not isinstance(records, list) or len(records) > MAX_RECORDS:
@@ -55,6 +59,8 @@ class AllocationRecovery:
             if type(record.get('host_registered', False)) is not bool:
                 raise ValueError('invalid_recovery_registration_source')
             caller = Caller(**record['caller'])
+            if self.shared and (not caller.project_id or not caller.project_path):
+                raise ValueError('recovery_caller_project_required')
             if (not caller.thread_id or caller.caller_id != 'codex:' + str(UUID(caller.thread_id))
                     or caller.surface not in HARNESSES):
                 raise ValueError('invalid_recovery_caller')
@@ -79,7 +85,7 @@ class AllocationRecovery:
                 if not isinstance(proof, str) or len(proof) != 64 or any(c not in '0123456789abcdef' for c in proof):
                     raise ValueError('invalid_recovery_proofs')
                 owner = lease['owner']
-                if (not isinstance(owner, dict) or owner.get('kind') not in ('codex_gui','codex_tui')
+                if (not isinstance(owner, dict) or owner.get('kind') not in ('codex_gui','codex_tui','codex_editor')
                         or type(owner.get('pid')) is not int or owner['pid'] <= 1
                         or any(not isinstance(owner.get(k), str) or len(owner[k]) > 1024
                                for k in ('started','executable','tty'))):
@@ -88,7 +94,7 @@ class AllocationRecovery:
                     raise ValueError('inconsistent_recovery_owner')
                 proof_owners[proof] = owner
             slots.add(number); positions.add(position); owners.add(caller.caller_id); colors.add(color)
-        return records
+        return [r for r in records if self.project_validator is None or self.project_validator(Caller(**r['caller']))]
 
     def load(self):
         try:
@@ -111,12 +117,12 @@ class AllocationRecovery:
             self.broker.reserved_slot_owners = {r['slot_id']:r['caller']['caller_id'] for r in records}
             self.broker.reserved_positions = {r['display_position']:r['caller']['caller_id'] for r in records}
             self.broker.identity_colors.update({r['caller']['caller_id']:r['identity_color'] for r in records})
-            self.saved = self._encode(records) if data['version'] == 2 else None
+            self.saved = self._encode(records) if data['version'] == 2 and not self.shared else None
         except (ValueError, TypeError, KeyError, OSError, RecursionError):
             self.error = 'invalid_recovery_state'
 
     def _encode(self, records):
-        return json.dumps({'version':2, 'project':self.project,
+        return json.dumps({'version':3 if self.shared else 2, 'project':self.project,
                            'allocations':sorted(records, key=lambda r:r['slot_id'])}, sort_keys=True, separators=(',', ':'))
 
     def attach(self, caller_id, proof, owner):
@@ -133,10 +139,12 @@ class AllocationRecovery:
             self.broker.reserved_slot_owners.pop(record['slot_id'], None)
             self.broker.reserved_positions.pop(record['display_position'], None)
 
-    def resume(self, caller_ids, proof):
+    def resume(self, caller_ids, proof, *, project_id=None, validated_owner=None):
         result = {}
         checked = {}
         def alive(owner):
+            if validated_owner is not None:
+                return owner == validated_owner
             key = json.dumps(owner, sort_keys=True)
             if key not in checked:
                 checked[key] = self.owner_check(owner)
@@ -144,12 +152,16 @@ class AllocationRecovery:
         self.expire()
         for caller_id in caller_ids:
             slot = self.broker.slots.get(self.broker.owners.get(caller_id))
+            if slot and self.shared and slot.caller.project_id != project_id:
+                continue
             if slot and proof in self.proofs.get(caller_id, {}):
                 if alive(self.proofs[caller_id][proof]):
                     slot.agent_attached = True
                     result[caller_id] = slot.slot_token
                     continue
             record = self.pending.get(caller_id)
+            if record and self.shared and record['caller'].get('project_id') != project_id:
+                continue
             lease = next((p for p in record['leases'] if secrets.compare_digest(proof, p['proof'])), None) if record else None
             if lease is None or not alive(lease['owner']):
                 continue

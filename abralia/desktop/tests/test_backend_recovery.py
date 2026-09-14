@@ -9,7 +9,7 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import UUID
 
 from abralia.backend.client_lifetime import capture_client_owner, owner_alive
@@ -239,6 +239,48 @@ class RecoveryServiceTests(unittest.TestCase):
 
 
 class RecoveryFileTests(unittest.TestCase):
+    def test_prevalidated_owner_cannot_resume_another_owners_proof(self):
+        with tempfile.TemporaryDirectory(dir='/private/tmp') as directory:
+            root = Path(directory); path = root/'state.json'
+            callers = [Caller('codex:'+str(UUID(int=n)), str(UUID(int=n)), surface='codex_desktop') for n in (51, 52)]
+            owners = [OWNER, {**OWNER, 'pid': 1235, 'started': 'other owner generation'}]
+            proofs = [proof_digest(letter*64) for letter in ('a', 'b')]
+            records = [{'slot_id': index+1, 'caller': asdict(caller), 'label': 'Fixture',
+                        'identity_color': color, 'leases': [{'proof': proof, 'owner': owner}]}
+                       for index, (caller, owner, proof, color) in enumerate(zip(callers, owners, proofs, ('2080FF', 'FF8020')))]
+            path.write_text(json.dumps({'version': 1, 'project': str(root), 'allocations': records})); path.chmod(0o600)
+            broker = Broker()
+            check = Mock(side_effect=AssertionError('native process checks must stay outside the device worker'))
+            recovery = AllocationRecovery(broker, root, path, owner_check=check)
+            recovery.load()
+            self.assertIsNone(recovery.error)
+            self.assertFalse(recovery.resume([callers[1].caller_id], proofs[1], validated_owner=owners[0]))
+            self.assertFalse(recovery.resume([callers[0].caller_id], proofs[1], validated_owner=owners[0]))
+            self.assertFalse(broker.slots)
+            restored = recovery.resume([callers[0].caller_id], proofs[0], validated_owner=owners[0])
+            self.assertEqual(set(restored), {callers[0].caller_id})
+            broker.slots[1].agent_attached = False
+            self.assertFalse(recovery.resume([callers[0].caller_id], proofs[0], validated_owner=owners[1]))
+            self.assertFalse(broker.slots[1].agent_attached)
+            check.assert_not_called()
+
+    def test_editor_owner_record_loads_but_still_requires_live_owner_proof(self):
+        with tempfile.TemporaryDirectory(dir='/private/tmp') as directory:
+            root = Path(directory); path = root/'state.json'
+            caller = Caller('codex:'+str(UUID(int=12)), str(UUID(int=12)), surface='unknown')
+            editor = {**OWNER, 'kind': 'codex_editor', 'executable': '/Applications/Visual Studio Code.app/Contents/Resources/codex'}
+            proof = proof_digest('c'*64)
+            record = {'slot_id': 1, 'caller': asdict(caller), 'label': 'Editor task', 'identity_color': '2080FF',
+                      'leases': [{'proof': proof, 'owner': editor}]}
+            path.write_text(json.dumps({'version': 1, 'project': str(root), 'allocations': [record]})); path.chmod(0o600)
+            broker = Broker()
+            recovery = AllocationRecovery(broker, root, path, owner_check=lambda _: False)
+            recovery.load()
+            self.assertIsNone(recovery.error)
+            self.assertEqual(broker.reserved_slots, {1})
+            self.assertFalse(recovery.resume([caller.caller_id], proof))
+            self.assertFalse(broker.slots)
+
     def test_unclaimed_records_expire_and_symlink_or_wrong_project_is_not_loaded(self):
         with tempfile.TemporaryDirectory(dir='/private/tmp') as directory:
             root=Path(directory); path=root/'state.json'; now=[0]
