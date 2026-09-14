@@ -297,6 +297,40 @@ def stage_runtime(runtime_executable, state_dir=None):
     return {'runtime_executable': str(destination / executable.name), 'runtime_digest': digest}
 
 
+def _update_runtime_only(paths, old, old_launcher, runtime, launcher):
+    """Retarget future launches without reinstalling the unchanged Codex plugin.
+
+    Already-running MCP bridges retain their process, runtime and recovery proof.
+    Both runtime generations remain available; this changes no Codex files.
+    """
+    if _text(paths['launcher']) != old_launcher or _load_manifest(paths) != old:
+        raise PluginInstallError('installation_changed_during_runtime_update')
+    receipt = {**old, **runtime, 'launcher_text': launcher}
+    try:
+        _write_text(paths['launcher'], launcher, 0o700)
+        write_private_json(paths['manifest'], receipt)
+    except Exception:
+        # Restore only values still owned by this update; never erase edits
+        # made by another process while a write was in flight.
+        try:
+            current = _load_manifest(paths)
+            if current == receipt:
+                write_private_json(paths['manifest'], old)
+            elif current != old:
+                raise PluginInstallError('runtime_update_rollback_incomplete')
+            current_launcher = _text(paths['launcher'])
+            if current_launcher == launcher:
+                if old_launcher is None:
+                    paths['launcher'].unlink(missing_ok=True)
+                else:
+                    _write_text(paths['launcher'], old_launcher, 0o700)
+            elif current_launcher != old_launcher:
+                raise PluginInstallError('runtime_update_rollback_incomplete')
+        except (OSError, ValueError) as error:
+            raise PluginInstallError('runtime_update_rollback_incomplete') from error
+        raise
+
+
 def install_plugin(bundle_root, runtime_executable, state_dir=None, codex_executable=None,
                    migrate_project=None, migration_backup_dir=None):
     paths = _paths(state_dir)
@@ -315,11 +349,18 @@ def install_plugin(bundle_root, runtime_executable, state_dir=None, codex_execut
             raise PluginInstallError('managed_marketplace_edited')
         runtime = stage_runtime(runtime_executable, paths['state'])
         launcher = '#!/bin/sh\n' + LAUNCHER_MARKER + 'exec ' + shlex.quote(runtime['runtime_executable']) + ' "$@"\n'
-        if (old and old.get('installed') and installed and installed.get('enabled', True)
-                and old.get('bundle_digest') == bundle['digest'] and old.get('runtime_digest') == runtime['runtime_digest']):
+        plugin_current = (old and old.get('installed') and installed and installed.get('enabled') is True
+                          and paths['marketplace'].is_dir() and old.get('bundle_digest') == bundle['digest']
+                          and old.get('plugin_version') == bundle['version']
+                          and installed.get('version') == bundle['version'])
+        if plugin_current:
+            runtime_changed = old.get('runtime_digest') != runtime['runtime_digest'] or old_launcher != launcher
+            if runtime_changed:
+                _update_runtime_only(paths, old, old_launcher, runtime, launcher)
             migration = apply_project_migration(migration_plan, migration_backup_dir) if migration_plan is not None else None
-            return {**inspect_installation(paths['state']), 'status': 'configured', 'changed': False,
-                    'migration': migration}
+            return {**inspect_installation(paths['state']), 'status': 'configured', 'changed': runtime_changed,
+                    'runtime_changed': runtime_changed, 'plugin_changed': False,
+                    'running_clients_unchanged': True, 'restart_required': False, 'migration': migration}
         staged = paths['root'] / ('.marketplace-' + uuid.uuid4().hex)
         backup = paths['root'] / ('.previous-' + uuid.uuid4().hex)
         new_marketplace = marketplace is None

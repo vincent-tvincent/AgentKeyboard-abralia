@@ -20,6 +20,7 @@ ENTER_HIGHLIGHT = ATTENTION
 RED = Srgb8(255, 0, 0)
 GREEN = Srgb8(0, 255, 0)
 ESC_HIGHLIGHT = RED
+SORT_HIGHLIGHT = Srgb8(160, 64, 255)
 SLOT_BACKGROUND_RATIO = .5
 
 
@@ -244,7 +245,10 @@ class Renderer:
                 for key, (action, _) in broker.attention_controls().items():
                     colors[key] = ATTENTION if action in ('unmute_agent', 'restore_all') else RED
                     scaled_controls.add(key)
-            if broker.config.escape_exits_focus and broker.focused_slot() and return_fraction < 1:
+            if broker.navigation_active:
+                colors['ESC'] = SORT_HIGHLIGHT
+                scaled_controls.add('ESC')
+            elif broker.config.escape_exits_focus and broker.focused_slot() and return_fraction < 1:
                 colors["ESC"] = ESC_HIGHLIGHT
                 scaled_controls.add("ESC")
             if target:
@@ -297,7 +301,7 @@ class Renderer:
                 colors[key] = within_frame_peak(colors[key], global_reference_v)
             for key in scaled_controls:
                 colors[key] = within_frame_peak(colors[key], global_reference_v)
-            if "ESC" in scaled_controls:
+            if "ESC" in scaled_controls and not broker.navigation_active:
                 # Blend after reference scaling, otherwise the background
                 # endpoint would be scaled twice and end below the main area.
                 colors["ESC"] = blend(colors["ESC"], scene_background, return_fraction)

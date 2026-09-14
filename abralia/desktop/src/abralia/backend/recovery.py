@@ -13,8 +13,9 @@ import stat
 import tempfile
 from uuid import UUID
 
-from .core import Allocation, Caller, HARNESSES
+from .core import Allocation, Broker, Caller, HARNESSES
 from .client_lifetime import owner_alive
+from .slot_order import project_key
 
 MAX_RECORDS = 1024
 MAX_BYTES = 4 * 1024 * 1024
@@ -54,8 +55,10 @@ class AllocationRecovery:
         records = data.get('allocations')
         if not isinstance(records, list) or len(records) > MAX_RECORDS:
             raise ValueError('invalid_recovery_allocations')
-        slots, positions, owners, colors, proof_owners = set(), set(), set(), set(), {}
+        slots, positions, owners, proof_owners = set(), set(), set(), {}
         for record in records:
+            if not isinstance(record, dict):
+                raise ValueError('invalid_recovery_allocation')
             if type(record.get('host_registered', False)) is not bool:
                 raise ValueError('invalid_recovery_registration_source')
             caller = Caller(**record['caller'])
@@ -72,8 +75,7 @@ class AllocationRecovery:
                 raise ValueError('duplicate_or_invalid_recovery_position')
             record['display_position'] = position
             color = record['identity_color']
-            if not isinstance(color, str) or len(color) != 6 or any(c not in '0123456789ABCDEF' for c in color) or color in colors:
-                raise ValueError('duplicate_or_invalid_recovery_color')
+            self._color(color)
             label = record['label']
             if not isinstance(label, str) or not label.strip() or len(label) > 80:
                 raise ValueError('invalid_recovery_label')
@@ -93,8 +95,50 @@ class AllocationRecovery:
                 if proof in proof_owners and proof_owners[proof] != owner:
                     raise ValueError('inconsistent_recovery_owner')
                 proof_owners[proof] = owner
-            slots.add(number); positions.add(position); owners.add(caller.caller_id); colors.add(color)
-        return [r for r in records if self.project_validator is None or self.project_validator(Caller(**r['caller']))]
+            slots.add(number); positions.add(position); owners.add(caller.caller_id)
+        if 'sort_state' in data and not isinstance(data['sort_state'], dict):
+            raise ValueError('invalid_recovery_sort_state')
+        sort_state = self._prepare_sort(records, data.get('sort_state'))
+        return ([r for r in records if self.project_validator is None or self.project_validator(Caller(**r['caller']))],
+                sort_state)
+
+    @staticmethod
+    def _color(value):
+        if not isinstance(value, str) or len(value) != 6 or any(c not in '0123456789ABCDEF' for c in value):
+            raise ValueError('invalid_recovery_color')
+
+    def _prepare_sort(self, records, state):
+        # Validate/migrate without altering the live broker if any record fails.
+        temporary = Broker()
+        if state is None:
+            # Historical arrival was not stored. IDs can be reused, so the
+            # saved physical order is the only known ordering to migrate.
+            for record in sorted(records, key=lambda r: r['display_position']):
+                slot = Allocation(record['slot_id'], '', Caller(**record['caller']), record['label'],
+                                  identity_color=record['identity_color'], display_position=record['display_position'])
+                temporary.assign_slot_palette(slot)
+                record.update(arrival_order=slot.arrival_order, individual_color=slot.individual_color,
+                              project_color=slot.project_color)
+            return temporary.export_sort_state()
+        temporary.restore_sort_state(state)
+        normalized = temporary.export_sort_state()
+        projects = {p['key']: p['colors'] for p in normalized['projects']}
+        arrivals = set()
+        for record in records:
+            arrival = record.get('arrival_order')
+            if (type(arrival) is not int or not 1 <= arrival < normalized['next_arrival_order']
+                    or arrival in arrivals):
+                raise ValueError('duplicate_or_invalid_recovery_arrival')
+            arrivals.add(arrival)
+            individual, grouped = record.get('individual_color'), record.get('project_color')
+            self._color(individual); self._color(grouped)
+            active = grouped if normalized['policy'] == 'project' else individual
+            if record['identity_color'] != active:
+                raise ValueError('recovery_active_palette_mismatch')
+            caller = Caller(**record['caller'])
+            if projects.get(project_key(caller), {}).get(caller.caller_id) != grouped:
+                raise ValueError('recovery_project_palette_mismatch')
+        return normalized
 
     def load(self):
         try:
@@ -111,18 +155,21 @@ class AllocationRecovery:
                 if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_size > MAX_BYTES:
                     raise ValueError('unsafe_recovery_file')
                 data = json.load(stream)
-                records = self._validate(data)
+                original = json.dumps(data, sort_keys=True, separators=(',', ':'))
+                records, sort_state = self._validate(data)
+            self.broker.restore_sort_state(sort_state)
             self.pending = {r['caller']['caller_id']: r for r in records}
             self.broker.reserved_slots = {r['slot_id'] for r in records}
             self.broker.reserved_slot_owners = {r['slot_id']:r['caller']['caller_id'] for r in records}
             self.broker.reserved_positions = {r['display_position']:r['caller']['caller_id'] for r in records}
-            self.broker.identity_colors.update({r['caller']['caller_id']:r['identity_color'] for r in records})
-            self.saved = self._encode(records) if data['version'] == 2 and not self.shared else None
+            self.broker.identity_colors.update({r['caller']['caller_id']:r['individual_color'] for r in records})
+            self.saved = original
         except (ValueError, TypeError, KeyError, OSError, RecursionError):
             self.error = 'invalid_recovery_state'
 
     def _encode(self, records):
         return json.dumps({'version':3 if self.shared else 2, 'project':self.project,
+                           'sort_state':self.broker.export_sort_state(),
                            'allocations':sorted(records, key=lambda r:r['slot_id'])}, sort_keys=True, separators=(',', ':'))
 
     def attach(self, caller_id, proof, owner):
@@ -172,6 +219,8 @@ class AllocationRecovery:
                 continue
             slot = Allocation(number, secrets.token_hex(24), Caller(**record['caller']),
                               record['label'], identity_color=record['identity_color'],
+                              arrival_order=record['arrival_order'], individual_color=record['individual_color'],
+                              project_color=record['project_color'],
                               host_registered=record.get('host_registered', False), display_position=position)
             self.broker.slots[number] = slot
             self.broker.owners[caller_id] = number
@@ -212,6 +261,8 @@ class AllocationRecovery:
             records.append({'slot_id':slot.slot_id, 'caller':asdict(slot.caller), 'label':slot.label,
                             'display_position':slot.position,
                             'identity_color':slot.identity_color,
+                            'arrival_order':slot.arrival_order, 'individual_color':slot.individual_color,
+                            'project_color':slot.project_color,
                             'host_registered':slot.host_registered,
                             'leases':[{'proof':p,'owner':owner} for p,owner in sorted(proofs.items())]})
         encoded = self._encode(records)

@@ -100,7 +100,11 @@ def routes_for(broker, profile, *, hold_enabled=False) -> dict[int, Route]:
                            candidate.slot_token, page_revision=broker.page_revision,
                            cursor_revision=broker.cursor_revision)
     focused = broker.focused_slot()
-    if broker.config.escape_exits_focus and focused:
+    if broker.active and broker.navigation_active:
+        routes[90] = Route(ControlId.key(*profile.element_by_id['ESC'].matrix), 'cycle_sort',
+                           navigation_revision=broker.navigation_revision,
+                           layout_revision=broker.layout_revision)
+    elif broker.config.escape_exits_focus and focused:
         routes[40] = Route(ControlId.key(*profile.element_by_id["ESC"].matrix), "exit_focus",
                            focused.slot_token, focus_revision=broker.focus_revision)
     target = broker.pending_target()
@@ -154,6 +158,12 @@ def dispatch_event(broker, event, routes: dict[int, Route], generation: int):
         return
     if event.binding_generation != generation:
         return
+    if route.action == 'cycle_sort':
+        if (broker.active and broker.navigation_active
+                and route.navigation_revision == broker.navigation_revision
+                and route.layout_revision == broker.layout_revision):
+            broker.toggle_sort()
+        return
     if route.action == 'dismiss_keyboard_frame':
         broker.dismiss_keyboard_frame(route.token, route.frame_id)
         return
@@ -187,7 +197,8 @@ def dispatch_event(broker, event, routes: dict[int, Route], generation: int):
 class DeviceDriver:
     def __init__(self, broker, profile_id: str, mode: str, *,
                  event_observer: Callable[[DeviceEvent], None] | None = None,
-                 gap_committer: Callable[[GapSelection], bool] | None = None):
+                 gap_committer: Callable[[GapSelection], bool] | None = None,
+                 sort_committer: Callable[[], bool] | None = None):
         self.broker = broker
         self.profile = load_profile(profile_id)
         self.profile_id = profile_id
@@ -227,6 +238,7 @@ class DeviceDriver:
         self.delete_press = None
         self.gap_press = None
         self.gap_committer = gap_committer or broker.close_gap
+        self.sort_committer = sort_committer or broker.toggle_sort
 
     def start(self):
         if self.mode == "simulated":
@@ -333,6 +345,15 @@ class DeviceDriver:
     def handle_event(self, event):
         if event.event_type is EventType.CONTROL_EDGE:
             route = self.routes.get(event.binding_id)
+            if route and route.action == 'cycle_sort':
+                if (event.control_id == route.control and event.edge is Edge.UP
+                        and event.binding_generation == self.generation
+                        and self.broker.active and self.broker.navigation_active
+                        and route.navigation_revision == self.broker.navigation_revision
+                        and route.layout_revision == self.broker.layout_revision
+                        and not self.broker.visible_keyboard_frame()):
+                    self.sort_committer()
+                return
             gap_press = self.gap_press
             if (gap_press and event.control_id == gap_press.route.control and event.edge is Edge.UP
                     and event.binding_id == gap_press.binding_id):

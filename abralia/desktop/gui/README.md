@@ -116,8 +116,6 @@ sole HID owner for its keyboard. Project-root enrollment, native Codex task
 context and per-project ownership checks route plugin calls. EOF runs graceful
 owned-backend cleanup before the helper exits.
 
-The keyboard illustration is decorative, not a live RGB rendering preview.
-
 ## License
 
 Abralia UI and helper source: [Apache-2.0](../../../LICENSE.md).

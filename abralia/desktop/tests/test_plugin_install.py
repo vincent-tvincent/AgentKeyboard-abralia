@@ -110,6 +110,69 @@ class PluginInstallTests(unittest.TestCase):
         self.assertTrue(install.inspect_installation(self.state, self.codex, verify=True)['installed'])
         self.assertGreater(len(self.cli.calls), len(before))
 
+    def test_runtime_only_update_does_not_reinstall_or_replace_plugin(self):
+        self.install()
+        paths = install._paths(self.state)
+        before = json.loads(paths['manifest'].read_text())
+        marketplace_inode = paths['marketplace'].stat().st_ino
+        plugin_record = self.cli.plugins[install.PLUGIN_ID]
+        self.cli.calls.clear()
+        self.runtime.write_text(self.runtime.read_text() + '# backend-only fix\n')
+        with patch.object(install, '_smoke_runtime', wraps=install._smoke_runtime) as smoke:
+            result = self.install()
+        after = json.loads(paths['manifest'].read_text())
+        self.assertTrue(result['changed'])
+        self.assertTrue(result['runtime_changed'])
+        self.assertFalse(result['plugin_changed'])
+        self.assertTrue(result['running_clients_unchanged'])
+        self.assertFalse(result['restart_required'])
+        self.assertEqual(result['version'], before['plugin_version'])
+        self.assertNotEqual(after['runtime_digest'], before['runtime_digest'])
+        self.assertEqual(after['bundle_digest'], before['bundle_digest'])
+        self.assertIn(after['runtime_executable'], paths['launcher'].read_text())
+        self.assertTrue(Path(before['runtime_executable']).is_file())
+        self.assertEqual(paths['marketplace'].stat().st_ino, marketplace_inode)
+        self.assertIs(self.cli.plugins[install.PLUGIN_ID], plugin_record)
+        self.assertEqual(self.cli.calls, [('marketplace', 'list', '--json'),
+                                         ('list', '--marketplace', 'abralia', '--json')])
+        smoke.assert_called_once()
+
+    def test_runtime_only_receipt_failure_restores_launcher_without_codex_mutation(self):
+        self.install()
+        paths = install._paths(self.state)
+        old_manifest, old_launcher = paths['manifest'].read_text(), paths['launcher'].read_text()
+        self.cli.calls.clear()
+        self.runtime.write_text(self.runtime.read_text() + '# backend-only fix\n')
+        with patch.object(install, 'write_private_json', side_effect=OSError('fixture receipt failure')):
+            with self.assertRaisesRegex(OSError, 'fixture receipt failure'):
+                self.install()
+        self.assertEqual(paths['manifest'].read_text(), old_manifest)
+        self.assertEqual(paths['launcher'].read_text(), old_launcher)
+        self.assertEqual(self.cli.calls, [('marketplace', 'list', '--json'),
+                                         ('list', '--marketplace', 'abralia', '--json')])
+        self.assertTrue(install.inspect_installation(self.state)['runtime_available'])
+
+    def test_runtime_shortcut_requires_correct_enabled_installed_plugin(self):
+        current_version = self.install()['version']
+        for invalid in ({'version': 'different-installed-version'}, {'enabled': False}):
+            with self.subTest(invalid=invalid):
+                self.cli.plugins[install.PLUGIN_ID].update(invalid)
+                self.cli.calls.clear()
+                result = self.install()
+                self.assertTrue(result['changed'])
+                self.assertIn(('add', install.PLUGIN_ID, '--json'), self.cli.calls)
+                self.assertEqual(self.cli.plugins[install.PLUGIN_ID]['version'], current_version)
+                self.assertTrue(self.cli.plugins[install.PLUGIN_ID]['enabled'])
+
+    def test_changed_plugin_content_still_uses_codex_install_even_at_same_version(self):
+        self.install()
+        skill = self.bundle / 'plugins/abralia/skills/abralia/SKILL.md'
+        skill.write_text(skill.read_text() + '\nAn updated integration instruction.\n')
+        self.cli.calls.clear()
+        result = self.install()
+        self.assertTrue(result['changed'])
+        self.assertIn(('add', install.PLUGIN_ID, '--json'), self.cli.calls)
+
     def test_uninstall_only_removes_our_plugin_and_marketplace(self):
         self.install()
         result = install.uninstall_plugin(self.state, self.codex)

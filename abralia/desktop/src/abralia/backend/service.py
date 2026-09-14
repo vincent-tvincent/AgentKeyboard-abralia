@@ -192,13 +192,19 @@ class BrokerService:
     def _recovery_checkpoint(self):
         state = {key:copy(value) for key,value in vars(self.broker).items()}
         state['slots'] = {number:copy(slot) for number,slot in self.broker.slots.items()}
-        return state, self.recovery.pending.copy(), {k:v.copy() for k,v in self.recovery.proofs.items()}, self.recovery.restored
+        # Project color registries are nested and updated when a new sibling
+        # arrives; a shallow checkpoint would retain an uncommitted color.
+        if '_project_colors' in state:
+            state['_project_colors'] = deepcopy(state['_project_colors'])
+        return (state, self.recovery.pending.copy(), {k:v.copy() for k,v in self.recovery.proofs.items()},
+                self.recovery.restored, self.recovery.deadline, self.recovery.window_started)
 
     def _rollback_recovery(self, checkpoint):
-        state, pending, proofs, restored = checkpoint
+        state, pending, proofs, restored, deadline, window_started = checkpoint
         vars(self.broker).clear()
         vars(self.broker).update(state)
         self.recovery.pending, self.recovery.proofs, self.recovery.restored = pending, proofs, restored
+        self.recovery.deadline, self.recovery.window_started = deadline, window_started
         self.broker.event('recovery_commit_failed')
         return {'status':'rejected','reason':'recovery_storage_unavailable','backend_epoch':self.broker.epoch}
 
@@ -214,6 +220,17 @@ class BrokerService:
         # The confirmation flash starts after durable commit, even on slow storage.
         now = self.broker.clock()
         self.broker.gap_feedback.update(started_at=now, until=now + self.config.gap_close_flash_seconds)
+        return True
+
+    def _commit_sort(self):
+        """Publish reordered positions/colors only after their durable save."""
+        checkpoint = self._recovery_checkpoint()
+        if not self.broker.toggle_sort():
+            return False
+        self.recovery.save()
+        if self.recovery.error:
+            self._rollback_recovery(checkpoint)
+            return False
         return True
 
     def _caller(self, message: dict, connection: str, role: str, fallback: str | None) -> Caller:
@@ -524,7 +541,9 @@ class BrokerService:
                         if self.shared:
                             self._apply_hook_record(self.broker.slots[self.broker.owners[caller.caller_id]])
                 self.recovery.save()  # Record allocation/release before acknowledging it.
-                if stable and self.recovery.error and connection in self.connection_proofs:
+                # Even an unverified newcomer can shift verified agents when
+                # grouped by project. Roll back the entire layout on failure.
+                if stable and self.recovery.error:
                     result = self._rollback_recovery(checkpoint)
             result['slot_recovery'] = {'client_verified':connection in self.connection_proofs, **self.recovery.status()}
             if 'allocation' in result:
@@ -742,7 +761,8 @@ class BrokerService:
                 self._refresh_projects()
             else:
                 self.broker.set_project_muted(self.project_policy.load())
-            self.driver = DeviceDriver(self.broker, self.profile, self.mode, gap_committer=self._commit_gap)
+            self.driver = DeviceDriver(self.broker, self.profile, self.mode, gap_committer=self._commit_gap,
+                                       sort_committer=self._commit_sort)
             if self.mode == 'hardware':
                 from .gui_devices import saved_device_selection
                 selected = saved_device_selection(self.state_dir)

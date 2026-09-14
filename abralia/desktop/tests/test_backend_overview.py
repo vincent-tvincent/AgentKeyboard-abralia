@@ -110,8 +110,9 @@ class BackendOverviewTests(unittest.TestCase):
         self.assertIsNone(self.b.selected)
         self.assertNotIn(32, routes_for(self.b, self.profile))
         self.send(21)
-        self.assertEqual(self.b.candidate().slot_id, 1)
-        self.assertNotEqual(self.b.candidate().slot_token, self.tokens[0])
+        self.assertEqual(self.b.candidate().slot_id, 2)
+        self.assertNotEqual(self.b.slots[1].slot_token, self.tokens[0])
+        self.assertGreater(self.b.slots[1].position, self.b.candidate().position)
 
     def test_direct_f_key_commits_while_candidate_only_previews(self):
         self.b.set_active(True)

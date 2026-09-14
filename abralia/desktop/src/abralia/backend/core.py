@@ -18,6 +18,7 @@ from uuid import UUID
 from .navigation import PAGE_KEYS
 from .notification_visuals import NotificationVisualState
 from .notification_animation import validate_animation, COLORS, SHAPES, TRANSITION_SECONDS
+from .slot_order import normal_color, project_color, project_key, valid_color
 
 
 STATES = ("idle", "progressing", "error", "action_requested", "completed")
@@ -195,6 +196,9 @@ class Allocation:
     notification_animation: dict | None = None
     keyboard_frame: KeyboardFrame | None = None
     frame_notification: Notification | None = None
+    arrival_order: int = 0
+    individual_color: str = ''
+    project_color: str = ''
 
     @property
     def position(self) -> int:
@@ -237,6 +241,9 @@ class Broker:
         self.owners: dict[str, int] = {}
         # Retain a task's color through release/rejoin for this backend session.
         self.identity_colors: dict[str, str] = {}
+        self.sort_policy = 'incoming'
+        self._next_arrival_order = 1
+        self._project_colors: OrderedDict[str, dict[str, str]] = OrderedDict()
         self.page = 0
         self.page_revision = 0
         self.layout_revision = 0
@@ -375,7 +382,9 @@ class Broker:
         return {'display_position':slot.position, 'page':page + 1, 'f_key':slot.f_key,
                 'visible':page == self.page, 'layout_revision':self.layout_revision}
 
-    def _allocation_addresses(self, caller_id: str) -> tuple[int, int]:
+    def _allocation_addresses(self, caller_id: str, caller: Caller | None = None) -> tuple[int, int]:
+        if self.sort_policy == 'project' and self.reserved_positions:
+            raise Rejected('recovery_layout_pending')
         number = next((n for n, owner in self.reserved_slot_owners.items()
                        if owner == caller_id and n not in self.slots), None)
         if number is None:
@@ -386,10 +395,121 @@ class Broker:
         position = next((p for p, owner in self.reserved_positions.items()
                          if owner == caller_id and p not in occupied), None)
         if position is None:
-            position = 1
-            while position in occupied or position in self.reserved_positions:
-                position += 1
+            position = max(occupied | set(self.reserved_positions), default=0) + 1
+            if self.sort_policy == 'project' and caller is not None:
+                key = project_key(caller)
+                siblings = [s.position for s in self.slots.values() if project_key(s.caller) == key]
+                if siblings:
+                    position = max(siblings) + 1
+                else:
+                    order = {key: index for index, key in enumerate(self._project_colors)}
+                    ordinal = order.get(key, len(order))
+                    later = [s.position for s in self.slots.values() if order.get(project_key(s.caller), len(order)) > ordinal]
+                    if later:
+                        position = min(later)
         return number, position
+
+    def assign_slot_palette(self, slot: Allocation):
+        """Fill durable color/order fields without moving slots or emitting events."""
+        individual = slot.individual_color or slot.identity_color
+        if not valid_color(individual) or slot.project_color and not valid_color(slot.project_color):
+            raise Rejected('invalid_slot_palette')
+        if type(slot.arrival_order) is not int or slot.arrival_order < 0:
+            raise Rejected('invalid_arrival_order')
+        key = project_key(slot.caller)
+        colors = self._project_colors.setdefault(key, {})
+        cached = colors.get(slot.caller.caller_id)
+        if cached and slot.project_color and cached != slot.project_color:
+            raise Rejected('project_palette_mismatch')
+        grouped = slot.project_color or cached or project_color(list(self._project_colors).index(key), len(colors))
+        colors[slot.caller.caller_id] = grouped
+        if not slot.arrival_order:
+            slot.arrival_order = self._next_arrival_order
+        self._next_arrival_order = max(self._next_arrival_order, slot.arrival_order + 1)
+        slot.individual_color, slot.project_color = individual, grouped
+        self.identity_colors[slot.caller.caller_id] = individual
+        slot.identity_color = grouped if self.sort_policy == 'project' else individual
+
+    def export_sort_state(self):
+        return {'version': 1, 'policy': self.sort_policy, 'next_arrival_order': self._next_arrival_order,
+                'projects': [{'key': key, 'colors': dict(colors)} for key, colors in self._project_colors.items()]}
+
+    def restore_sort_state(self, state):
+        if (not isinstance(state, dict) or state.get('version') != 1 or type(state.get('version')) is not int
+                or state.get('policy') not in ('incoming', 'project')
+                or type(state.get('next_arrival_order')) is not int or state['next_arrival_order'] < 1
+                or not isinstance(state.get('projects'), list)):
+            raise Rejected('invalid_sort_state')
+        projects = OrderedDict()
+        for row in state['projects']:
+            if not isinstance(row, dict):
+                raise Rejected('invalid_sort_project')
+            key, colors = row.get('key'), row.get('colors')
+            if (not isinstance(key, str) or not key or len(key) > 8192 or key in projects
+                    or not (key == 'unassigned' or key.startswith('id:') and len(key) > 3
+                            or key.startswith('path:') and len(key) > 5)
+                    or not isinstance(colors, dict)):
+                raise Rejected('invalid_sort_project')
+            if any(not isinstance(caller, str) or not caller or len(caller) > 256 or not valid_color(color)
+                   for caller, color in colors.items()):
+                raise Rejected('invalid_sort_palette')
+            projects[key] = dict(colors)
+        self.sort_policy = state['policy']
+        self._next_arrival_order = state['next_arrival_order']
+        self._project_colors = projects
+
+    def _relocation_anchor(self):
+        return self.candidate() or next((s for s in self.visible_slots() if s.slot_id == self.selected), None)
+
+    def _reordered_layout(self, anchor):
+        self._layout_changed()
+        self.page_revision += 1
+        self.knob_selection_revision += 1
+        self.cursor_revision += 1
+        self.page = ((anchor.position - 1) // self.page_size) if anchor else min(self.page, self.page_count - 1)
+        self._show_page_display()
+
+    def _insert_allocation(self, slot):
+        anchor = self._relocation_anchor()
+        self.assign_slot_palette(slot)
+        moved = []
+        if self.slot_at_position(slot.position) is not None:
+            if self.sort_policy != 'project':
+                raise Rejected('occupied_allocation_position')
+            moved = sorted((s for s in self.slots.values() if s.position >= slot.position), key=lambda s: s.position, reverse=True)
+            for other in moved:
+                previous = other.position
+                other.display_position = previous + 1
+                other.revision += 1
+                self.event('slot_moved', other, previous_position=previous, display_position=other.position)
+        self.slots[slot.slot_id] = slot
+        self.owners[slot.caller.caller_id] = slot.slot_id
+        if moved:
+            self._reordered_layout(anchor)
+        else:
+            self._layout_changed()
+
+    def toggle_sort(self) -> bool:
+        if self.reserved_positions:
+            return False
+        anchor = self._relocation_anchor()
+        for slot in sorted(self.slots.values(), key=lambda s: s.slot_id):
+            self.assign_slot_palette(slot)
+        self.sort_policy = 'project' if self.sort_policy == 'incoming' else 'incoming'
+        projects = {key: index for index, key in enumerate(self._project_colors)}
+        order = (lambda s: (projects[project_key(s.caller)], s.arrival_order)) if self.sort_policy == 'project' else (lambda s: s.arrival_order)
+        for position, slot in enumerate(sorted(self.slots.values(), key=order), 1):
+            previous = slot.position
+            slot.display_position = position
+            slot.identity_color = slot.project_color if self.sort_policy == 'project' else slot.individual_color
+            slot.revision += 1
+            if previous != position:
+                self.event('slot_moved', slot, previous_position=previous, display_position=position)
+        self._reordered_layout(anchor)
+        self._navigation_activity()
+        self._sync_notification_visuals()
+        self.event('slot_sort_changed', policy=self.sort_policy, layout_revision=self.layout_revision)
+        return True
 
     def _layout_changed(self):
         self.layout_revision += 1
@@ -486,20 +606,15 @@ class Broker:
         if caller_id not in self.identity_colors:
             # Golden-angle spacing separates successive registrations. Colors
             # belong to caller identity, independently of slot position/status.
-            base_hue, saturation, _ = colorsys.rgb_to_hsv(32 / 255, 128 / 255, 1)
             ordinal = len(self.identity_colors)
             used = set(self.identity_colors.values())
-            for offset in range(1024):
+            for offset in range(32):
                 candidate = ordinal + offset
-                hue = (base_hue + candidate * .618033988749895) % 1
-                # Add saturation variation beyond the initial spread so a long
-                # session does not exhaust the quantized single-saturation ring.
-                sat = saturation if candidate < 128 else .65 + .3 * ((candidate * .754877666) % 1)
-                color = "".join(f"{round(c * 255):02X}" for c in colorsys.hsv_to_rgb(hue, sat, 1))
+                color = normal_color(candidate)
                 if color not in used:
                     break
-            else:
-                raise Rejected("identity_color_capacity_reached")
+            # RGB is finite. Bounded avoidance may reuse a deterministic color;
+            # visual collisions must never reject a distinct agent allocation.
             self.identity_colors[caller_id] = color
         return self.identity_colors[caller_id]
 
@@ -521,13 +636,11 @@ class Broker:
             if (existing.caller.project_id, existing.caller.project_generation) != (project_id, project_generation):
                 raise Rejected('caller_project_mismatch')
             return existing, False
-        number, position = self._allocation_addresses(caller.caller_id)
+        number, position = self._allocation_addresses(caller.caller_id, caller)
         slot = Allocation(number, secrets.token_hex(24), caller, label,
                           identity_color=self._identity_color(caller.caller_id),
                           host_registered=True, agent_attached=False, display_position=position)
-        self.slots[number] = slot
-        self.owners[caller.caller_id] = number
-        self._layout_changed()
+        self._insert_allocation(slot)
         self.disconnected.pop(caller.caller_id, None)
         if self.navigation_active and self.candidate() is None and slot in self.visible_slots():
             self._set_cursor(slot.slot_token)
@@ -541,6 +654,8 @@ class Broker:
                 "agent_attached": slot.agent_attached,
                 **self.location(slot), "state": slot.state, "revision": slot.revision,
                 "identity_color": slot.identity_color,
+                'individual_color': slot.individual_color, 'project_color': slot.project_color,
+                'arrival_order': slot.arrival_order, 'sort_policy': self.sort_policy,
                 "navigation_target": self.navigation_target(slot),
                 "project_id": slot.caller.project_id, "project_path": slot.caller.project_path,
                 "notification_animation": deepcopy(slot.notification_animation),
@@ -608,7 +723,9 @@ class Broker:
                 current = self.slots.get(allocation.get('slot_id'))
                 if (current and current.caller.caller_id == caller.caller_id
                         and allocation.get('slot_token') == current.slot_token):
-                    allocation.update(self.location(current))
+                    allocation.update(self.location(current), identity_color=current.identity_color,
+                                      individual_color=current.individual_color, project_color=current.project_color,
+                                      arrival_order=current.arrival_order, sort_policy=self.sort_policy)
                 return {**replay, "replayed": True}
             result = self._mutate(caller, operation, arguments)
             # Admission precedes the worker's next frame/binding commit. A previous
@@ -664,12 +781,10 @@ class Broker:
                     self.event("caller_registered", slot, harness=registered.surface,
                                surface_source=registered.surface_source)
                 return {"status": "accepted", "allocation": self.snapshot(slot), "caller": asdict(slot.caller)}
-            number, position = self._allocation_addresses(caller.caller_id)
+            number, position = self._allocation_addresses(caller.caller_id, caller)
             slot = Allocation(number, secrets.token_hex(24), registered, label,
                               identity_color=self._identity_color(caller.caller_id), display_position=position)
-            self.slots[number] = slot
-            self.owners[caller.caller_id] = number
-            self._layout_changed()
+            self._insert_allocation(slot)
             if self.navigation_active and self.candidate() is None and slot in self.visible_slots():
                 self._set_cursor(slot.slot_token)
             self.event("slot_acquired", slot)
@@ -1080,6 +1195,7 @@ class Broker:
     def overview_snapshot(self) -> dict:
         candidate = self.overview_candidate()
         return {"knob_mode": self.knob_mode, "overview_available": self.overview_available(),
+                'sort_policy': self.sort_policy,
                 'knob_selection_remaining_seconds':max(0, self.knob_selection_deadline - self.clock()) if self.knob_selection_deadline else 0,
                 'page_display': self.page_display(),
                 'layout_revision': self.layout_revision, 'gap_hold':self.gap_snapshot(),
@@ -1235,8 +1351,7 @@ class Broker:
         self.navigation_active = False
         self.navigation_deadline = None
         self.navigation_revision += 1
-        if reason != 'timeout' or not self.knob_selection_active():
-            self._clear_knob_preview()
+        self._clear_knob_preview()
         self.event('navigation_disarmed', reason=reason)
 
     def navigate(self, action: str):

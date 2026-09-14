@@ -92,20 +92,24 @@ class PageDisplayTests(unittest.TestCase):
         self.assertFalse(self.b.page_display()['visible'])
         self.assertFalse(any(r.action == 'jump_page' for r in routes_for(self.b,self.profile).values()))
 
-    def test_navigation_keys_expire_at_fifteen_but_knob_and_numbers_last_sixty(self):
+    def test_navigation_timeout_resets_knob_and_releases_page_numbers(self):
         self.b.toggle_navigation()
         self.b.select_slot(self.tokens[0])
         self.now = 15
         self.b.step()
         routes = routes_for(self.b,self.profile)
         self.assertFalse(self.b.navigation_active)
-        self.assertEqual(self.b.knob_mode,'agents')
-        self.assertFalse(any(r.action.startswith('navigate:') for r in routes.values()))
-        self.assertTrue(any(r.action == 'jump_page' for r in routes.values()))
-        self.assertIn(22,routes)
-        self.now = 60
-        self.b.step()
         self.assertEqual(self.b.knob_mode,'pages')
+        self.assertIsNone(self.b.knob_selection_deadline)
+        self.assertIsNone(self.b.candidate())
+        self.assertEqual(self.b.selected,1)
+        self.assertFalse(any(r.action.startswith('navigate:') for r in routes.values()))
+        self.assertFalse(any(r.action == 'jump_page' for r in routes.values()))
+        self.assertFalse(self.b.page_display()['visible'])
+        frame = self.renderer.frame(self.b).payload
+        for key in PAGE_KEYS:
+            self.assertEqual(frame.colors.get(key, frame.background), frame.colors.get('A', frame.background))
+        self.assertIn(22,routes)
         self.b.cycle_knob()
         self.assertEqual(self.b.knob_mode,'agents')  # Can reenter while focused.
         self.b.set_active(False)

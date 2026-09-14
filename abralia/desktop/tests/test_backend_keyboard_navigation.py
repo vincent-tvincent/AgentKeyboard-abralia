@@ -134,16 +134,50 @@ class KeyboardNavigationTests(unittest.TestCase):
         self.now = 28.9; self.b.step(); self.assertTrue(self.b.navigation_active)
         self.now = 29; self.b.step(); self.assertFalse(self.b.navigation_active)
         self.assertEqual(self.b.selected, 2)
-        self.assertIsNotNone(self.b.overview_candidate())
-        self.assertFalse(set(range(60,68)) & routes_for(self.b, self.profile).keys())
-        self.now = 74; self.b.step()
+        self.assertTrue(self.b.active)
+        self.assertEqual(self.b.knob_mode, 'pages')
+        self.assertIsNone(self.b.knob_selection_deadline)
+        self.assertIsNone(self.b.cursor_token)
         self.assertIsNone(self.b.overview_candidate())
+        routes = routes_for(self.b, self.profile)
+        self.assertFalse(set(range(60,68)) & routes.keys())
+        self.assertNotIn(32, routes)
+        self.assertFalse(any(r.action == 'jump_page' for r in routes.values()))
+        self.b.rotate_knob(1)
+        self.assertEqual((self.b.page, self.b.selected), (1, 2))
+        self.assertIsNone(self.b.candidate())
 
     def test_second_hold_and_inactive_mode_disarm_immediately(self):
-        self.arm(); self.b.toggle_navigation()
+        self.arm(); self.b.select_slot(self.tokens[1])
+        focus_revision = self.b.focus_revision
+        self.b.toggle_navigation()
         self.assertFalse(self.b.navigation_active)
+        self.assertTrue(self.b.active)
+        self.assertEqual(self.b.selected, 2)
+        self.assertEqual(self.b.focus_revision, focus_revision)
+        self.assertEqual(self.b.knob_mode, 'pages')
+        self.assertIsNone(self.b.knob_selection_deadline)
+        self.assertIsNone(self.b.cursor_token)
+        self.b.rotate_knob(1)
+        self.assertEqual((self.b.page, self.b.selected), (1, 2))
         self.b.toggle_navigation(); self.b.set_active(False)
         self.assertFalse(self.b.navigation_active)
+        self.assertEqual(self.b.knob_mode, 'pages')
+        self.assertIsNone(self.b.knob_selection_deadline)
+        self.assertIsNone(self.b.cursor_token)
+
+    def test_timeout_invalidates_old_enter_and_number_routes_after_rearming(self):
+        self.arm(); old = routes_for(self.b, self.profile)
+        self.now = 15; self.b.step()
+        for binding in (32, 101):
+            dispatch_event(self.b, self.edge(binding, old), old, 7)
+        self.assertIsNone(self.b.selected)
+        self.assertEqual(self.b.page, 0)
+        self.b.toggle_navigation()
+        for binding in (32, 101):
+            dispatch_event(self.b, self.edge(binding, old), old, 7)
+        self.assertIsNone(self.b.selected)
+        self.assertEqual((self.b.page, self.b.candidate().slot_id), (0, 1))
 
     def test_navigation_knob_starts_with_agents_and_cycles_even_after_focusing(self):
         self.arm()
@@ -239,8 +273,9 @@ class KeyboardNavigationTests(unittest.TestCase):
         self.now = 16; self.b.step()
         self.assertFalse(self.b.navigation_active)
         self.assertIn('q', self.b.slots[26].native_requests)
-        self.assertIn(32, routes_for(self.b,self.profile))
-        self.now = 60; self.b.step()
+        self.assertEqual(self.b.selected, 26)
+        self.assertTrue(self.b.active)
+        self.assertEqual(self.b.knob_mode, 'pages')
         self.assertNotIn(32, routes_for(self.b,self.profile))
 
     def test_pause_gestures_leave_call_ringing_and_separate_scroll_tap_mutes(self):

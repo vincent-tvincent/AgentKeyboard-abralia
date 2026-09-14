@@ -282,8 +282,9 @@ the bridge itself always requires explicit registration again.
 
 Keyboard navigation is the default; a rotary knob is optional. In active Agent
 Mode, hold the profile-defined physical mode key for about 0.8 seconds to arm
-navigation. Hold it again to disarm, or stop navigating for 15 seconds. Leaving
-Agent Mode also disarms it. Selecting/picking up an agent does **not** disarm it.
+navigation. Hold it again to disarm, or stop navigating for 15 seconds. Both
+actions return the knob to page browsing and release its selection preview.
+Leaving Agent Mode also disarms it. Selecting/picking up an agent does **not** disarm it.
 
 | Key | Navigation action |
 | --- | --- |
@@ -292,6 +293,7 @@ Agent Mode also disarms it. Selecting/picking up an agent does **not** disarm it
 | Left / Right | Previous/next occupied slot on the current page, skipping holes. |
 | Home / End | First/last occupied agent across all pages. |
 | Enter | Confirm the previewed agent; a pending call is picked up. |
+| Escape | Cycle global arrival order / project groups, preserving arrival order inside each group. |
 
 Page changes preserve the F-key position when occupied, otherwise use the first
 occupied position on the new page. Movement only previews; it does not open a
@@ -303,6 +305,7 @@ Navigation cues have separate semantic color groups:
 | Change page | Page Up / Page Down / Up / Down | Cyan `00BFFF` |
 | Move between slots | Left / Right | Orange `FF9000` |
 | Jump to an endpoint | Home / End | Violet `A060FF` |
+| Change sorting policy | Escape, while navigation is armed | Violet `A040FF` |
 | Confirm / answer | Enter | Yellow-green `A0FF00` |
 | Cancel / quit | Escape, while its exit binding is effective | Red |
 | Strong incoming-call controls | Print Screen: Pick Up / Scroll Lock: Mute | Pure green / red, unchanged |
@@ -310,6 +313,41 @@ Navigation cues have separate semantic color groups:
 The candidate retains its yellow-green/identity blend. These cues scale against
 the existing frame reference and leave other keys alone. The three navigation
 defaults remain subject to physical visual acceptance.
+
+### Slot sorting and project colors
+
+While keyboard navigation is armed, violet Escape cycles two persistent policies:
+
+- **Arrival order:** agents appear in registration order. A new registration
+  appends after the last position, even when an earlier release left a hole.
+- **Project groups:** projects follow their first-arrival order, with registration
+  order inside each project. A new agent joins the end of its project group and
+  shifts later occupied positions forward when necessary, including across pages.
+
+Switching policy also closes gaps. Release itself leaves the other positions
+unchanged, and the existing hold-to-close-gap gesture remains available. Slot IDs,
+ownership tokens, notifications, mutes and the selected agent survive movement;
+only display positions change. Old F-key, Enter and sort releases cannot target
+new occupants after a rearrangement. Sorting waits until startup recovery
+reservations have been reconciled, and commits to disk before bindings change.
+
+Each agent caches an individual color and a project color. Project mode uses
+similar hues within a project, with modest hue, saturation and brightness
+variation between agents. Returning to arrival order restores the exact original
+individual colors. The policy, arrival sequence and both colors survive live
+session recovery; legacy recovery files use their saved layout as the initial
+order because they did not record historical registration times.
+
+Colors are generated algorithmically, without a fixed palette capacity for
+agents or projects. RGB has a finite number of values and human perception is
+more limited, so large populations can have similar or repeated colors. Color
+collisions never reject a registration; stable IDs and tokens identify agents.
+`get_status` reports `sort_policy`, and the allocation includes `arrival_order`,
+`individual_color`, `project_color` and the currently displayed `identity_color`.
+
+Outside keyboard navigation, Escape retains its focus-exit behavior. A visible
+keyboard guide keeps its own red Escape-to-dismiss binding. Sorting does not
+change the strong green pickup/red mute controls or the keyboard brightness cap.
 
 The physical mode key keeps firmware double-tap activation and host hold-to-toggle
 navigation. Its captured single action does nothing; call controls use separate
@@ -443,7 +481,8 @@ These are host-owned gestures, not new agent-callable mutation tools.
   knob behavior stay normal. Call bindings are effective only in active Agent Mode.
 - On a profile with a knob, each active knob detent moves one 12-slot page: clockwise forward,
   counterclockwise backward, without wrapping. Agent slots do not move when
-  another agent releases; freed positions can be reused with new tokens.
+  another agent releases. Freed IDs can be reused with new tokens; placement
+  follows the selected sorting policy.
 - In overview, press the knob centre to alternate page browsing and agent
   selection on the current page. Agent selection starts at the first occupied
   slot, skips holes and stops at the page ends. Rotation only previews; press
@@ -676,11 +715,10 @@ use `simulate ... navigation_hold`, `last_agent`, `first_agent`, `page_next`,
 `page_previous`, `slot_next`, `slot_previous`, or `confirm`. These terminal-only
 events are rejected in hardware mode.
 
-The host assigns each task a distinct `identity_color`, returned with its slot.
-Its hue stays the same across status changes, paging, and release/rejoin within
-the backend session. Assignment uses spaced hues; exact physical appearance is
-still subject to visual validation. Live-client recovery preserves the assigned
-color across backend restarts. Explicit notification requests drive the existing expand/fill/breathe
+The host returns the active `identity_color` with each slot. Both cached palettes
+stay stable across status changes and paging; sorting selects the individual or
+project palette. Live-client recovery preserves both colors across backend
+restarts. Explicit notification requests drive the existing expand/fill/breathe
 effect, which blends toward the task's color, then condenses into a drifting fog
 orb if it remains unacknowledged. A status update alone stays quiet.
 The older `colors` setting remains for native answer hints and the isolated

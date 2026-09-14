@@ -99,14 +99,14 @@ class BrokerTests(BrokerTestCase):
         self.b.select_slot(unknown)
         self.assertFalse(self.b.focus_requests)
 
-    def test_color_collision_exhaustion_rejects_without_partial_allocation(self):
+    def test_color_collisions_do_not_reject_distinct_agent_allocations(self):
         self.acquire(self.a)
         with patch('abralia.backend.core.colorsys.hsv_to_rgb', return_value=(32/255, 128/255, 1)):
             result = self.b.call(self.c, 'acquire_slot', {'label':'collision', 'idempotency_key':'collision'})
-        self.assertEqual(result['reason'], 'identity_color_capacity_reached')
-        self.assertEqual(len(self.b.slots), 1)
-        self.assertNotIn(self.c.caller_id, self.b.owners)
-        self.assertNotIn(self.c.caller_id, self.b.identity_colors)
+        self.assertEqual(result['status'], 'accepted')
+        self.assertEqual(len(self.b.slots), 2)
+        self.assertNotEqual(self.b.owners[self.a.caller_id], self.b.owners[self.c.caller_id])
+        self.assertEqual(self.b.identity_colors[self.a.caller_id], self.b.identity_colors[self.c.caller_id])
 
     def test_self_registration_uses_own_identity_and_enables_desktop_flow(self):
         owner = Caller("codex:self", str(UUID(int=10)), "codex_metadata")
@@ -164,12 +164,15 @@ class BrokerTests(BrokerTestCase):
         token = self.acquire(Caller("replacement"))
         self.assertEqual(self.b.owners["replacement"], 4)
         self.assertNotEqual(token, tokens[3])
+        self.assertEqual(self.b.slots[4].position, 26)  # Incoming arrivals append; released positions stay empty.
         self.b.turn_page(1)
         self.assertEqual(self.b.page, 0)  # Inactive knob input is not a page command.
         self.b.set_active(True)
         self.b.turn_page(10)
-        self.assertEqual([s.slot_id for s in self.b.visible_slots()], [25])
+        self.assertEqual([s.slot_id for s in self.b.visible_slots()], [25, 4])
         self.call(owners[24], "release_slot", slot_token=tokens[24])
+        self.assertEqual((self.b.page, self.b.page_count), (2, 3))
+        self.call(Caller('replacement'), 'release_slot', slot_token=token)
         self.assertEqual((self.b.page, self.b.page_count), (1, 2))
         self.b.turn_page(-10)
         self.assertEqual(self.b.page, 0)

@@ -20,14 +20,6 @@ function Icon({ name, size = 20 }: { name: string; size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.info}</svg>;
 }
 
-function KeyboardArt({ selected }: { selected: boolean }) {
-  return <div className={`keyboard-art ${selected ? 'selected' : ''}`} aria-hidden="true"><div className="board">
-    <div className="board-top">{Array.from({ length: 14 }, (_, i) => <i key={i} className={i > 0 && i < 6 ? `tint tint-${i}` : ''} />)}<b /></div>
-    {[13, 13, 12, 12].map((n, row) => <div className="board-row" key={row}>{Array.from({ length: n }, (_, col) => <i key={col} />)}</div>)}
-    <div className="board-bottom"><i /><i /><i /><i className="space" /><i /><i /><i /></div>
-  </div><div className="art-label"><span /> {selected ? 'Your selected keyboard' : 'A home for your agents'}</div></div>;
-}
-
 const initial: Overview = { devices: [], selected_device: null, projects: [], errors: [], backend: { state: 'starting', owned: false } };
 
 function App() {
@@ -169,7 +161,7 @@ function App() {
           : !running && !loading && <button className="button primary" disabled={!!busy || !selected?.connected} onClick={() => chooseProject ? setPage('projects') : void backendAction('start')}>{busy === 'start' ? 'Starting…' : chooseProject ? 'Choose project' : 'Start backend'}</button>}
       </section>
       {page === 'devices' ? <>
-        <section className="hero-card"><div className="hero-copy"><span className="pill">{selected ? selected.connected ? 'REMEMBERED DEVICE' : 'DEVICE DISCONNECTED' : 'READY WHEN YOU ARE'}</span><h2>{selected ? selected.name : 'Give your keyboard\nan Agent Mode.'}</h2><p>{selected ? selected.connected ? 'Your choice is saved on this Mac. Project notifications stay under your control.' : 'Your saved keyboard isn’t connected. Plug it back in or choose another below.' : 'Supported keyboards appear below. Choose one and Abralia starts the backend for you.'}</p><div className="hero-detail"><Icon name="plug" size={16} />{selected?.connected ? 'USB connection detected' : selected ? 'Waiting for this keyboard' : 'Built for your everyday keyboard'}</div></div><KeyboardArt selected={!!selected?.connected} /></section>
+        <section className="hero-card"><div className="hero-copy"><span className="pill">{selected ? selected.connected ? 'REMEMBERED DEVICE' : 'DEVICE DISCONNECTED' : 'READY WHEN YOU ARE'}</span><h2>{selected ? selected.name : 'Give your keyboard\nan Agent Mode.'}</h2><p>{selected ? selected.connected ? 'Your choice is saved on this Mac. Project notifications stay under your control.' : 'Your saved keyboard isn’t connected. Plug it back in or choose another below.' : 'Supported keyboards appear below. Choose one and Abralia starts the backend for you.'}</p><div className="hero-detail"><Icon name="plug" size={16} />{selected?.connected ? 'USB connection detected' : selected ? 'Waiting for this keyboard' : 'Built for your everyday keyboard'}</div></div></section>
         <section aria-labelledby="devices-heading"><div className="section-heading"><h2 id="devices-heading">Available keyboards <span>{data.devices.length}</span></h2><span className="section-caption">Connected devices with an Abralia profile</span></div>
           {loading ? <div className="empty"><div className="loader" />Looking for your keyboard…</div> : data.devices.length === 0 ? <div className="empty"><Icon name="keyboard" size={34} /><h3>No supported keyboard detected</h3><p>Connect a supported Keychron V3 keyboard, then refresh.</p></div> : <div className="device-list">{data.devices.map(device => <article className={`device-row ${selected?.id === device.id ? 'chosen' : ''}`} key={device.id}>
             <div className="device-icon"><Icon name="keyboard" size={28} /></div><div className="device-description"><h3>{device.name}{device.experimental && <span className="experimental">Experimental profile</span>}</h3><p>{device.profile_name || 'Abralia keyboard profile'}</p><div className="device-meta"><span className="tiny-dot" /> USB connected{device.serial && <span> · {device.serial}</span>}</div></div>
