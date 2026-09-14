@@ -45,9 +45,23 @@ of the agent backend.
 
 ## Quick start: macOS + Codex
 
+**User guides**
+
 - **[Keyboard user guide](docs/user-guide/README.md)** — shortcuts, effects, GIF demonstrations and model-specific controls.
+- **[Controls and shortcuts](docs/user-guide/controls.md)** — activation, navigation, pickup, mute and key behavior.
+- **[Lighting effects](docs/user-guide/effects.md)** — task colors, breathing, notification animations and fog reminders.
 - **[Simulator guide](tools/keyboard-simulator/README.md)** — setup, design inputs and GIF export.
 - **[App setup guide](abralia/desktop/gui/README.md)** — keyboard selection, the shared backend, project muting and Codex plugin setup.
+
+**Developer guides**
+
+- **[Device discovery and profile authoring](abralia/desktop/DEVELOPER_CLI.md)** — scan interfaces, probe capabilities, and draft/validate keyboard profiles.
+- **[Firmware build and porting](abralia/firmware/qmk-userspace/README.md)** — pinned upstream setup, additive firmware variants and model-specific builds.
+- **[Desktop RGB API](abralia/desktop/README.md)** and **[Host Interaction API](abralia/desktop/HOST_INTERACTION_API.md)** — scenes, device adapters, shared HID ownership and physical input bindings.
+- **[Backend and MCP guide](abralia/desktop/BACKEND.md)** — agent tools, slot ownership, notifications, lifecycle and testing.
+- **[Contributor rules](AGENTS.md)** and **[Claude Code instructions](CLAUDE.md)** — required reading, architecture boundaries and portability requirements.
+
+**Get started**
 
 You need Codex, the Abralia macOS app, and a supported keyboard running the
 matching [Host Interaction firmware](abralia/firmware/qmk-userspace/README.md).
