@@ -10,8 +10,9 @@ Firmware targets:
 | `keychron/v3/ansi` | Experimental; hardware-unverified |
 | `keychron/v3/ansi_encoder` | Experimental; hardware-unverified |
 
-Each target provides `abralia` (RGB-only) and `abralia_host_interaction`
-(RGB plus Host Interaction protocol v2). Original V3 targets retain their
+Each target provides `led_only_not_interactable` (lighting control without host
+input bindings) and `abralia_host_interaction` (RGB plus Host Interaction protocol
+v2). Normal keyboard input remains available in both variants. Original V3 targets retain their
 upstream keymaps and board drivers; they are not V3 8K firmware images.
 
 See the [build guide](qmk-userspace/README.md) for exact commands and the

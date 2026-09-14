@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "Two tasks, pickup and mute",
+  "seed_agents": [
+    {"id": "review", "project": "Atlas", "label": "Review", "state": "progressing"},
+    {"id": "build", "project": "Beacon", "label": "Build", "state": "idle"}
+  ],
+  "timeline": [
+    {"at": 0, "action": {"type": "input", "key": "MODE", "gesture": "double"}},
+    {"at": 1, "action": {"type": "notify", "agent_id": "review"}},
+    {"at": 12, "action": {"type": "input", "key": "SCREENSHOT", "gesture": "tap"}},
+    {"at": 15, "action": {"type": "notify", "agent_id": "build"}},
+    {"at": 16, "action": {"type": "input", "key": "SCROLL_LOCK", "gesture": "tap"}}
+  ],
+  "frames": []
+}

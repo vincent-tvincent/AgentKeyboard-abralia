@@ -221,6 +221,103 @@ class AutomaticQuestionTests(unittest.TestCase):
         self.assertTrue(self.slot.question.picked_up)
 
 
+class AutomaticCompletionTests(unittest.TestCase):
+    def setUp(self):
+        self.now = 0
+        self.b = Broker(BrokerConfig(notification_seconds=10), clock=lambda: self.now)
+        self.owner = Caller('codex:' + THREAD, THREAD, 'codex_metadata', 'codex_desktop')
+        result = self.b.call(self.owner, 'acquire_slot', {'label':'completion fixture','idempotency_key':'acquire'})
+        self.token = result['allocation']['slot_token']
+        self.slot = self.b.slots[1]
+        self.b.set_active(True)
+
+    def observe(self, ids=('t1',), **extra):
+        value = {'source':'codex_observer','thread_id':THREAD,'execution':'idle','turn_id':'t1',
+                 'questions':[],'error':None,'completed_turn_ids':list(ids),**extra}
+        return self.b.observe_codex(self.token, value)
+
+    def test_native_turn_notice_keeps_agent_semantic_state_and_identity(self):
+        self.b.call(self.owner,'set_slot_state',{'slot_token':self.token,'state':'progressing',
+                    'progress':.4,'idempotency_key':'working'})
+        color = self.slot.identity_color
+        self.assertTrue(self.observe())
+        notice = self.slot.completion_notifications['t1']
+        self.assertEqual((notice.origin,notice.request_id,notice.status), ('codex_turn','t1','active'))
+        self.assertIs(self.b.pending_target(), self.slot)
+        self.assertEqual((self.slot.state,self.slot.progress,self.slot.identity_color), ('progressing',.4,color))
+        self.assertIsNone(self.slot.agent_notification)
+        self.assertFalse(self.slot.native_requests)
+
+    def test_retry_after_mute_or_pickup_never_rearms_the_same_completion(self):
+        for action in ('mute','pickup'):
+            with self.subTest(action=action):
+                self.setUp()
+                self.observe()
+                notice = self.slot.completion_notifications['t1']
+                identity, started, expires = notice.notification_id, notice.started_at, notice.expires_at
+                self.b.act_on_call(action,self.token,identity)
+                self.now = 2
+                self.observe(last_hook={'hook_event_name':'PostToolUse'})
+                self.observe(source='codex_hook',last_hook={'hook_event_name':'Stop'})
+                self.observe()
+                self.assertEqual(len(self.slot.completion_notifications),1)
+                self.assertIs(self.slot.completion_notifications['t1'],notice)
+                self.assertEqual((notice.notification_id,notice.started_at,notice.expires_at), (identity,started,expires))
+                self.assertTrue(notice.controls_dismissed)
+                self.assertIsNone(self.b.pending_target())
+                self.now = 11; self.b.step(); self.observe(last_event_at='same native completion')
+                self.assertIsNone(self.b.pending_target())
+
+    def test_explicit_agent_notification_and_completion_have_independent_lifecycles(self):
+        self.b.call(self.owner,'set_notification',{'slot_token':self.token,'enabled':True,'idempotency_key':'agent-call'})
+        manual = self.slot.agent_notification
+        self.observe()
+        completion = self.slot.completion_notifications['t1']
+        self.assertIsNot(manual, completion)
+        self.b.call(self.owner,'set_notification',{'slot_token':self.token,'enabled':False,'idempotency_key':'withdraw'})
+        self.assertEqual(manual.status, 'cancelled')
+        self.assertEqual(completion.status, 'active')
+        self.assertIs(self.b.pending_target().notification, completion)
+
+    def test_hook_idle_error_and_stale_allocation_do_not_create_completion_attention(self):
+        self.observe((),execution='running')
+        self.observe((),execution='idle')
+        self.assertIsNone(self.slot.notification)
+        self.observe(source='codex_hook',last_hook={'hook_event_name':'Stop'})
+        self.observe(error='rollout_unavailable_or_invalid')
+        self.assertFalse(self.slot.completion_notifications)
+        self.assertFalse(self.b.observe_codex(self.token,{'source':'codex_observer',
+            'thread_id':str(UUID(int=72)),'completed_turn_ids':['t1']}))
+        self.b.call(self.owner,'release_slot',{'slot_token':self.token,'idempotency_key':'release'})
+        result = self.b.call(self.owner,'acquire_slot',{'label':'fresh','idempotency_key':'rejoin'})
+        self.assertNotEqual(result['allocation']['slot_token'],self.token)
+        self.assertFalse(self.observe())
+        self.assertIsNone(self.b.slots[1].notification)
+
+    def test_next_turn_completion_is_new_and_old_pickup_cannot_consume_it(self):
+        self.observe()
+        first = self.slot.completion_notifications['t1']
+        self.b.act_on_call('mute',self.token,first.notification_id)
+        self.now = 1
+        self.observe(('t1','t2'),turn_id='t3',execution='running')
+        second = self.slot.completion_notifications['t2']
+        self.assertNotEqual(first.notification_id,second.notification_id)
+        self.assertIs(self.b.pending_target().notification,second)
+        self.b.act_on_call('pickup',self.token,first.notification_id)
+        self.assertEqual(second.status,'active')
+        self.assertFalse(second.controls_dismissed)
+
+    def test_project_mute_preserves_policy_when_completion_arrives(self):
+        self.b.set_project_muted(True)
+        self.observe()
+        notice = self.slot.completion_notifications['t1']
+        self.assertTrue(self.b.attention_muted(self.slot))
+        self.assertIsNone(self.b.pending_target())
+        self.assertIsNone(self.b.notification_visuals()['presentation'])
+        self.observe(last_hook={'hook_event_name':'Stop'})
+        self.assertIs(self.slot.completion_notifications['t1'],notice)
+
+
 class TailTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -290,6 +387,82 @@ class TailTests(unittest.TestCase):
             'statusMessage="Abralia metadata-only hook probe"\ncommand=' + json.dumps(command) + '\n')
         self.assertEqual(configured_hook_journal(self.root), self.root/'events.jsonl')
 
+    def test_fast_turn_completed_between_polls_is_retained_for_retry(self):
+        tail = RolloutTail(self.path,self.root,THREAD)
+        self.assertEqual(tail.poll()['completed_turn_ids'],[])
+        append(self.path, record('event_msg',type='task_complete',turn_id='t1'),
+               record('event_msg',type='task_started',turn_id='t2'),
+               record('event_msg',type='task_complete',turn_id='t2'),
+               record('event_msg',type='task_started',turn_id='t3'))
+        value = tail.poll()
+        self.assertEqual((value['execution'],value['turn_id']),('running','t3'))
+        self.assertEqual(value['completed_turn_ids'],['t1','t2'])
+        self.assertEqual(tail.poll()['completed_turn_ids'],['t1','t2'])
+        value['completed_turn_ids'].clear()
+        self.assertEqual(tail.poll()['completed_turn_ids'],['t1','t2'])
+
+    def test_historical_completion_is_suppressed_until_bootstrap_catches_up(self):
+        append(self.path,record('event_msg',type='task_complete',turn_id='t1'))
+        original = JsonlCursor.poll
+        with patch.object(JsonlCursor,'poll',lambda cursor: original(cursor,budget=1)):
+            tail = RolloutTail(self.path,self.root,THREAD)
+            value = None
+            for _ in range(6):
+                value = tail.poll()
+                if value is not None: break
+            self.assertIsNotNone(value)
+            self.assertEqual(value['completed_turn_ids'],[])
+        append(self.path,record('event_msg',type='task_started',turn_id='t2'),
+               record('event_msg',type='task_complete',turn_id='t2'))
+        self.assertEqual(tail.poll()['completed_turn_ids'],['t2'])
+
+    def test_partial_completion_append_waits_for_newline_without_losing_live_boundary(self):
+        tail = RolloutTail(self.path,self.root,THREAD); tail.poll()
+        with self.path.open('a') as stream:
+            stream.write(json.dumps(record('event_msg',type='task_complete',turn_id='t1')))
+        self.assertIsNone(tail.poll())
+        with self.path.open('a') as stream: stream.write('\n')
+        self.assertEqual(tail.poll()['completed_turn_ids'],['t1'])
+
+    def test_log_replacement_and_truncation_baseline_old_completions_again(self):
+        tail = RolloutTail(self.path,self.root,THREAD); tail.poll()
+        append(self.path,record('event_msg',type='task_complete',turn_id='t1'))
+        self.assertEqual(tail.poll()['completed_turn_ids'],['t1'])
+        replacement = self.root/'replacement.jsonl'
+        append(replacement,record('session_meta',id=THREAD,cwd=str(self.root)),
+               record('event_msg',type='task_started',turn_id='history'),
+               record('event_msg',type='task_complete',turn_id='history'))
+        replacement.replace(self.path)
+        self.assertEqual(tail.poll()['completed_turn_ids'],[])
+        self.path.write_text(json.dumps(record('session_meta',id=THREAD,cwd=str(self.root)))+'\n')
+        self.assertEqual(tail.poll()['completed_turn_ids'],[])
+        append(self.path,record('event_msg',type='task_started',turn_id='fresh'),
+               record('event_msg',type='task_complete',turn_id='fresh'))
+        self.assertEqual(tail.poll()['completed_turn_ids'],['fresh'])
+
+    def test_abort_stop_and_late_old_turn_completion_are_not_success(self):
+        tail = RolloutTail(self.path,self.root,THREAD); tail.poll()
+        append(self.path,record('event_msg',type='turn_aborted',turn_id='t1'),
+               record('event_msg',type='task_complete',turn_id='t1'),
+               record('event_msg',type='task_started',turn_id='t2'),
+               record('event_msg',type='hook_completed',turn_id='t2',hook_event_name='Stop'),
+               record('event_msg',type='task_complete',turn_id='t1'))
+        value = tail.poll()
+        self.assertEqual(value['completed_turn_ids'],[])
+        self.assertEqual((value['execution'],value['turn_id']),('running','t2'))
+        append(self.path,record('event_msg',type='task_complete',turn_id='t2'))
+        self.assertEqual(tail.poll()['completed_turn_ids'],['t2'])
+
+    def test_recent_live_completion_ids_are_bounded_and_duplicate_completion_does_not_repeat(self):
+        tail = RolloutTail(self.path,self.root,THREAD); tail.poll()
+        for number in range(130):
+            turn = f'fast-{number}'
+            append(self.path,record('event_msg',type='task_started',turn_id=turn),
+                   record('event_msg',type='task_complete',turn_id=turn),
+                   record('event_msg',type='task_complete',turn_id=turn))
+        value = tail.poll()
+        self.assertEqual(value['completed_turn_ids'],[f'fast-{n}' for n in range(2,130)])
+
 
 class ObserverServiceTests(unittest.TestCase):
     def test_registered_session_flows_from_journals_to_broker_then_cleans_up(self):
@@ -334,6 +507,13 @@ class ObserverServiceTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE', json.dumps(noticed))
                 append(roll, reply_record())
                 until(lambda value: value['notification']['status'] == 'cancelled')
+                append(roll,record('event_msg',type='task_complete',turn_id='t1'))
+                completed = until(lambda value: value['notification'] is not None
+                                  and value['notification']['origin'] == 'codex_turn')
+                self.assertEqual(completed['notification']['request_id'],'t1')
+                self.assertEqual(completed['observed']['completed_turn_ids'],['t1'])
+                self.assertEqual(completed['state'],'idle')  # Turn end is not semantic project completion.
+                self.assertIsNone(completed['question'])
                 agent.request({'type':'call','operation':'release_slot',
                     'arguments':{'slot_token':token,'idempotency_key':'release'},'metadata':{'thread_id':THREAD}})
             self.assertFalse(service.observer.thread.is_alive())

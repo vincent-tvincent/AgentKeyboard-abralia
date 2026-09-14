@@ -599,7 +599,14 @@ an absolute 25%/50% of the hardware limit. The backend preserves the keyboard
 limit and uses the existing firmware protocol.
 
 Routine slot colors are steady and inactive colors retain 75% saturation;
-notification animation is exempt. Pause keeps its independent mode cue: inactive
+notification animation is exempt. New notifications add a brief V-only breath
+to the notifying task's visible F-key, using its existing slot color and value
+ceiling. By default it makes three smooth breaths over six seconds, down to 65%
+of that key's normal V. The timer starts at notification arrival, even for queued
+calls; off-page aging and retries do not restart it. Mute, pickup, withdrawal and
+expiry stop the cue. Existing selection-preview and keyboard-guide visuals take
+precedence. Other keys and the keyboard's brightness limit are unaffected.
+Pause keeps its independent mode cue: inactive
 Pause varies saturation between white and yellow-green when attention is available;
 active Pause keeps this mode cue even while a call is ringing, changing HSV
 saturation at fixed V. The separate red Scroll Lock mute cue remains solid.
@@ -632,6 +639,24 @@ probe continues to write metadata only.
 `execution`, `turn_id`, question stages, the latest hook metadata and source
 errors. Turn completion means idle, not completion of the user's project.
 Ordinary state observations remain quiet and preserve task identity colors.
+A fresh native `task_complete` record creates one turn-finished call for an
+already registered task. This is independent of agent-reported state and uses
+the normal queue, mute, pickup and fog lifecycle. Repeated observations do not
+restart a handled call. Startup and replaced/truncated logs establish a baseline
+without announcing historical completions; turns entirely between later polls
+are still detected. An interrupted turn, unavailable log, or `Stop` hook alone
+does not create a completion call: Codex can continue after a stop hook. This
+automatic behavior requires the observer and readable local Codex session logs;
+explicit agent attention requests remain available separately.
+
+`allocation.observed.completed_turn_ids` lists recently detected fresh native
+completions. A completion call has `origin: codex_turn` and its native turn ID as
+`request_id`; `codex_turn_attention` records creation and `call_presented`
+records promotion into the call queue's active position. These distinguish
+automatic completion from an agent's explicit notification request. A turn that
+finishes before the initial log baseline, or during a read-error recovery gap,
+can be missed. A full queue logs `codex_turn_attention_skipped` without retrying
+that completion later.
 
 An accepted asynchronous question automatically creates a Codex-origin call.
 For blocking `request_user_input`, an invocation in a recorded Plan-mode turn
@@ -691,6 +716,9 @@ Status also includes `knob_selection_remaining_seconds` and `page_display`
 with visibility, bank offset, page/key assignments and capture availability.
 Selected-slot V breathing uses `selection_breath_min_percent` (85) and
 `selection_breath_seconds` (2); setting the minimum to 100 makes the cue steady.
+Notification-slot breathing uses `notification_slot_breath_seconds` (6; 0 disables
+it) and `notification_slot_breath_min_percent` (65; 100 keeps V steady). These are
+host appearance settings, not model arguments.
 
 Keyboard navigation settings are `keyboard_navigation_enabled` (true),
 `navigation_hold_seconds` (0.8) and `navigation_timeout_seconds` (15). Status also

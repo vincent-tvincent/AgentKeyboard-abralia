@@ -33,6 +33,8 @@ PENDING = ("queued", "active", "muted")
 class BrokerConfig:
     notification_seconds: float = 300
     notification_breath_seconds: float = 8
+    notification_slot_breath_seconds: float = 6
+    notification_slot_breath_min_percent: float = 65
     agent_animations_enabled: bool = True
     orb_formation_seconds: float = 2
     orb_hold_seconds: float = 120
@@ -84,7 +86,9 @@ class BrokerConfig:
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} must be a boolean")
         limits = {"notification_seconds": (1, 3600), "question_seconds": (1, 86400),
-                  "notification_breath_seconds": (4, 120), "orb_formation_seconds": (.1, 30),
+                  "notification_breath_seconds": (4, 120),
+                  "notification_slot_breath_seconds": (0, 30), "notification_slot_breath_min_percent": (0, 100),
+                  "orb_formation_seconds": (.1, 30),
                   "orb_hold_seconds": (0, 3600), "orb_fade_seconds": (.1, 600),
                   "orb_dismiss_seconds": (.05, 5),
                   "disconnect_grace_seconds": (1, 600), "background_seconds": (1, 600),
@@ -189,6 +193,8 @@ class Allocation:
     native_requests: dict[str, dict] = field(default_factory=dict)
     native_deadlines: dict[str, float] = field(default_factory=dict)
     native_covered_by_question: dict[str, str] = field(default_factory=dict)
+    completion_notifications: dict[str, Notification] = field(default_factory=dict)
+    completed_turn_ids: dict[str, None] = field(default_factory=dict)
     observation: dict | None = None
     host_registered: bool = False
     agent_attached: bool = True
@@ -958,6 +964,7 @@ class Broker:
     @staticmethod
     def _notices(slot: Allocation):
         return (([slot.agent_notification] if slot.agent_notification else []) + list(slot.native_notifications.values())
+                + list(slot.completion_notifications.values())
                 + ([slot.frame_notification] if slot.frame_notification else []))
 
     def _held_notice(self, slot: Allocation) -> Notification | None:
@@ -1045,11 +1052,50 @@ class Broker:
                     and request_id not in slot.native_notifications):
                 del slot.native_deadlines[request_id]
                 slot.native_covered_by_question.pop(request_id, None)
+        self._observe_codex_completion(slot, observation)
         self._select_notice(slot)
         slot.revision += 1
         self._promote()
         self.event("codex_observed", slot, execution=observation.get("execution", "unknown"))
         return True
+
+    def _observe_codex_completion(self, slot: Allocation, observation: dict):
+        # Stop is a hook attempt which Codex can block and continue. Idle, a
+        # disconnected bridge, and a semantic state update are not completion
+        # evidence. The tail supplies only fresh native task_complete IDs.
+        if observation.get('source') != 'codex_observer' or observation.get('error'):
+            return
+        turns = observation.get('completed_turn_ids', [])
+        if not isinstance(turns, list) or len(turns) > 128:
+            return
+        for turn_id in turns:
+            if not isinstance(turn_id, str) or not turn_id or len(turn_id) > 256:
+                continue
+            if turn_id in slot.completed_turn_ids:
+                continue
+            slot.completed_turn_ids[turn_id] = None
+            while len(slot.completed_turn_ids) > 256:
+                del slot.completed_turn_ids[next(iter(slot.completed_turn_ids))]
+            pending = sum(n.status in PENDING for s in self.slots.values() for n in self._notices(s))
+            if pending >= self.config.max_pending_calls:
+                self.event('codex_turn_attention_skipped', slot, turn_id=turn_id, reason='notification_queue_full')
+                continue
+            now = self.clock()
+            clip, source, fallback = self._animation_choice(slot)
+            slot.completion_notifications[turn_id] = Notification(
+                secrets.token_hex(12), now, now + self.config.notification_seconds,
+                origin='codex_turn', request_id=turn_id, animation=clip,
+                animation_source=source, animation_fallback=fallback)
+            if not self.attention_muted(slot):
+                self.hold_until = 0
+            self.event('codex_turn_attention', slot, turn_id=turn_id)
+        # Retain pending calls; discard only old closed records. Dedup identities
+        # outlive the observer's bounded retry window, including after pickup.
+        for turn_id, notice in list(slot.completion_notifications.items()):
+            if len(slot.completion_notifications) <= 256:
+                break
+            if notice.status not in PENDING and notice is not slot.notification:
+                del slot.completion_notifications[turn_id]
 
     def _close_native_question(self, slot: Allocation, request_id: str, outcome: str):
         existed = slot.native_requests.pop(request_id, None)

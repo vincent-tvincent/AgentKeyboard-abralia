@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import json
 import shlex
 import subprocess
 import tempfile
@@ -72,7 +73,7 @@ class FirmwarePortTests(unittest.TestCase):
 
     def test_siblings_keep_upstream_keymaps_and_reference_implementations(self):
         for board in ("ansi", "ansi_encoder"):
-            for variant in ("abralia", "abralia_host_interaction"):
+            for variant in ("led_only_not_interactable", "abralia_host_interaction"):
                 with self.subTest(board=board, variant=variant):
                     keymap = USERSPACE / "keyboards/keychron/v3" / board / "keymaps" / variant
                     self.assertIn(
@@ -87,6 +88,18 @@ class FirmwarePortTests(unittest.TestCase):
                         expected = f"../../../../v3_8k/ansi_encoder/keymaps/{variant}/{name}"
                         self.assertIn(f'#include "{expected}"', (keymap / name).read_text())
                         self.assertTrue((keymap / expected).is_file())
+
+    def test_build_manifest_uses_exact_current_variant_names(self):
+        targets = json.loads((USERSPACE / 'qmk.json').read_text())['build_targets']
+        boards = ('keychron/v3_8k/ansi_encoder', 'keychron/v3/ansi', 'keychron/v3/ansi_encoder')
+        self.assertEqual({tuple(target) for target in targets},
+                         {(board, variant) for board in boards
+                          for variant in ('led_only_not_interactable', 'abralia_host_interaction')})
+        for board in boards:
+            keymaps = USERSPACE / 'keyboards' / board / 'keymaps'
+            self.assertFalse((keymaps / 'abralia').exists())
+            self.assertTrue((keymaps / 'led_only_not_interactable/keymap.c').is_file())
+            self.assertTrue((keymaps / 'abralia_host_interaction/keymap.c').is_file())
 
 
 if __name__ == "__main__":

@@ -63,12 +63,16 @@ class RolloutTail:
         self.thread_id = str(UUID(thread_id))
         self.state = RolloutObservation(self.thread_id)
         self.validated = False
+        self.baselined = False
+        self.completed_turn_ids = OrderedDict()
 
     def poll(self):
         rows, reset, caught_up = self.cursor.poll()
         if reset:
             self.state = RolloutObservation(self.thread_id)
             self.validated = False
+            self.baselined = False
+            self.completed_turn_ids.clear()
         for row in rows:
             if not self.validated:
                 meta = row.get('payload', {})
@@ -78,8 +82,23 @@ class RolloutTail:
                     raise ValueError('Codex observation session/project mismatch')
                 self.validated = True
                 continue
+            payload = row.get('payload')
+            completed = (self.baselined and row.get('type') == 'event_msg'
+                         and isinstance(payload, dict) and payload.get('type') == 'task_complete'
+                         and self.state.execution == 'running' and self.state.turn_id is not None
+                         and payload.get('turn_id') == self.state.turn_id)
             self.state.feed(row)
-        return self.state.snapshot() if self.validated and caught_up else None
+            if completed:
+                self.completed_turn_ids[self.state.turn_id] = None
+                while len(self.completed_turn_ids) > 128:
+                    self.completed_turn_ids.popitem(last=False)
+        if not self.validated or not caught_up:
+            return None
+        # The first fully read snapshot establishes a baseline, including after
+        # replacement/truncation. Only subsequently appended completions ring.
+        # Keep recent IDs in snapshots so a failed broker delivery can retry.
+        self.baselined = True
+        return {**self.state.snapshot(), 'completed_turn_ids': list(self.completed_turn_ids)}
 
 
 def configured_hook_journal(project):
@@ -191,6 +210,7 @@ class CodexObserver:
                            'last_hook':self.hooks.get(thread_id), 'error':error}
             if snapshot:
                 observation.update({key:snapshot[key] for key in ('execution','turn_id','mode','last_event_at')})
+                observation['completed_turn_ids'] = snapshot['completed_turn_ids']
                 questions = {q['request_id']:q for q in snapshot['recent_questions']}
                 questions.update({q['request_id']:q for q in snapshot['pending_questions']})
                 observation['questions'] = list(questions.values())

@@ -43,6 +43,77 @@ to restore ordinary input behavior.
 The firmware and standalone desktop RGB/input APIs can also be used independently
 of the agent backend.
 
+## Quick start: macOS + Codex
+
+- **[Keyboard user guide](docs/user-guide/README.md)** — shortcuts, effects, GIF demonstrations and model-specific controls.
+- **[Simulator guide](tools/keyboard-simulator/README.md)** — setup, design inputs and GIF export.
+- **[App setup guide](abralia/desktop/gui/README.md)** — keyboard selection, the shared backend, project muting and Codex plugin setup.
+
+You need Codex, the Abralia macOS app, and a supported keyboard running the
+matching [Host Interaction firmware](abralia/firmware/qmk-userspace/README.md).
+Select RGB **effect 25** on the keyboard. Abralia checks the firmware when it
+connects; the app does not flash it for you. To build the app from source, follow
+the [macOS preview build steps](abralia/desktop/gui/README.md#develop-and-package).
+
+1. **Open `Abralia.app` and choose your keyboard.** Abralia remembers the device
+   and starts its backend automatically. Check that the app says **Backend running**.
+2. **Open Integrations → Connect Codex.** This installs the bundled Abralia skill,
+   MCP tools and named lifecycle hooks. Review and trust the six **Abralia:** hooks in
+   **Codex Settings → Hooks**; installation does not approve them automatically.
+3. **Load the tools in Codex.** If your current task cannot see Abralia's tools,
+   restart Codex and resume that task after installation.
+4. **Ask the agent to join:**
+
+   > Enable Abralia for this task and register yourself.
+
+   The agent enables its current project if needed, claims its own slot and
+   reports its page/F-key. Installing the plugin alone does not register agents.
+   You can also enable folders through **Projects → Add project** and control
+   project notifications there.
+5. **Try the keyboard.** On the V3 8K, double-tap the physical **Pause** position
+   to enter Agent Mode, then press the agent's occupied **F-key** to open it.
+   Ask **“Send a test notification through Abralia.”** **Print Screen** picks up
+   the call and **Scroll Lock** mutes it while Agent Mode is active.
+
+For navigation, hold Pause for about **0.8 seconds**. Arrows browse agents/pages,
+Enter opens the previewed task, and **Escape cycles arrival order / project
+grouping**. After 15 seconds of navigation inactivity, the knob returns to page
+browsing. Double-tap Pause to return to ordinary typing.
+
+Closing the app window keeps Abralia running in the background. Choose **Quit**
+from the app or Dock menu to stop it and release the keyboard.
+
+**No slot or notification?** Confirm the backend is running, the agent has
+explicitly registered, and Abralia's hooks are trusted. Answer native Codex
+questions in Codex's UI; numbered page keys are not answer shortcuts.
+For terminal/editor pickup, check the
+[supported navigation routes](abralia/desktop/BACKEND.md#cli-terminals-and-vs-code-windows).
+See the [app guide](abralia/desktop/gui/README.md) for full setup and troubleshooting.
+
+## Design and test without a keyboard
+
+The standalone [keyboard simulator](tools/keyboard-simulator/README.md) runs in
+your browser with a grayscale workbench around the colored LEDs. Try physical
+gestures, send calls from test agents, import JSON timelines or LED frames, plug
+in a Python effect, and export your design as a GIF. It uses the same host
+controller and renderer as Abralia, with model geometry supplied by device profiles.
+
+```sh
+.venv/bin/python tools/keyboard-simulator/simulator.py serve
+```
+
+See the [simulator setup and examples](tools/keyboard-simulator/README.md) for
+dependencies and custom profiles. It runs independently of the app and does not
+connect to a physical keyboard.
+
+For complete usage instructions, use the linked
+[user guide](docs/user-guide/README.md):
+[controls](docs/user-guide/controls.md),
+[lighting and effects](docs/user-guide/effects.md), and
+[keyboard-specific mappings](docs/user-guide/keyboards/README.md).
+Six narrated simulation GIFs illustrate the actions alongside written steps.
+Shared behavior is documented once; each model has its own page.
+
 ## Task colors and notifications
 
 ### One color per task
@@ -51,6 +122,11 @@ Each registered task gets an identity color and a stable logical slot. F1–F12
 show one page of twelve slots; the same task keeps its color as it works,
 requests attention, or moves to another position. The color identifies the
 task, while animation and highlighting indicate attention and selection.
+
+Project grouping gives related agents similar hues. Switching back to arrival
+order restores their original individual colors. Colors are generated
+procedurally without a fixed palette capacity; finite RGB values can eventually
+repeat, while slot IDs and ownership remain distinct.
 
 <details open>
 <summary><strong>See the task slots up close</strong></summary>
@@ -96,10 +172,10 @@ settings, simulation, image previews and the bounded hardware demo.
 
 ## What works today
 
-- **One terminal backend owns the keyboard.** A serialized device worker handles
+- **One backend owns the keyboard.** A serialized device worker handles
   RGB and input through `SharedRawHidSession`; MCP bridges use a private local
   socket and never open HID themselves. Hardware and simulated modes are available.
-- **Agents register through project-local MCP.** They can report progress and
+- **Agents register through the Codex plugin when asked.** They can report progress and
   request attention. The host can also register existing project tasks without
   waking them, release individual slots, or release all slots.
 - **Stable task identity with movable placement.** Each allocation has a slot ID,
@@ -107,7 +183,8 @@ settings, simulation, image previews and the bounded hardware demo.
   mapping, so rearranging the keyboard does not assign an agent another task's slot.
 - **Notifications and conversation pickup.** Incoming calls appear without first
   selecting an agent. Pickup opens its registered Codex task; mute quiets the call.
-  The Codex observer can detect pending native questions and their replies.
+  The Codex observer detects pending native questions and their replies, and
+  requests attention when a registered task's turn finishes.
 - **Paged navigation and attention controls.** Twelve positions per page, optional
   knob browsing, direct page jumps, selected-slot brightness breathing, ten-minute
   individual mutes and an “only this agent” mode are implemented. Page indicators
@@ -115,6 +192,9 @@ settings, simulation, image previews and the bounded hardware demo.
 - **Manual gap closing.** Hold an empty F-key in active Agent Mode: the whole gap
   brightens and flashes, then later agents compact forward across pages while
   retaining their identities and state.
+- **Arrival or project sorting.** Escape in keyboard navigation switches ordering
+  and cached color palettes. New registrations follow the current policy; the
+  policy and both palettes survive live-session recovery.
 - **Bounded cleanup and recovery.** Backend shutdown releases volatile bindings
   and attempts to restore the saved RGB scene. A surviving verified MCP bridge
   can restore allocations and identity colors after a backend restart with fresh
@@ -129,7 +209,7 @@ Automated checks cover ownership, retries, paging, input routing, rendering,
 collision and color-mixing math, independent notification lifetimes, recovery,
 project setup and real STDIO MCP clients.
 
-Agents use semantic operations: `acquire_slot`, `release_slot`, `set_slot_state`,
+Agents use semantic operations: `enable_self`, `acquire_slot`, `release_slot`, `set_slot_state`,
 `set_notification`, `report_question`, `clear_question`, and `get_status`.
 Optional `set_notification_animation` adds a short effect over the task color;
 agents without an immediate idea simply keep the default. `show_keyboard_frame`
@@ -148,7 +228,7 @@ navigation are not answer shortcuts.
 Codex session observation currently depends
 on local client data formats and needs compatibility checks when the client changes.
 
-## Try the backend
+## Terminal setup for development
 
 For the packaged macOS workflow, open Abralia, choose your keyboard, use
 **Integrations → Connect Codex**, review its hooks in Codex, then add your project
@@ -181,6 +261,9 @@ host registration/release commands, appearance settings, recovery and limitation
 
 These labels refer to physical positions on the V3 8K profile, independently of
 their VIA keycode mappings. Task controls operate while Agent Mode is active.
+Use the [complete controls guide](docs/user-guide/controls.md) for mode precedence
+and illustrated sequences, or the [model index](docs/user-guide/keyboards/README.md)
+to locate the controls on another keyboard.
 
 | Gesture | Action |
 | --- | --- |
@@ -188,6 +271,7 @@ their VIA keycode mappings. Task controls operate while Agent Mode is active.
 | Occupied F-key | Select and open that task; a pending call is picked up |
 | Green Print Screen / red Scroll Lock | Pick up / mute the incoming call |
 | Hold Pause | Toggle the temporary navigation-key layer |
+| Escape in keyboard navigation | Cycle arrival order / project groups and their color palettes |
 | Page Up / Up, Page Down / Down in keyboard navigation | Previous / next page |
 | Left / Right in keyboard navigation | Preview the previous / next occupied slot on the page |
 | Home / End in keyboard navigation | Preview the first / last task across all pages |
@@ -197,15 +281,16 @@ their VIA keycode mappings. Task controls operate while Agent Mode is active.
 | Delete / Insert in keyboard navigation | Toggle an individual ten-minute mute / “only this agent” |
 | Hold Delete in keyboard navigation | Clear individual mutes |
 | Hold an empty F-key | Close that gap across later pages |
-| Escape while focused | Leave task focus and restore the background |
+| Escape while focused, outside keyboard navigation | Leave task focus and restore the background |
 
 The [backend guide](abralia/desktop/BACKEND.md#physical-interaction) describes
 the complete key mapping, timers and lighting codes. Inactive typing retains
 ordinary input. The backend preserves the keyboard's own brightness limit.
 
-Navigation keys disarm after 15 seconds without navigation activity; knob
-agent-selection mode returns to page browsing after 60 seconds without selection
-activity. Selected-task background color and Escape's cue hold for 15 seconds,
+Navigation keys disarm after 15 seconds without navigation activity, also returning
+the knob to page browsing. Independently entered knob agent-selection mode returns
+to page browsing after 60 seconds without selection activity. Selected-task
+background color and Escape's focus-exit cue hold for 15 seconds,
 then fade together over five seconds. That lighting fade does not end task focus
 or answer a pending question. These timers and the idle white background are
 host settings, separate from the keyboard's brightness ceiling.
@@ -235,7 +320,15 @@ Firmware images are model-specific; follow the [build guide](abralia/firmware/qm
 
 Contributions for other keyboards and layouts are welcome. The device profile
 describes physical controls and RGB geometry; a knob is optional. Additional
-harness adapters and a desktop settings interface are also future contribution areas.
+harness adapters, more appearance settings and Windows/Linux app packages are
+future contribution areas. The existing macOS app already handles keyboard
+selection, project management and integration setup.
+
+For profile authors, **[`abralia-dev`](abralia/desktop/DEVELOPER_CLI.md)** can scan
+HID interfaces before a profile exists, query a selected firmware protocol,
+generate an explicitly incomplete draft, and validate/export a completed profile.
+USB discovery supplies matching fields; geometry, LED mapping and physical
+verification remain separate steps.
 
 <details open>
 <summary><strong>RGB experiments: a Codex-inspired logo and the original Fog Orb</strong></summary>
@@ -272,7 +365,7 @@ Two firmware variants are available:
 
 | Variant | What it provides |
 | --- | --- |
-| `abralia` | Effect-25 RGB control and the local awaiting halo |
+| `led_only_not_interactable` | Effect-25 RGB control and the local awaiting halo; no host input bindings |
 | `abralia_host_interaction` | RGB control plus temporary key/knob bindings for the agent backend |
 
 Use the Host Interaction variant for the full agent workflow. The
@@ -314,8 +407,10 @@ the available targets and installation.
 ## Repository layout
 
 - `abralia/firmware/` contains the QMK External Userspace firmware.
-- `abralia/desktop/` contains the Python 3.11+ RGB/input APIs, terminal backend,
-  project-local MCP integration and macOS-first Keychron effect-25 adapter.
+- `abralia/desktop/` contains the Python 3.11+ RGB/input APIs, shared backend,
+  macOS GUI app, Codex plugin/MCP integration and optional project-local setup.
+- `tools/keyboard-simulator/` contains the independent browser design tool and GIF exporter.
+- `docs/user-guide/` contains shared controls/effects and separate keyboard-model guides.
 - `experiments/` contains bounded hardware and protocol experiments.
 
 <details open>

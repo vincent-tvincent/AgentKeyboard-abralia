@@ -328,6 +328,21 @@ class Renderer:
                 if value(colors[other]) > other_limit:
                     colors[other] = at_value(colors[other], other_limit)
 
+        # Arrival cues use the original notice clock, even while the main-area
+        # presentation queues. Only lower this key's V after establishing the
+        # frame ceiling, so other keys and the keyboard's limit stay unchanged.
+        # The active preview keeps its existing highlight/breathing precedence.
+        visible = {slot.slot_id: slot for slot in broker.visible_slots()}
+        for cue in visuals.get('slot_breaths', ()):
+            slot = visible.get(cue['slot_id'])
+            if slot is None or slot is candidate:
+                continue
+            key = slot.f_key
+            level = broker.config.notification_slot_breath_min_percent / 100
+            level += (1 - level) * wave(cue['elapsed'], cue['duration'] / 3)
+            color = colors[key]
+            colors[key] = at_value(color, round(max(color.red, color.green, color.blue) * level))
+
         # Apply the muted appearance after the candidate blend and frame scaling.
         # This changes occupied F-keys only, never the shared brightness reference.
         for slot in broker.visible_slots():

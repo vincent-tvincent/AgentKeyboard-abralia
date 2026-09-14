@@ -88,6 +88,14 @@ class DeviceProfileTests(unittest.TestCase):
                 self.assertEqual(profile.keymap.encoder_count, encoders)
                 self.assertEqual(profile.require_interaction().toggle_matrix, toggle)
                 self.assertEqual(len(full.rgb_elements), 87)
+                # ANSI Enter reaches the same main-block edge as Backspace
+                # and Right Shift. The V3 8K VIA layout specifies 2.25U even
+                # though the upstream QMK keyboard.json omits its width.
+                enter = full.element_by_id['ENTER'].geometry
+                for neighbor in ('BACKSPACE', 'RIGHT_SHIFT'):
+                    other = full.element_by_id[neighbor].geometry
+                    self.assertEqual(enter.x + enter.width, other.x + other.width)
+                self.assertGreater(enter.width, 2 * enter.height)
                 self.assertEqual(
                     sum(e.encoder is not None for e in full.elements), 2 * encoders
                 )

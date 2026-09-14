@@ -381,7 +381,11 @@ class RendererAndRoutingTests(BrokerTestCase):
         self.notify(self.a, token)
         self.clock.advance(.4)
         frame = self.renderer.frame(self.b).payload
-        self.assertEqual(frame.colors['F1'], hex_color(self.b.slots[1].identity_color))
+        identity = to_hsv8(hex_color(self.b.slots[1].identity_color))
+        notified = to_hsv8(frame.colors['F1'])
+        self.assertAlmostEqual(notified.hue, identity.hue, delta=1)
+        self.assertAlmostEqual(notified.saturation, identity.saturation, delta=1)
+        self.assertLess(notified.value, identity.value)  # Brief arrival cue changes V only.
         self.assertIn('A', frame.colors)
 
     def test_slot_background_dims_from_first_allocation_until_last_release(self):

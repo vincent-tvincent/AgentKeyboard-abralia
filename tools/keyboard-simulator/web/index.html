@@ -1,0 +1,81 @@
+<!doctype html>
+<!-- Copyright 2026 blue_lobster; SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Abralia · Keyboard Simulator</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="wordmark">abralia <span>/ design tools</span></div>
+    <span class="simulation-label"><span class="status-dot"></span> Simulation only</span>
+  </header>
+  <main>
+    <div class="heading"><div><p class="eyebrow">KEYBOARD SIMULATOR</p><h1>See what your agents feel like.</h1><p class="subtitle">Try the controls. Inspect the light. Bring your own design.</p></div><button id="help-toggle" class="subtle" aria-expanded="false" aria-controls="help">How to use</button></div>
+    <section id="help" class="help" hidden>
+      <strong>A workspace for keyboard interactions</strong>
+      <p>Click keys to use their current actions. Double-click the mode key to enter Agent Mode; hold it to navigate. Hold an empty F-key to close a gap. The knob controls are below the board.</p>
+      <p>Use Test agents to send notifications or change state. Use Design JSON to import a timeline or LED frames, then replay it. The simulator uses the host controller and renderer; it does not connect to your keyboard or open agent conversations.</p>
+    </section>
+    <div id="error" role="alert" hidden></div>
+    <section class="toolbar" aria-label="Simulation setup">
+      <label>KEYBOARD<select id="profile" aria-label="Keyboard profile"></select></label>
+      <label class="scenario-label">SCENARIO<select id="scenario" aria-label="Scenario"></select></label>
+      <button id="load-scenario">Load scenario</button>
+      <div class="toolbar-separator"></div>
+      <button id="play" class="primary">Pause</button>
+      <button id="step" aria-label="Advance simulation by one tenth of a second">+0.1 s</button>
+      <button id="reset">Replay</button>
+      <label class="speed-label">SPEED<select id="speed" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+    </section>
+    <div class="workspace">
+      <section class="stage" aria-label="Keyboard preview">
+        <div class="stage-top"><div><span id="board-name">Loading keyboard…</span><span id="board-caption">Geometry from the selected device profile</span></div><output id="clock">00:00.0</output></div>
+        <div class="state-strip"><span id="mode-state">Ordinary typing</span><span id="page-state">Page 1 / 1</span><span id="order-state">Arrival order</span><span id="effect-state">Steady</span></div>
+        <div class="board-scroll"><svg id="keyboard" role="group" aria-label="Interactive simulated keyboard"></svg></div>
+        <div class="stage-bottom">
+          <span id="key-readout">Point to a key to inspect its LED and current action.</span>
+          <div id="knob-controls" class="knob-controls" hidden><span id="knob-mode">Knob · pages</span><button data-knob="previous" aria-label="Rotate knob counterclockwise">↶</button><button data-knob="press">Press</button><button data-knob="next" aria-label="Rotate knob clockwise">↷</button></div>
+        </div>
+        <div class="stage-settings">
+          <label for="background">WHITE BACKGROUND <output id="background-value">50%</output></label><input id="background" type="range" min="0" max="100" step="5" value="50">
+          <span>Preview values; physical LED appearance can differ.</span>
+        </div>
+        <div class="action-line" aria-live="polite"><span class="action-prefix">LATEST ACTION</span><span id="latest-action">Ready for input</span></div>
+      </section>
+      <aside class="inspector">
+        <div class="tabs" role="tablist" aria-label="Inspector">
+          <button role="tab" id="tab-agents" aria-selected="true" aria-controls="agents-panel" data-tab="agents">Test agents</button>
+          <button role="tab" id="tab-design" aria-selected="false" aria-controls="design-panel" data-tab="design">Design JSON</button>
+          <button role="tab" id="tab-events" aria-selected="false" aria-controls="events-panel" data-tab="events">Events</button>
+        </div>
+        <section id="agents-panel" role="tabpanel" aria-labelledby="tab-agents">
+          <div class="panel-heading"><h2>Agents on this keyboard</h2><span id="agent-count">0</span></div>
+          <div id="agent-list" aria-label="Simulated agents"></div>
+          <div class="agent-actions" id="agent-actions" hidden>
+            <label>STATE<select id="agent-state"><option value="idle">Idle</option><option value="progressing">Progressing</option><option value="action_requested">Action requested</option><option value="error">Error</option><option value="completed">Completed</option></select></label>
+            <div class="button-row"><button id="notify" class="primary">Notify</button><button id="withdraw">Withdraw call</button><button id="release">Release slot</button></div>
+          </div>
+          <form id="add-agent"><h3>Add a test agent</h3><label>PROJECT<input id="new-project" value="Project A" maxlength="80" required></label><label>LABEL<input id="new-label" placeholder="Review agent" maxlength="80" required></label><button class="wide" type="submit">Add agent</button></form>
+        </section>
+        <section id="design-panel" role="tabpanel" aria-labelledby="tab-design" hidden>
+          <div class="panel-heading"><h2>Plug in a design</h2><button id="import-design" class="small">Import JSON</button></div>
+          <input id="design-file" type="file" accept="application/json,.json" hidden>
+          <label class="sr-only" for="design-editor">Scenario or LED-frame design JSON</label>
+          <textarea id="design-editor" spellcheck="false" aria-describedby="design-hint"></textarea>
+          <p id="design-hint" class="muted">Apply starts a new simulation. Imported JSON contains data, not executable code.</p>
+          <div class="button-row"><button id="apply-design" class="primary">Apply design</button><button id="download-design">Download JSON</button></div>
+        </section>
+        <section id="events-panel" role="tabpanel" aria-labelledby="tab-events" hidden>
+          <div class="panel-heading"><h2>Input & controller events</h2><span>Latest first</span></div>
+          <ol id="event-list" aria-label="Simulation events"></ol>
+        </section>
+      </aside>
+    </div>
+    <footer><span>Only the LEDs use color. Everything around them stays neutral.</span><span>Local simulation · no HID connection</span></footer>
+  </main>
+</body>
+</html>

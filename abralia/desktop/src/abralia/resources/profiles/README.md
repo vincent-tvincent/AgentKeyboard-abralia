@@ -11,8 +11,9 @@ profiles automatically.
 | [Original V3 ANSI](keychron-v3-ansi-effect25.json) | `keychron/v3/ansi` | `3434:0330` | Offline only; hardware-unverified |
 | [Original V3 ANSI encoder](keychron-v3-ansi-encoder-effect25.json) | `keychron/v3/ansi_encoder` | `3434:0331` | Offline only; hardware-unverified |
 
-Each target has `abralia` RGB-only and `abralia_host_interaction` firmware
-variants. RGB-only use does not probe Host Interaction. Interaction use requires
+Each target has `led_only_not_interactable` and `abralia_host_interaction`
+firmware variants. `led_only_not_interactable` provides lighting control without
+host input bindings. RGB-only API use does not probe Host Interaction. Interaction use requires
 the second firmware variant and protocol v2. These profiles do not cover ISO,
 JIS, V3 Max, or V3 Ultra.
 
@@ -33,6 +34,17 @@ assert device == layout.device_profile
 
 Both readers also accept an explicit JSON filesystem path. Bundled IDs are
 `builtin:` followed by the JSON filename without `.json`. There is no default.
+
+## Author a new profile
+
+The [developer CLI](../../../../DEVELOPER_CLI.md) starts before a profile exists:
+scan HID descriptors, explicitly select a protocol to query, generate a draft,
+then validate and export the completed JSON. Unknown geometry, LED mapping and
+mode positions remain unset. A draft is not a usable profile, and configuration
+validation is not physical hardware certification.
+
+The current GUI additionally requires registering the new bundled ID in
+[`SUPPORTED_PROFILES`](../../backend/gui_devices.py) and rebuilding the app.
 
 ## Contents and boundaries
 

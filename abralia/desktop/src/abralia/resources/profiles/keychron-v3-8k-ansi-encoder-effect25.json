@@ -1356,7 +1356,7 @@
       "geometry": {
         "x": 12.75,
         "y": 3.25,
-        "width": 1,
+        "width": 2.25,
         "height": 1
       },
       "led_address": 62,

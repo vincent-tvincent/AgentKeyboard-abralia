@@ -20,10 +20,11 @@ cd /path/to/keychron-qmk_firmware
 
 ## Build
 
-RGB-only firmware:
+`led_only_not_interactable` firmware (lighting only; ordinary keyboard input
+remains available, but there are no Host Interaction bindings):
 
 ```sh
-qmk compile -j 10 -kb keychron/v3_8k/ansi_encoder -km abralia
+qmk compile -j 10 -kb keychron/v3_8k/ansi_encoder -km led_only_not_interactable
 ```
 
 RGB plus Host Interaction firmware:
@@ -43,12 +44,12 @@ and offline tests do not establish physical compatibility.
 | `keychron/v3/ansi` | `3434:0330` | 6 x 16 | 0 |
 | `keychron/v3/ansi_encoder` | `3434:0331` | 6 x 16 | 1 |
 
-Build the RGB-only and Host Interaction versions independently:
+Build `led_only_not_interactable` and `abralia_host_interaction` independently:
 
 ```sh
-qmk compile -j 10 -kb keychron/v3/ansi -km abralia
+qmk compile -j 10 -kb keychron/v3/ansi -km led_only_not_interactable
 qmk compile -j 10 -kb keychron/v3/ansi -km abralia_host_interaction
-qmk compile -j 10 -kb keychron/v3/ansi_encoder -km abralia
+qmk compile -j 10 -kb keychron/v3/ansi_encoder -km led_only_not_interactable
 qmk compile -j 10 -kb keychron/v3/ansi_encoder -km abralia_host_interaction
 ```
 
@@ -57,9 +58,9 @@ userspace. QMK copies the following generated files into this userspace root,
 alongside the reference V3 8K binaries:
 
 ```text
-keychron_v3_ansi_abralia.bin
+keychron_v3_ansi_led_only_not_interactable.bin
 keychron_v3_ansi_abralia_host_interaction.bin
-keychron_v3_ansi_encoder_abralia.bin
+keychron_v3_ansi_encoder_led_only_not_interactable.bin
 keychron_v3_ansi_encoder_abralia_host_interaction.bin
 ```
 
@@ -139,8 +140,8 @@ when completely black lighting is required.
 
 ## Host Interaction variant
 
-`abralia_host_interaction` is a separate keymap copied from the RGB-only
-variant. It retains effect 25 and adds protocol-v2 volatile physical-control
+`abralia_host_interaction` is a separate keymap based on
+`led_only_not_interactable`. It retains effect 25 and adds protocol-v2 volatile physical-control
 bindings on VIA custom channel 0, value 2. Double Pause enters or exits Host
 Interaction Mode only while RGB is enabled on effect 25. Outside that state,
 Pause is immediate ordinary input without the 300 ms gesture window. Keys,
@@ -155,28 +156,30 @@ but never reactivates input. Host-force commit is rejected with `INVALID_STATE`
 while effect 25 is unavailable. No effect-aware path writes EEPROM.
 
 The input protocol never writes EEPROM and does not interpret agent actions.
-See the project-root `docs/host-interaction-firmware-protocol.md` for the wire
-contract. Host-side force permission is broker policy and defaults to disabled
-in the future application; the firmware cannot attest to a computer UI click.
+See the [Host Interaction API guide](../../desktop/HOST_INTERACTION_API.md) for
+the host interface. Host-side force permission is broker policy; the firmware
+cannot attest to a computer UI click or authorize an agent's requested action.
 
 ### Current validation status
 
-Both `abralia` and `abralia_host_interaction` compile with 10 jobs. The current
-desktop suite covers protocol-v2 parsing, standby coordination, effect-aware
-restoration, and both shared-session modes. A historical protocol-v1 physical
-run confirmed double-Pause entry, Home CAPTURE + ONE_SHOT, End MIRROR +
-SESSION, clockwise knob CAPTURE + ONE_SHOT, repeated counterclockwise knob
-MIRROR + SESSION, and consecutive acknowledged events 1–101.
+The desktop suite covers protocol-v2 parsing, standby coordination, effect-aware
+restoration and shared-session behavior. The V3 8K reference keyboard runs the
+protocol-v2 Host Interaction firmware with captured single-key actions; physical
+notification, pickup/mute, mode switching, navigation, gap closing and sorting
+flows have been exercised. See the [user guide](../../../docs/user-guide/README.md)
+for current controls and the [model pages](../../../docs/user-guide/keyboards/README.md)
+for model-specific verification boundaries.
 
-Protocol v2 has not been flashed. Effect-change disarm, immediate Pause outside
-effect 25, effects 23/24 handoff, standby resumption, forced-activation gate,
-and post-flash VIA/Launcher/8K compatibility remain user-assisted physical
-validation tasks.
+Original V3 targets remain hardware-unverified. Source/build checks and selected
+reference-board interaction trials do not establish every recovery edge case,
+VIA/Launcher workflow or sustained 8K report cadence on every model.
 
 ## Flash
 
+For `led_only_not_interactable`:
+
 ```sh
-qmk flash -j 10 -kb keychron/v3_8k/ansi_encoder -km abralia
+qmk flash -j 10 -kb keychron/v3_8k/ansi_encoder -km led_only_not_interactable
 ```
 
 For the Host Interaction variant, replace the keymap argument with

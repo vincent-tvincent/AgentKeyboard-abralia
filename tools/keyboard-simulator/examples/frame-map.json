@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "Static key-color map",
+  "seed_agents": [],
+  "timeline": [],
+  "frames": [
+    {
+      "at": 0,
+      "background": "202020",
+      "colors": {"W": "2080FF", "A": "2080FF", "S": "2080FF", "D": "2080FF", "ENTER": "A0FF00", "ESC": "FF3030"}
+    }
+  ]
+}

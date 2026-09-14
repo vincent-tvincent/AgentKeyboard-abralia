@@ -2,4 +2,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Compile the reference implementation with this target's board configuration.
-#include "../../../../v3_8k/ansi_encoder/keymaps/abralia/rgb_matrix_user.inc"
+#include "../../../../v3_8k/ansi_encoder/keymaps/led_only_not_interactable/rgb_matrix_user.inc"

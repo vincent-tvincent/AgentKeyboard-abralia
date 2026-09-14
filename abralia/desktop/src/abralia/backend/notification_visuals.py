@@ -198,6 +198,19 @@ class NotificationVisualState:
     def snapshot(self, broker):
         now, config = broker.clock(), broker.config
         slots = {slot.slot_token: slot for slot in broker.slots.values()}
+        slot_breaths = []
+        for token, slot in slots.items():
+            if broker.attention_muted(slot):
+                continue
+            fresh = [notice for notice in broker._notices(slot)
+                     if self.notices.get((token, notice.notification_id)) in ('waiting', 'presenting')
+                     and notice.status in ('queued', 'active') and not notice.controls_dismissed
+                     and now < notice.expires_at
+                     and 0 <= now - notice.created_at < config.notification_slot_breath_seconds]
+            if fresh:
+                newest = max(fresh, key=lambda notice: notice.created_at)
+                slot_breaths.append({'slot_id': slot.slot_id, 'elapsed': now - newest.created_at,
+                                    'duration': config.notification_slot_breath_seconds})
         presentation = self.presentation
         result = None
         if presentation and presentation.paused_at is None and presentation.token in slots:
@@ -234,6 +247,6 @@ class NotificationVisualState:
                          'hidden': hidden, 'presenting': presenting,
                          'formed_at': orb.formed_at,
                          'notice_ids': notice_ids.get(token, [])})
-        return {'presentation': result, 'orbs': orbs,
+        return {'presentation': result, 'orbs': orbs, 'slot_breaths': slot_breaths,
                 'presentation_paused': bool(presentation and presentation.paused_at is not None),
                 'queued_tasks': len({key[0] for key, state in self.notices.items() if state == 'waiting'})}

@@ -7,6 +7,11 @@ the Keychron effect-25 protocol family. Bundled profiles cover V3 8K ANSI encode
 experimental original V3 ANSI / ANSI encoder ports; original V3 hardware has
 not been physically validated. macOS remains the primary desktop platform.
 
+For a new keyboard, start with the **[developer discovery CLI](DEVELOPER_CLI.md)**.
+`abralia-dev scan` needs no profile, and the draft/validation workflow keeps
+detected USB fields separate from missing layout information. Normal RGB/input
+controllers still require an explicit completed profile.
+
 For the agent workflow, start with the **[backend guide](BACKEND.md)**. It covers
 project-local MCP/skill setup, agent and host registration, stable slot identities,
 page navigation, pickup/mute, timed attention policies, gap closing, lighting and
@@ -42,7 +47,8 @@ The caller or a higher application layer chooses the JSON. This library never
 identifies a model to select a profile, and has no model/PID allowlist. USB
 matching uses the selected profile's identity fields; ambiguous matches require
 an explicit device index. The protocol adapter checks available firmware
-capabilities before writing. RGB-only firmware does not require Host Interaction.
+capabilities before writing. The `led_only_not_interactable` firmware supports
+RGB operations without Host Interaction input control.
 
 Bundled JSON and schemas now live in shared package resources, outside the RGB
 package. See the [profile catalog](src/abralia/resources/profiles/README.md).

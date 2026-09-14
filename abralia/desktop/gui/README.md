@@ -46,9 +46,10 @@ per-user locations and invokes Codex's supported plugin manager. The installed
 client must provide the `codex plugin` commands; setup reports a missing or
 incompatible client instead of editing arbitrary global configuration.
 
-Review/trust **Abralia:** hooks in Codex, then refresh the plugin or start a new
-task so its tools are loaded. The app distinguishes installation, runtime
-availability and hook events received. Installing a plugin does not trust its
+Review/trust **Abralia:** hooks in Codex, then refresh its tools. If they are
+unavailable in your current task, restart Codex and resume that task. The app
+distinguishes installation, runtime availability and hook events received.
+Installing a plugin does not trust its
 hooks. **Remove plugin** uses the plugin manager and preserves app preferences.
 
 **Copy manual hook TOML** is an alternative to plugin hooks. Do not enable both
@@ -74,16 +75,31 @@ The bundled terminal backend is also directly runnable:
 
 ## Develop and package
 
-From the repository root, prepare the existing Python package with the backend
-extra and PyInstaller in `.venv`. Then, from this directory:
+Profile developers can also use the bundled helper's `dev` entry point:
 
 ```sh
+"/path/to/Abralia.app/Contents/Resources/backend/abralia-gui-host/abralia-gui-host" dev scan --json
+```
+
+See the [developer CLI guide](../DEVELOPER_CLI.md) for explicit protocol probes,
+draft generation and offline profile validation. When this app owns the selected
+keyboard, supported probes use its cached connection capabilities.
+
+To build a runnable macOS app, start at the repository root:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -e 'abralia/desktop[backend]' pyinstaller
+cd abralia/desktop/gui
 npm ci
-npm run dev
-npm test
-npm run package:plugin
 npm run package:mac
 ```
+
+Open the `Abralia.app` path printed by the build, or extract the generated
+`out/Abralia-macos-<arch>-preview.zip` and open the app inside it.
+For frontend development, `npm run dev` starts the development window;
+`npm test` runs the GUI checks and `npm run package:plugin` builds only the plugin
+archive. Use the packaged app for the normal **Connect Codex** installation flow.
 
 Node 22.12+ is required by the pinned Electron tooling. The development app uses
 the repository's `.venv/bin/python`; `ABRALIA_PYTHON` can select another prepared

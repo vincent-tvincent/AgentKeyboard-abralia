@@ -18,7 +18,8 @@ position names come from the profile and do not imply that the corresponding
 key currently produces that keycode. After remapping, use live VIA lookup;
 these tables are not loaded by the runtime API.
 
-The original V3 `abralia` and `abralia_host_interaction` keymaps directly include
+The original V3 `led_only_not_interactable` and `abralia_host_interaction`
+keymaps directly include
 the pinned upstream `keychron` keymap. Their default mappings are therefore
 identical, which is why the Keychron and Abralia columns below match. This does
 not mean Host Interaction bindings cannot temporarily change input routing.

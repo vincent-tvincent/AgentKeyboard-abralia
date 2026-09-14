@@ -680,11 +680,24 @@ class BrokerService:
             thread_id = str(UUID(message.get("thread_id", "")))
             self.desktop_threads.add(thread_id)
             return {"status": "accepted", "thread_id": thread_id, "surface_source": "registered_by_host"}
+        if action == 'developer_probe':
+            # Serve verified connection metadata without another HID handle or
+            # even a new firmware query on the rendering/heartbeat worker.
+            if (message.get('expected_epoch') != self.broker.epoch
+                    or message.get('fingerprint') != getattr(self.driver, 'selected_device_fingerprint', None)
+                    or message.get('fingerprint') is None):
+                return {'status': 'rejected', 'reason': 'selected_device_changed'}
+            from abralia.developer.probe import cached_driver_report
+            capabilities = cached_driver_report(self.driver)
+            if capabilities is None:
+                return {'status': 'skipped', 'reason': 'verified_capabilities_unavailable'}
+            return {'status': 'accepted', 'backend_epoch': self.broker.epoch, 'capabilities': capabilities}
         if action == "status":
             self._refresh_projects()
             result = self.broker.admin_snapshot()
             device_selection = self.mode == 'hardware' and callable(getattr(self.driver, 'select_device', None))
             result['admin_operations'] = ['register_tasks', 'release_tasks', 'set_project_muted']
+            result['admin_operations'].append('developer_probe')
             if device_selection:
                 result['admin_operations'].append('select_device')
             result['gui_capabilities'] = {'version': 1, 'project_mute': True,

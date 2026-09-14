@@ -18,6 +18,7 @@ dependencies = [
 backend = ["mcp==2.2.0"]
 
 [project.scripts]
+abralia-dev = "abralia.developer.cli:main"
 abralia-rgb = "abralia.rgb.cli:main"
 abralia-layout = "abralia.layout_cli:main"
 abralia-backend = "abralia.backend.cli:main"

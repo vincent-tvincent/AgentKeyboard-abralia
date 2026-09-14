@@ -8,7 +8,10 @@ import sys
 if __name__ == '__main__':
     freeze_support()
     mode = sys.argv[1] if len(sys.argv) > 1 else None
-    if mode == 'terminal-focus':
+    if mode == 'dev':
+        from abralia.developer.cli import main
+        raise SystemExit(main(sys.argv[2:]))
+    elif mode == 'terminal-focus':
         from abralia.backend.terminal_focus import main
         raise SystemExit(main())
     elif mode == 'mcp':

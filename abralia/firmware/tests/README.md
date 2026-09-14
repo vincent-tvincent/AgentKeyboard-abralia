@@ -27,7 +27,9 @@ Coverage includes:
 - capture, held-key release across disarm, encoder capture, and heartbeat reset;
 - effect-change event ordering, no automatic reactivation, force rejection,
   event retry, and acknowledgement;
-- source reuse and preservation of upstream keymap includes.
+- source reuse and preservation of upstream keymap includes;
+- exact `led_only_not_interactable` / `abralia_host_interaction` build-target
+  names and the absence of the former LED-only keymap directory.
 
 These tests do not simulate electrical scanning, USB timing, RGB output, or
 STM32/AT32 hardware. Also build each complete target using the
