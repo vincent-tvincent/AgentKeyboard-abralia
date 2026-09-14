@@ -90,6 +90,49 @@ For terminal/editor pickup, check the
 [supported navigation routes](abralia/desktop/BACKEND.md#cli-terminals-and-vs-code-windows).
 See the [app guide](abralia/desktop/gui/README.md) for full setup and troubleshooting.
 
+### A quick look at the app
+
+Pick your keyboard, choose which projects can interrupt you, and connect Codex
+from one control panel. These screenshots show the current interface with example
+projects and device data. The app follows your system's light or dark appearance;
+the screenshots below adapt too. Full-size links are available for both themes.
+
+**Choose your keyboard once.** Abralia finds supported devices, remembers your
+selection and starts the backend. Closing the window keeps it running; Quit
+releases the keyboard.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/gui/keyboards-dark.png">
+    <img src="./docs/assets/gui/keyboards.png" alt="Abralia keyboard screen showing the remembered Keychron V3 8K and the running backend" width="900">
+  </picture>
+</p>
+<p align="center"><a href="./docs/assets/gui/keyboards.png">Light screenshot</a> · <a href="./docs/assets/gui/keyboards-dark.png">Dark screenshot</a></p>
+
+**Keep the work, mute the interruptions.** Add the project folders you want to
+use, see their task counts, and mute a project's notifications while its agents
+continue working.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/gui/projects-dark.png">
+    <img src="./docs/assets/gui/projects.png" alt="Abralia Projects screen with notifications enabled for one example project and muted for another" width="900">
+  </picture>
+</p>
+<p align="center"><a href="./docs/assets/gui/projects.png">Light screenshot</a> · <a href="./docs/assets/gui/projects-dark.png">Dark screenshot</a></p>
+
+**Connect your agents.** Install or update Abralia's bundled skill, MCP
+tools and named hooks from Integrations. Review hook trust in Codex, then ask
+each task to join—installing the plugin does not register agents automatically.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/gui/integrations-dark.png">
+    <img src="./docs/assets/gui/integrations.png" alt="Abralia Integrations screen showing the installed Codex plugin, available runtime and hook activity" width="900">
+  </picture>
+</p>
+<p align="center"><a href="./docs/assets/gui/integrations.png">Light screenshot</a> · <a href="./docs/assets/gui/integrations-dark.png">Dark screenshot</a></p>
+
 ## Design and test without a keyboard
 
 The standalone [keyboard simulator](tools/keyboard-simulator/README.md) runs in

@@ -1,6 +1,6 @@
 // Copyright 2026 blue_lobster
 // SPDX-License-Identifier: Apache-2.0
-const { app, BrowserWindow, ipcMain, protocol, net, session, Menu, dialog, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net, session, Menu, dialog, clipboard, nativeTheme } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -13,6 +13,10 @@ if (process.env.ABRALIA_GUI_USER_DATA) {
 }
 protocol.registerSchemesAsPrivileged([{ scheme: 'abralia', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 let window, bridge, quitting = false, cleanupFinished = false;
+
+function windowBackground() {
+  return nativeTheme.shouldUseDarkColors ? '#151a18' : '#f6f7f9';
+}
 
 function hostLaunch() {
   const state = process.env.ABRALIA_STATE_DIR || path.join(app.getPath('userData'), 'control');
@@ -36,7 +40,7 @@ function createWindow() {
   window = new BrowserWindow({
     width: 1120, height: 800, minWidth: 820, minHeight: 650,
     title: 'Abralia', titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 22, y: 20 },
-    backgroundColor: '#f6f7f9', show: false,
+    backgroundColor: windowBackground(), show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -56,6 +60,10 @@ if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (quitting) return; if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } else createWindow(); });
   app.whenReady().then(() => {
+    nativeTheme.themeSource = 'system';
+    nativeTheme.on('updated', () => {
+      if (window && !window.isDestroyed()) window.setBackgroundColor(windowBackground());
+    });
     const contentRoot = path.resolve(__dirname, '../dist');
     protocol.handle('abralia', request => {
       const url = new URL(request.url);

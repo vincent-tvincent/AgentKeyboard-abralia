@@ -7,8 +7,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-async function loadMain({ platform = 'darwin', primary = true } = {}) {
+async function loadMain({ platform = 'darwin', primary = true, dark = false } = {}) {
   const app = new EventEmitter(), windows = [], bridges = [];
+  const nativeTheme = Object.assign(new EventEmitter(), { themeSource:'light', shouldUseDarkColors:dark });
   let finishCleanup;
   const cleanup = new Promise(resolve => { finishCleanup = resolve; });
   Object.assign(app, {
@@ -26,13 +27,19 @@ async function loadMain({ platform = 'darwin', primary = true } = {}) {
     },
   });
   class BrowserWindow extends EventEmitter {
-    constructor() {
+    constructor(options) {
       super(); windows.push(this);
+      this.options = options; this.backgroundColor = options.backgroundColor; this.backgroundUpdates = [];
       this.webContents = new EventEmitter(); this.webContents.setWindowOpenHandler = () => {};
       this.hidden = true; this.destroyed = false; this.minimized = false;
-      this.hideCalls = 0; this.showCalls = 0; this.focusCalls = 0; this.restoreCalls = 0;
+      this.hideCalls = 0; this.showCalls = 0; this.focusCalls = 0; this.restoreCalls = 0; this.loadCalls = 0;
     }
-    loadURL(url) { this.url = url; }
+    loadURL(url) { this.url = url; this.loadCalls++; }
+    isDestroyed() { return this.destroyed; }
+    setBackgroundColor(color) {
+      assert.equal(this.destroyed, false, 'a destroyed native window cannot be updated');
+      this.backgroundColor = color; this.backgroundUpdates.push(color);
+    }
     hide() { this.hidden = true; this.hideCalls++; }
     show() { this.hidden = false; this.showCalls++; }
     focus() { this.focusCalls++; }
@@ -54,7 +61,7 @@ async function loadMain({ platform = 'darwin', primary = true } = {}) {
     close() { this.closeCalls++; return cleanup; }
   }
   const electron = {
-    app, BrowserWindow, ipcMain:{ handle() {} },
+    app, BrowserWindow, nativeTheme, ipcMain:{ handle() {} },
     protocol:{ registerSchemesAsPrivileged() {}, handle() {} }, net:{},
     session:{ defaultSession:{ setPermissionRequestHandler() {}, setPermissionCheckHandler() {} } },
     Menu:{ buildFromTemplate:template => template, setApplicationMenu() {} },
@@ -69,8 +76,58 @@ async function loadMain({ platform = 'darwin', primary = true } = {}) {
     __dirname, process:{ platform, env:{} }, console,
   }, { filename:'main.cjs' });
   await Promise.resolve();
-  return { app, windows, bridges, finishCleanup };
+  return { app, windows, bridges, finishCleanup, nativeTheme };
 }
+
+test('initial native window background follows the system light or dark appearance', async () => {
+  for (const dark of [false, true]) {
+    const { windows, bridges, nativeTheme } = await loadMain({ dark });
+    assert.equal(nativeTheme.themeSource, 'system');
+    assert.equal(windows[0].options.backgroundColor, dark ? '#151a18' : '#f6f7f9');
+    assert.equal(windows[0].loadCalls, 1);
+    assert.deepEqual(bridges[0].requests, ['start_backend']);
+  }
+});
+
+test('system theme changes update the same visible or hidden window without reloading or touching the backend', async () => {
+  const { app, windows, bridges, nativeTheme } = await loadMain();
+  const window = windows[0];
+  window.emit('ready-to-show');
+  nativeTheme.shouldUseDarkColors = true;
+  nativeTheme.emit('updated');
+  assert.equal(window.backgroundColor, '#151a18');
+  assert.equal(window.hidden, false);
+  window.attemptClose();
+  nativeTheme.shouldUseDarkColors = false;
+  nativeTheme.emit('updated');
+  assert.equal(window.backgroundColor, '#f6f7f9');
+  assert.equal(window.hidden, true);
+  assert.equal(window.showCalls, 1);
+  assert.deepEqual(window.backgroundUpdates, ['#151a18', '#f6f7f9']);
+  assert.equal(window.loadCalls, 1);
+  assert.equal(windows.length, 1);
+  assert.equal(bridges.length, 1);
+  assert.equal(bridges[0].closeCalls, 0);
+  assert.deepEqual(bridges[0].requests, ['start_backend']);
+  assert.equal(app.quitCalls, 0);
+});
+
+test('theme updates ignore destroyed or absent windows and reopening uses the latest system appearance', async () => {
+  const { app, windows, bridges, nativeTheme } = await loadMain();
+  const oldWindow = windows[0];
+  oldWindow.destroyed = true;
+  nativeTheme.shouldUseDarkColors = true;
+  assert.doesNotThrow(() => nativeTheme.emit('updated'));
+  assert.deepEqual(oldWindow.backgroundUpdates, []);
+  oldWindow.emit('closed');
+  assert.doesNotThrow(() => nativeTheme.emit('updated'));
+  app.emit('activate');
+  assert.equal(windows.length, 2);
+  assert.equal(windows[1].options.backgroundColor, '#151a18');
+  assert.equal(nativeTheme.listenerCount('updated'), 1);
+  assert.equal(bridges.length, 1);
+  assert.deepEqual(bridges[0].requests, ['start_backend']);
+});
 
 test('macOS red close button hides the existing window without stopping its backend', async () => {
   const { app, windows, bridges } = await loadMain();

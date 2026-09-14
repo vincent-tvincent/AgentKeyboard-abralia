@@ -8,6 +8,7 @@ An Electron/React frontend for the Python backend. This first macOS version:
 - Combines enabled projects on one keyboard and shows their task counts.
 - Mutes/unmutes each project's keyboard attention without stopping its agents.
 - Installs/removes the bundled Abralia Codex plugin and offers manual hook TOML.
+- Follows the system's light or dark appearance, including changes while open.
 
 The Python helper and full backend are included in the app bundle; normal use
 does not require a terminal startup command. One shared backend owns the keyboard
@@ -15,6 +16,10 @@ for all enabled projects. The Codex plugin supplies its skill, semantic MCP tool
 and clearly named Abralia lifecycle hooks.
 
 ## Use
+
+The control panel follows your system appearance automatically. Changing between
+Light, Dark or Auto in macOS updates the open app without reloading its page or
+restarting its backend. No separate theme preference is saved by Abralia.
 
 Open `Abralia.app`. With a saved connected keyboard, the app starts its backend
 automatically. Open **Projects → Add project** to enable a folder. Only enabled
