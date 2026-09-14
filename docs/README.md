@@ -9,6 +9,7 @@ validation where that distinction matters.
 | Goal | Go to |
 | --- | --- |
 | Understand what Abralia does and what is currently supported | [Project overview](../README.md) |
+| Contribute while preserving the architecture and device portability | [Contributor and agent instructions](../AGENTS.md) · [Claude Code entry point](../CLAUDE.md) |
 | Learn the keyboard shortcuts and designed effects with GIF examples | [User guide](user-guide/README.md) |
 | Test a design without a keyboard and export its animation | [Standalone keyboard simulator](../tools/keyboard-simulator/README.md) |
 | Find the physical control positions for a particular model | [Keyboard model guides](user-guide/keyboards/README.md) |

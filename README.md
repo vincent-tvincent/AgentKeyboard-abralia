@@ -367,6 +367,11 @@ harness adapters, more appearance settings and Windows/Linux app packages are
 future contribution areas. The existing macOS app already handles keyboard
 selection, project management and integration setup.
 
+Before contributing, read the [contributor and agent instructions](AGENTS.md)
+for required documentation, additive firmware porting, portable device support
+and architecture boundaries. [CLAUDE.md](CLAUDE.md) loads the same guidance for
+Claude Code.
+
 For profile authors, **[`abralia-dev`](abralia/desktop/DEVELOPER_CLI.md)** can scan
 HID interfaces before a profile exists, query a selected firmware protocol,
 generate an explicitly incomplete draft, and validate/export a completed profile.
