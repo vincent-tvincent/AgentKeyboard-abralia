@@ -114,7 +114,7 @@ class PluginRuntimeTests(unittest.TestCase):
         self.assertEqual(bridge.call(unknown, 'enable_self', valid)['reason'], 'native_project_unavailable')
         self.assertIsNone(self.registry.resolve(self.disabled))
 
-    def test_enable_self_reuses_enabled_parent_and_legacy_does_not_enroll(self):
+    def test_enable_self_enrolls_exact_workspace_and_legacy_does_not_enroll(self):
         child = self.one/'component'
         child.mkdir()
         args = {'label': 'Enable here', 'idempotency_key': 'enable', 'harness': 'codex_desktop'}
@@ -123,16 +123,38 @@ class PluginRuntimeTests(unittest.TestCase):
         with patch('abralia.backend.mcp.native_task_cwd', return_value=child), patch('abralia.backend.mcp.BrokerClient') as client:
             client.return_value.request.return_value = {'status': 'accepted', 'allocation': {'slot_id': 1}}
             result = bridge.call(self.meta(), 'enable_self', args)
-            self.assertEqual(result['enabled_project']['path'], str(self.one))
+            self.assertEqual(result['enabled_project']['path'], str(child))
             self.assertTrue(result['slot_acquired'])
-            self.assertFalse(result['project_created'])
-            self.assertEqual(len(self.registry.list()), 2)
+            self.assertTrue(result['project_created'])
+            self.assertEqual(client.call_args.args[0], str(child))
+            self.assertEqual(result['project_context'], {
+                'native_workspace':str(child),'enrolled_root':str(child),'match':'exact'})
+            self.assertEqual(len(self.registry.list()), 3)
         legacy = Bridge(str(self.disabled), endpoint=self.root/'missing.sock')
         self.addCleanup(legacy.close)
         result = legacy.call(self.meta(2), 'enable_self', args)
         self.assertEqual(result['enabled_project']['scope'], 'legacy_project_local')
         self.assertFalse(result['slot_acquired'])
         self.assertIsNone(self.registry.resolve(self.disabled))
+
+    def test_disabled_exact_workspace_does_not_retry_against_enabled_ancestor(self):
+        parent = self.registry.enroll(self.root)
+        bridge = Bridge(registry=self.registry, codex_home=self.home, endpoint=self.root/'missing.sock')
+        self.addCleanup(bridge.close)
+        args = {'label':'Exact workspace','idempotency_key':'enable'}
+        first = bridge.call(self.meta(2), 'enable_self', args)
+        self.assertTrue(first['project_created'])
+        self.assertEqual(first['enabled_project']['path'], str(self.disabled))
+        generation = self.registry.resolve_exact(self.disabled)['generation']
+        self.registry.remove(self.disabled)
+        self.assertEqual(self.registry.resolve(self.disabled), parent)
+        self.assertIsNone(self.registry.resolve_exact(self.disabled))
+        stale = bridge.call(self.meta(2), 'enable_self', args)
+        self.assertEqual(stale['reason'], 'stale_enable_request')
+        self.assertFalse(stale['project_enabled'])
+        fresh = bridge.call(self.meta(2), 'enable_self', {**args,'idempotency_key':'new-request'})
+        self.assertEqual(fresh['enabled_project']['path'], str(self.disabled))
+        self.assertNotEqual(self.registry.resolve_exact(self.disabled)['generation'], generation)
 
     def test_enable_self_offline_retry_and_disable_respect_original_intent(self):
         bridge = Bridge(registry=self.registry, codex_home=self.home, endpoint=self.root/'missing.sock')
@@ -385,6 +407,46 @@ class PluginRuntimeTests(unittest.TestCase):
                 result = await client.call_tool('release_slot', {'slot_token': fresh['allocation']['slot_token'],
                     'idempotency_key': 'release'}, meta=self.meta(2))
                 self.assertEqual(result.structured_content['status'], 'accepted')
+        asyncio.run(scenario())
+        self.assertFalse(service.broker.slots)
+
+    def test_real_stdio_exact_enable_under_an_enrolled_ancestor(self):
+        from mcp import Client, StdioServerParameters
+        from abralia.backend.service import BrokerService
+        self.registry.enroll(self.root)
+        endpoint = self.root/'shared.sock'
+        service = BrokerService(self.root, 'builtin:keychron-v3-8k-ansi-encoder-effect25',
+                                shared=True, mode='simulated', state_dir=self.root/'control', endpoint=endpoint)
+        service.start()
+        self.addCleanup(service.close)
+
+        async def scenario():
+            params = StdioServerParameters(command=sys.executable, args=['-B','-m','abralia.backend.mcp'],
+                env={**os.environ,'CODEX_HOME':str(self.home),'ABRALIA_STATE_DIR':str(self.root/'control'),
+                     'ABRALIA_RUNTIME_DIR':str(self.root)})
+            async with Client(params) as client:
+                status = (await client.call_tool('get_status', {}, meta=self.meta(2))).structured_content
+                self.assertEqual(status['project_context'], {
+                    'native_workspace':str(self.disabled),'enrolled_root':str(self.root),'match':'ancestor'})
+                self.assertNotIn('allocation', status)
+                refused = (await client.call_tool('acquire_slot',
+                    {'label':'Wrong parent','idempotency_key':'ordinary'}, meta=self.meta(2))).structured_content
+                self.assertEqual(refused['status'], 'rejected')
+                self.assertIn('native_workspace_requires_exact_enrollment', str(refused))
+                self.assertIsNone(self.registry.resolve_exact(self.disabled))
+                self.assertFalse(service.broker.slots)
+                args = {'label':'Exact project','idempotency_key':'explicit-enable'}
+                enabled = (await client.call_tool('enable_self', args, meta=self.meta(2))).structured_content
+                self.assertTrue(enabled['slot_acquired'])
+                self.assertEqual(enabled['enabled_project']['path'], str(self.disabled))
+                self.assertEqual(enabled['allocation']['project_path'], str(self.disabled))
+                self.assertEqual(enabled['project_context']['match'], 'exact')
+                retry = (await client.call_tool('enable_self', args, meta=self.meta(2))).structured_content
+                self.assertEqual(retry['allocation']['slot_token'], enabled['allocation']['slot_token'])
+                released = (await client.call_tool('release_slot',
+                    {'slot_token':enabled['allocation']['slot_token'],'idempotency_key':'release'},
+                    meta=self.meta(2))).structured_content
+                self.assertEqual(released['status'], 'accepted')
         asyncio.run(scenario())
         self.assertFalse(service.broker.slots)
 

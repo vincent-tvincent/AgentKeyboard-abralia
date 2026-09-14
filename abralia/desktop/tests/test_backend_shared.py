@@ -78,6 +78,8 @@ class SharedBackendTests(unittest.TestCase):
         nested = self.registry.enroll(child)
         self.assertEqual(self.registry.enroll(self.a), self.pa)
         self.assertEqual(self.registry.resolve(child / 'file')['project_id'], nested['project_id'])
+        self.assertEqual(self.registry.resolve_exact(child), nested)
+        self.assertIsNone(self.registry.resolve_exact(child/'file'))
         self.assertEqual(self.registry.resolve(self.b)['project_id'], self.pb['project_id'])
         self.assertIsNone(self.registry.resolve(self.root / 'outside'))
         self.registry.disable(self.a)
@@ -109,6 +111,25 @@ class SharedBackendTests(unittest.TestCase):
         self.assertEqual(self.service.broker.slots[1].caller.project_id, self.pa['project_id'])
         self.assertEqual(self.service.broker.slots[2].caller.project_id, self.pb['project_id'])
         self.assertEqual(before['slots'][0]['state'], self.service.broker.slots[1].state)
+
+    def test_ancestor_scope_cannot_create_a_new_slot_but_existing_calls_remain_owned(self):
+        child = self.a/'component'
+        child.mkdir()
+        self.hello('a', self.pa)
+        message = {'type':'call','operation':'acquire_slot',
+                   'arguments':{'label':'Nested','idempotency_key':'nested'},
+                   'metadata':{'thread_id':self.ids[0],'cwd':str(child)}}
+        refused = self.service._handle({'connection':'a','role':'agent','message':message})
+        self.assertEqual(refused['reason'], 'native_workspace_requires_exact_enrollment')
+        self.assertEqual(refused['project_context']['native_workspace'], str(child))
+        self.assertFalse(self.service.broker.slots)
+        self.assertIsNone(self.registry.resolve_exact(child))
+        token = self.acquire('a',self.pa,self.ids[0])
+        result = self.service._handle({'connection':'a','role':'agent','message':{
+            **message,'operation':'get_status','arguments':{}}})
+        self.assertEqual(result['allocation']['slot_token'], token)
+        self.assertEqual(result['project_context'], {
+            'native_workspace':str(child),'enrolled_root':str(self.a),'match':'ancestor'})
 
     def test_project_mute_and_release_all_are_scoped(self):
         self.hello('a', self.pa); self.hello('b', self.pb)

@@ -262,6 +262,11 @@ class BrokerService:
                         project['project_id'] if project else None, project['path'] if project else None,
                         project['generation'] if project else None)
         allocation = self.broker.slots.get(self.broker.owners.get(caller.caller_id, -1))
+        if (self.shared and allocation is None and message.get('operation') == 'acquire_slot'
+                and Path(cwd).resolve() != Path(project['path'])):
+            # Also protect callers still running an older MCP bridge. Passive
+            # ancestor routing does not authorize creating a new task under it.
+            raise ValueError('native_workspace_requires_exact_enrollment')
         if allocation:
             if (allocation.caller.project_id, allocation.caller.project_generation) != (caller.project_id, caller.project_generation):
                 raise ValueError('caller_project_mismatch')
@@ -529,9 +534,25 @@ class BrokerService:
         if kind == "call":
             stable = message.get('operation') in ('acquire_slot', 'release_slot')
             checkpoint = self._recovery_checkpoint() if stable else None
-            caller = self._caller(message, connection, command["role"], command.get("fallback"))
+            try:
+                caller = self._caller(message, connection, command["role"], command.get("fallback"))
+            except ValueError as error:
+                if str(error) != 'native_workspace_requires_exact_enrollment':
+                    raise
+                return {'status':'rejected','reason':str(error),
+                        'project_context':{
+                            'native_workspace':str(Path(message['metadata']['cwd']).resolve()),
+                            'enrolled_root':self.connection_projects[connection]['path'],'match':'ancestor'},
+                        'hint':'Use Add project in Abralia for the exact native workspace, or refresh the '
+                               'Abralia MCP client and call enable_self. An enabled parent folder is not '
+                               'used for a new task registration.'}
             self.recovery.expire()
             result = self.broker.call(caller, message.get("operation"), message.get("arguments"))
+            if self.shared:
+                native_workspace = str(Path(message['metadata']['cwd']).resolve())
+                result['project_context'] = {
+                    'native_workspace': native_workspace, 'enrolled_root': caller.project_path,
+                    'match': 'exact' if native_workspace == caller.project_path else 'ancestor'}
             if result.get('status') == 'accepted':
                 if caller.caller_id in self.broker.owners:
                     self._attach_terminal(self.broker.slots[self.broker.owners[caller.caller_id]], connection)

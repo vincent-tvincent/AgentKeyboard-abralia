@@ -97,12 +97,26 @@ Native approvals, multi-select, and arbitrary UI focus monitoring are not expose
 Activation requires an explicit user request to use Abralia for the task.
 The plugin skill disables implicit invocation. `enable_self` can enroll the
 verified current project and claim a slot; normal tools and hooks never enroll.
-It reuses an enabled parent project, accepts no arbitrary project path, and
-reports `project_enabled` separately from `slot_acquired` if the app is offline.
+It enrolls the exact native workspace directory even when an ancestor folder is
+already enabled, accepts no arbitrary project path, and reports `project_enabled`
+separately from `slot_acquired` if the app is offline. For example, enabling
+`/projects/work/app` does not silently reuse an enrolled `/projects` root.
 Enable retries are scoped to the caller, arguments and enrollment generation
 within the bridge lifetime; an old request cannot silently re-enable a disabled
 project. A new explicit activation request uses a fresh key. User intent is an
 instruction policy, not an agent-supplied boolean presented as proof.
+
+Resolved shared-mode calls expose `project_context.native_workspace`, `enrolled_root`
+and `match` (`exact` or `ancestor`) so a project's enrollment boundary cannot be
+mistaken for the task's actual working directory. Ordinary status/event routing
+can still find an enabled ancestor, and existing owned allocations remain usable
+within that scope. A new registration requires exact workspace enrollment;
+otherwise the backend returns `native_workspace_requires_exact_enrollment` and
+does not create a slot, including for callers using an older MCP bridge.
+Use the updated `enable_self`, or **Projects → Add project** with the exact folder,
+then retry with a fresh activation idempotency key if a previous request was bound
+to the ancestor. Existing allocations are not silently moved between project scopes;
+release an incorrectly scoped allocation explicitly before registering it again.
 
 Within an enabled project, the agent can register through `acquire_slot`, reporting `harness` as
 `codex_desktop`, `codex_cli`, or `unknown`. The bridge reads its own task identity

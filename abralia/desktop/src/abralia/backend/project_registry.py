@@ -100,6 +100,11 @@ class ProjectRegistry:
 
     disable = remove
 
+    def resolve_exact(self, cwd):
+        """Find this workspace itself, never an enabled ancestor."""
+        match = self.resolve(cwd)
+        return match if match and Path(match['path']) == Path(cwd).resolve() else None
+
     def resolve(self, cwd):
         if not isinstance(cwd, (str, Path)) or not Path(cwd).is_absolute():
             return None

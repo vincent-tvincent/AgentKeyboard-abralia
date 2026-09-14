@@ -135,6 +135,7 @@ class Bridge:
         client = self.client
         project_created = False
         project = None
+        cwd = None
         if client is None:
             try:
                 cwd = native_task_cwd(metadata['thread_id'], codex_home=self.codex_home)
@@ -147,7 +148,10 @@ class Bridge:
                 fingerprint = json.dumps(arguments, sort_keys=True)
                 with self.clients_lock:
                     try:
-                        project = self.registry.resolve(cwd)
+                        # An explicit enable names the native workspace itself.
+                        # An enrolled ancestor (especially a home directory)
+                        # must not absorb a different project's activation.
+                        project = self.registry.resolve_exact(cwd)
                     except (OSError, ValueError, TypeError):
                         return {'status': 'skipped', 'reason': 'project_registry_unavailable', 'slot_acquired': False}
                     previous = self.enable_requests.get(key)
@@ -205,6 +209,10 @@ class Bridge:
                     self.client_generations[project['project_id']] = generation
         result = client.request({"type": "call", "metadata": metadata,
                                  "operation": 'acquire_slot' if enabling else operation, "arguments": arguments})
+        if cwd is not None:
+            result = {**result, 'project_context': {
+                'native_workspace': str(cwd), 'enrolled_root': project['path'],
+                'match': 'exact' if str(cwd) == project['path'] else 'ancestor'}}
         if enabling:
             if project is None:
                 project = {'project_id': project_identity(client.project), 'path': client.project,
