@@ -10,13 +10,56 @@ import json
 import os
 from pathlib import Path
 import socket
+import select
 import threading
 import secrets
+import time
 from uuid import UUID
 from .client_lifetime import capture_client_owner, capture_terminal_context
 
 MAX_REQUEST = 65536
 MAX_RESPONSE = 4 * 1024 * 1024
+
+
+class JsonLineReader:
+    """Bound incomplete frames without timing out a quiet established stream."""
+
+    def __init__(self, connection, stop, *, frame_timeout=20):
+        self.connection = connection
+        self.stop = stop
+        self.frame_timeout = frame_timeout
+        self.buffer = bytearray()
+
+    def readline(self, *, idle_timeout=None):
+        idle_deadline = time.monotonic() + idle_timeout if idle_timeout is not None else None
+        frame_deadline = None
+        while not self.stop.is_set():
+            end = self.buffer.find(b'\n')
+            if end >= 0:
+                if end + 1 > MAX_REQUEST:
+                    raise ValueError('request_too_large')
+                line = bytes(self.buffer[:end + 1])
+                del self.buffer[:end + 1]
+                return line
+            if len(self.buffer) >= MAX_REQUEST:
+                raise ValueError('request_too_large')
+            now = time.monotonic()
+            if self.buffer and frame_deadline is None:
+                frame_deadline = now + self.frame_timeout
+            deadline = frame_deadline if frame_deadline is not None else idle_deadline
+            if deadline is not None and now >= deadline:
+                raise TimeoutError('request_read_timeout')
+            delay = min(.25, max(0, deadline - now)) if deadline is not None else .25
+            ready, _, _ = select.select([self.connection], [], [], delay)
+            if not ready:
+                continue
+            data = self.connection.recv(MAX_REQUEST + 1 - len(self.buffer))
+            if not data:
+                if self.buffer:
+                    raise ValueError('incomplete_request')
+                return b''
+            self.buffer.extend(data)
+        return b''
 
 
 def shared_socket_path(runtime_dir: str | Path | None = None) -> Path:
@@ -138,7 +181,7 @@ class BrokerClient:
                     message.setdefault('expected_epoch', self.epoch)
                 response = self._exchange(message)
                 self._remember(message, response)
-                if response.get('reason') in ('backend_stopping', 'backend_stopped'):
+                if response.get('reason') in ('backend_stopping', 'backend_stopped', 'connection_expired'):
                     self._close()
                 return response
             except (OSError, ValueError) as error:

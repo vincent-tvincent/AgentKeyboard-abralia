@@ -165,6 +165,9 @@ class SortRecoveryTests(unittest.TestCase):
         command = {'role':'agent','connection':'unverified-fixture', 'message':{
             'type':'call','metadata':{'thread_id':task},'operation':'acquire_slot',
             'arguments':{'label':'A new','idempotency_key':'new'}}}
+        hello = self.service._handle({'role':'agent','connection':'unverified-fixture',
+            'handshake':True,'message':{'type':'hello','role':'agent','project':str(self.root)}})
+        self.assertEqual(hello['status'], 'accepted')
         with patch.object(self.service, '_caller', return_value=newcomer), \
                 patch('abralia.backend.recovery.os.replace', side_effect=OSError('fixture disk error')):
             result = self.service._handle(command)

@@ -101,7 +101,7 @@ class Bridge:
                         if client is not self.client and client not in self.clients.values():
                             continue
                         result = client.request({"type": "ping"})
-                        if result.get('reason') in ('backend_unavailable', 'backend_stopping', 'backend_stopped'):
+                        if result.get('reason') in ('backend_unavailable', 'backend_stopping', 'backend_stopped', 'connection_expired'):
                             client.request({"type": "ping"})
         self.heartbeat = threading.Thread(target=beat, name="abralia-bridge-heartbeat", daemon=True)
         self.heartbeat.start()

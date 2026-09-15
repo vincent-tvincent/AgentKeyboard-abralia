@@ -24,13 +24,14 @@ from uuid import UUID, uuid4
 
 from .core import Broker, BrokerConfig, Caller, text_argument
 from .device import DeviceDriver
-from .ipc import MAX_REQUEST, socket_path
+from .ipc import MAX_REQUEST, JsonLineReader, socket_path
 from .recovery import AllocationRecovery, proof_digest, MAX_RECORDS
 from .task_catalog import codex_project_tasks, requested_task_ids
 from .project_policy import ProjectPolicy, default_state_dir, project_identity, read_private_json, write_private_json
 from .project_registry import ProjectRegistry
 
 LOG = logging.getLogger(__name__)
+IPC_READ_TIMEOUT = 20
 
 
 class BrokerService:
@@ -111,7 +112,7 @@ class BrokerService:
         for slot in list(self.broker.slots.values()):
             row = rows.get(slot.caller.project_id)
             if row is None or slot.caller.project_generation != row['generation']:
-                self.broker._release(slot)
+                self.broker._release(slot, reason='project_disabled_or_replaced')
                 self.recovery.forget_reservation(slot.caller.caller_id)
                 self.recovery.proofs.pop(slot.caller.caller_id, None)
         for owner, record in list(self.recovery.pending.items()):
@@ -331,7 +332,7 @@ class BrokerService:
         self.broker.navigation_results.pop(slot.slot_token, None)
         self.broker.event('terminal_attached', slot, provider=context['provider'])
 
-    def _drop_connection(self, connection: str):
+    def _drop_connection(self, connection: str, reason='peer_closed'):
         self.connection_terminals.pop(connection, None)
         self.connection_terminal_callers.pop(connection, None)
         for caller_id, attachment in list(self.broker.terminal_attachments.items()):
@@ -345,6 +346,10 @@ class BrokerService:
         remaining = set().union(*self.connections.values()) if self.connections else set()
         for owner in owners - remaining:
             self.broker.disconnected_at(owner)
+            slot = self.broker.slots.get(self.broker.owners.get(owner))
+            if slot:
+                self.broker.event('agent_connection_lost', slot, reason=reason,
+                                  grace_seconds=self.config.disconnect_grace_seconds)
         # A bridge reload can briefly overlap its previous connection. Rebind
         # surviving native clients without waiting for another model tool call.
         for other, tasks in list(self.connection_terminal_callers.items()):
@@ -516,8 +521,10 @@ class BrokerService:
                 return {'status':'accepted' if accepted else 'skipped'}
             return {'status':'rejected','reason':'unsupported_observer_message'}
         if kind == "disconnect":
-            self._drop_connection(connection)
+            self._drop_connection(connection, command.get('disconnect_reason', 'client_disconnect'))
             return {"status": "accepted"}
+        if command.get('role') in ('agent', 'hook') and connection not in self.connections:
+            return {'status':'skipped', 'reason':'connection_expired'}
         if self.shared and command.get('role') in ('agent', 'hook'):
             self._connection_project(connection)
         if command.get('role') == 'hook':
@@ -825,9 +832,9 @@ class BrokerService:
                 now = time.monotonic()
                 if self.shared and now >= self.next_registry_refresh:
                     self._refresh_projects()
-                for connection, seen in list(self.last_seen.items()):
-                    if now - seen > 20:
-                        self._drop_connection(connection)
+                # A quiet local stream can be paused by screen lock/App Nap.
+                # Its handler owns disconnect detection; heartbeat age alone
+                # must not discard its handshake or release authorized slots.
                 self.broker.step()
                 self.recovery.expire()
                 self.recovery.save()
@@ -892,9 +899,11 @@ class BrokerService:
                 def handle(self):
                     connection = str(uuid4())
                     role, fallback = "agent", None
-                    self.request.settimeout(20)
+                    disconnect_reason = 'peer_closed'
+                    self.request.settimeout(IPC_READ_TIMEOUT)
+                    reader = JsonLineReader(self.request, service.stop_event, frame_timeout=IPC_READ_TIMEOUT)
                     try:
-                        line = self.rfile.readline(MAX_REQUEST + 1)
+                        line = reader.readline(idle_timeout=IPC_READ_TIMEOUT)
                         hello = json.loads(line)
                         if (len(line) > MAX_REQUEST or not isinstance(hello, dict) or hello.get("type") != "hello"
                                 or not service.shared and hello.get("project") != service.project):
@@ -938,7 +947,7 @@ class BrokerService:
                         if accepted.get('status') != 'accepted':
                             return
                         while not service.stop_event.is_set():
-                            line = self.rfile.readline(MAX_REQUEST + 1)
+                            line = reader.readline(idle_timeout=None if role == 'agent' else IPC_READ_TIMEOUT)
                             if not line:
                                 break
                             if len(line) > MAX_REQUEST or not line.endswith(b"\n"):
@@ -954,13 +963,22 @@ class BrokerService:
                                                      'terminal_sources': sources})
                             self.wfile.write(json.dumps(result, allow_nan=False).encode() + b"\n")
                             self.wfile.flush()
+                            if result.get('reason') == 'connection_expired':
+                                # Old bridges also recover: the next read sees
+                                # EOF and reconnects with their retained proof.
+                                disconnect_reason = 'connection_expired'
+                                break
                     except (ValueError, OSError) as error:
+                        disconnect_reason = ('read_timeout' if isinstance(error, TimeoutError)
+                                             else 'protocol_error' if isinstance(error, ValueError) else 'transport_error')
                         try:
                             self.wfile.write(json.dumps({"status": "rejected", "reason": str(error)}).encode() + b"\n")
                         except OSError:
                             pass
                     finally:
-                        service.submit({"connection": connection, "message": {"type": "disconnect"}})
+                        service.submit({"connection": connection,
+                                        "disconnect_reason": 'backend_stopping' if service.stop_event.is_set() else disconnect_reason,
+                                        "message": {"type": "disconnect"}})
 
             class Server(socketserver.ThreadingUnixStreamServer):
                 daemon_threads = True

@@ -1142,11 +1142,11 @@ class Broker:
         self.event("question_expired" if outcome == "expired" else "question_cleared", slot,
                    question_id=question.question_id, outcome=outcome)
 
-    def _release(self, slot: Allocation):
+    def _release(self, slot: Allocation, *, reason='explicit_release'):
         self.terminal_attachments.pop(slot.caller.caller_id, None)
         self.navigation_results.pop(slot.slot_token, None)
         self._close_keyboard_frame(slot, 'released')
-        self.event("slot_released", slot)
+        self.event("slot_released", slot, reason=reason)
         self.released[slot.slot_token] = slot.caller.caller_id
         while len(self.released) > self.config.idempotency_capacity:
             self.released.popitem(last=False)
@@ -1589,7 +1589,7 @@ class Broker:
             if now - disconnected_at >= self.config.disconnect_grace_seconds:
                 slot = self.slots.get(self.owners.get(owner, -1))
                 if slot and not slot.host_registered:
-                    self._release(slot)
+                    self._release(slot, reason='connection_lost')
                 self.disconnected.pop(owner, None)
         for slot in self.slots.values():
             for request_id in list(slot.native_requests):

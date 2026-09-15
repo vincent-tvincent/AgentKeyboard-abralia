@@ -714,8 +714,21 @@ provided by this inspection command.
 background brightness 50%, notification lifetime 300 seconds, question lifetime 600 seconds, disconnected
 owner grace 30 seconds, background delay 15 seconds, fade 5 seconds, inactive
 saturation 75%, and 30 FPS. These timers have different meanings. The bridge
-pings every 5 seconds; the service considers a connection lost after 20 seconds
-without traffic. A live but quiet caller is not treated as completed.
+pings every 5 seconds, but an established agent connection has no idle timeout.
+Screen lock or process suspension can delay those pings without ending the task;
+silence on an open local stream does not start registration cleanup. Initial
+handshakes, incomplete frames and idle admin/hook requests remain bounded at
+20 seconds, with the existing request-size limit.
+
+An actual peer close or transport/protocol error starts the disconnected-owner
+grace period. A surviving bridge can reconnect with its retained proof and keep
+the slot; an expired connection is reported as `connection_expired`, separately
+from a disabled project. Explicit release and project disabling still remove
+the registration and cannot be undone by a heartbeat. `agent_connection_lost`
+records the disconnect cause, and `slot_released.reason` distinguishes explicit
+release, connection cleanup and project removal/replacement. A quiet caller is
+not treated as completed. Closing/restarting the native client or losing the
+bridge's private proof retains the recovery limits described above.
 
 Overview trial appearance settings are `overview_tint` (default `DDD2FF`),
 `overview_tint_percent` (16), and `overview_highlight_percent` (85). They are host
